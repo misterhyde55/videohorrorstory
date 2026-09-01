@@ -9,6 +9,7 @@ import HoldYourBreath from "../components/HoldYourBreath";
 export default function GameScreen({ state, playerId, onLeave }) {
   const [error, setError] = useState("");
   const [now, setNow] = useState(Date.now());
+  const [breathOverlay, setBreathOverlay] = useState(null);
   const me = state.players.find((p) => p.id === playerId);
 
   useEffect(() => {
@@ -16,6 +17,13 @@ export default function GameScreen({ state, playerId, onLeave }) {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, [state.phase]);
+
+  useEffect(() => {
+    if (me?.role === "teen" && me.searching && me.searchEndsAt) {
+      setBreathOverlay((prev) => (prev?.searchEndsAt === me.searchEndsAt ? prev : { searchEndsAt: me.searchEndsAt }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me?.searching, me?.searchEndsAt]);
 
   if (!me) return <div className="panel">You are spectating this round.</div>;
 
@@ -25,7 +33,6 @@ export default function GameScreen({ state, playerId, onLeave }) {
   const seconds = totalSeconds % 60;
   const clockLabel = `${minutes}:${String(seconds).padStart(2, "0")}`;
   const clockTier = totalSeconds <= 90 ? "danger" : totalSeconds <= 198 ? "warn" : "";
-  const showHoldBreath = me.role === "teen" && me.searching && state.phase === "playing";
 
   return (
     <div className="game-layout">
@@ -39,8 +46,14 @@ export default function GameScreen({ state, playerId, onLeave }) {
 
       {error && <div className="banner banner-error" onAnimationEnd={() => setError("")}>{error}</div>}
 
-      {showHoldBreath && (
-        <HoldYourBreath key={state.turnPlayerId + String(state.round)} searchEndsAt={me.searchEndsAt} />
+      {breathOverlay && (
+        <HoldYourBreath
+          key={breathOverlay.searchEndsAt}
+          searchEndsAt={breathOverlay.searchEndsAt}
+          searching={me.searching}
+          hiding={me.hiding}
+          onResolved={() => setBreathOverlay(null)}
+        />
       )}
 
       {state.phase === "ended" ? (

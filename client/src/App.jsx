@@ -74,8 +74,10 @@ export default function App() {
     setState(null);
   }, []);
 
+  const inGame = state && state.phase !== "lobby";
+
   return (
-    <div className="vhs-app">
+    <div className={`vhs-app${inGame ? " vhs-app--game" : ""}`}>
       <div className="scanlines" />
       {state && (
         <header className="vhs-header">

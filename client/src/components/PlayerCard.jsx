@@ -18,12 +18,10 @@ export default function PlayerCard({ me, carRepaired }) {
 
   return (
     <div className={`player-card${isSlasher ? " killer" : ""}`}>
-      <div className="player-card-header">
+      <div className="player-card-header" title={`${info.tagline} ${info.ability}`}>
         <span className="player-card-icon">{info.icon}</span>
-        <div>
-          <div className="player-card-name">{info.name}</div>
-          <div className="player-card-tagline">{info.tagline}</div>
-        </div>
+        <div className="player-card-name">{info.name}</div>
+        <span className="player-card-info-hint" aria-hidden="true">ⓘ</span>
       </div>
 
       {!isSlasher && (
@@ -32,11 +30,11 @@ export default function PlayerCard({ me, carRepaired }) {
           <HealthBar hp={me.sanity} max={me.sanityMax} kind="sanity" label="Sanity" />
           {me.broken ? (
             <div className="sanity-status panicked">
-              BROKEN — recover to 3 Sanity to steady yourself
+              BROKEN — recover to 3 Sanity
             </div>
           ) : tier !== "steady" && (
             <div className={`sanity-status ${tier}`}>
-              {tier === "panicked" ? "Panicked — actions are much less reliable" : "Shaken — actions are less reliable"}
+              {tier === "panicked" ? "Panicked — actions unreliable" : "Shaken — actions less reliable"}
             </div>
           )}
           <div className="stat-row">
@@ -54,8 +52,6 @@ export default function PlayerCard({ me, carRepaired }) {
           {me.specialCooldown > 0 ? `Special ready in ${me.specialCooldown}` : "Special ready"}
         </div>
       )}
-
-      <p className="player-card-ability">{info.ability}</p>
 
       {!isSlasher && (
         <>
