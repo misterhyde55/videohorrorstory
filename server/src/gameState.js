@@ -1,16 +1,26 @@
 import { LOCATIONS, START_LOCATIONS, neighbors } from "./board.js";
-import { drawFromPool, randomEvent } from "./cards.js";
+import { drawFromPool, randomEvent, randomHallucination } from "./cards.js";
 import { TEEN_CHARACTERS, KILLERS, SPECIAL_COOLDOWN } from "./characters.js";
 
 const MAX_TEENS = 4;
 const MAX_ITEMS = 6;
 const MONSTER_MAX_HP = 3;
 const GAME_DURATION_MS = 10 * 60 * 1000;
-const TEEN_FIGHT_BASE = 30;
-const JOCK_FIGHT_BONUS = 25;
-const BASE_FLEE_CHANCE = 50;
-const CHEERLEADER_FLEE_CHANCE = 80;
-const STALKER_FLEE_CHANCE = 35;
+
+const FIGHT_BASE = 25;
+const FIGHT_STRENGTH_MULT = 10;
+const STUN_CHANCE = 50;
+
+const FLEE_BASE = 30;
+const FLEE_STEALTH_MULT = 12;
+const STALKER_FLEE_PENALTY = 15;
+
+const SHAKEN_PENALTY = 10;
+const PANIC_PENALTY = 20;
+const PANIC_STUMBLE_CHANCE = 20;
+const HALLUCINATION_CHANCE = 30;
+
+const REVIVE_HP = 1;
 
 export function createRoom(code, hostId) {
   return {
@@ -23,8 +33,10 @@ export function createRoom(code, hostId) {
     round: 1,
     endsAt: null,
     monsterHp: MONSTER_MAX_HP,
+    monsterStunned: false,
     killerId: null,
     thingRevealed: false,
+    objectives: { carRepaired: false },
     log: [],
     winner: null, // 'teens' | 'slasher'
     winReason: null,
@@ -43,6 +55,9 @@ export function addPlayer(room, id, name, roleOverride) {
     location: null,
     items: [],
     hp: 2,
+    hpMax: 2,
+    sanity: 0,
+    sanityMax: 0,
     status: "alive", // alive | dead | escaped
     stalkStreak: 0,
     specialCooldown: 0,
@@ -132,11 +147,15 @@ export function startGame(room) {
   const slasher = players.find((p) => p.role === "slasher");
 
   teens.forEach((p, i) => {
+    const character = TEEN_CHARACTERS[p.pickId];
     p.location = START_LOCATIONS.teens[i % START_LOCATIONS.teens.length];
     p.items = [];
-    p.hp = 2;
+    p.hp = character.stats.health;
+    p.hpMax = character.stats.health;
+    p.sanity = character.stats.sanity;
+    p.sanityMax = character.stats.sanity;
     p.status = "alive";
-    p.characterName = TEEN_CHARACTERS[p.pickId].name;
+    p.characterName = character.name;
   });
   slasher.location = START_LOCATIONS.slasher;
   slasher.stalkStreak = 0;
@@ -148,8 +167,10 @@ export function startGame(room) {
   room.round = 1;
   room.endsAt = Date.now() + GAME_DURATION_MS;
   room.monsterHp = MONSTER_MAX_HP;
+  room.monsterStunned = false;
   room.killerId = slasher.pickId;
   room.thingRevealed = false;
+  room.objectives = { carRepaired: false };
   room.winner = null;
   room.winReason = null;
   room.log = [];
@@ -171,6 +192,65 @@ function slasherOf(room) {
 
 function killerInfo(room) {
   return KILLERS[room.killerId] ?? KILLERS.stalker;
+}
+
+// 0 = normal, 1 = final third of the clock, 2 = final countdown. The Monster
+// hits harder and Sanity drains faster for isolated teens as this rises.
+function lateGameTier(room) {
+  if (!room.endsAt) return 0;
+  const fraction = (room.endsAt - Date.now()) / GAME_DURATION_MS;
+  if (fraction <= 0.15) return 2;
+  if (fraction <= 0.33) return 1;
+  return 0;
+}
+
+function sanityTier(player) {
+  if (player.sanity <= 0) return "panicked";
+  if (player.sanity <= 1) return "shaken";
+  return "steady";
+}
+
+function sanityPenalty(player) {
+  const tier = sanityTier(player);
+  if (tier === "panicked") return PANIC_PENALTY;
+  if (tier === "shaken") return SHAKEN_PENALTY;
+  return 0;
+}
+
+// Being alone drains Sanity; grouping up with teammates restores it (faster
+// if a Leader is present). Called once per completed teen turn.
+function applySanityTick(room, player) {
+  const roommates = aliveTeens(room).filter((t) => t.location === player.location);
+  const others = roommates.filter((t) => t.id !== player.id);
+  const before = sanityTier(player);
+  if (others.length > 0) {
+    const hasLeader = roommates.some((t) => t.pickId === "leader");
+    player.sanity = Math.min(player.sanityMax, player.sanity + (hasLeader ? 2 : 1));
+  } else {
+    const drain = lateGameTier(room) >= 2 ? 2 : 1;
+    player.sanity = Math.max(0, player.sanity - drain);
+  }
+  const after = sanityTier(player);
+  if (after === before) return;
+  if (after === "panicked") log(room, `${player.characterName} is panicking — their mind is unraveling.`);
+  else if (after === "shaken") log(room, `${player.characterName} is badly shaken.`);
+  else if (after === "steady") log(room, `${player.characterName} steadies their nerves.`);
+}
+
+// The jump-scare of the Monster appearing costs Sanity immediately. Skipped
+// for a still-disguised Thing, since the teens don't consciously see it.
+function scareTeensAt(room, locationId) {
+  const killer = killerInfo(room);
+  if (killer.id === "thing" && !room.thingRevealed) return;
+  aliveTeens(room)
+    .filter((t) => t.location === locationId)
+    .forEach((t) => {
+      const before = sanityTier(t);
+      t.sanity = Math.max(0, t.sanity - 1);
+      const after = sanityTier(t);
+      if (after !== before && after === "panicked") log(room, `${t.characterName} is panicking — their mind is unraveling.`);
+      else if (after !== before && after === "shaken") log(room, `${t.characterName} is badly shaken.`);
+    });
 }
 
 function advanceTurn(room) {
@@ -259,6 +339,9 @@ export function applyAction(room, playerId, action) {
   const result = player.role === "slasher" ? slasherAction(room, player, action) : teenAction(room, player, action);
   if (result?.error) return result;
 
+  if (player.role === "teen" && player.status === "alive" && result?.consumeTurn !== false) {
+    applySanityTick(room, player);
+  }
   if (player.role === "slasher" && action.type !== "shortcut" && player.specialCooldown > 0) {
     player.specialCooldown -= 1;
   }
@@ -272,19 +355,35 @@ function teenAction(room, player, action) {
   if (player.status === "dead" || player.status === "escaped") return { error: "You cannot act." };
   const loc = LOCATIONS[player.location];
   const character = TEEN_CHARACTERS[player.pickId];
+  const tier = sanityTier(player);
+
+  if (tier === "panicked" && roll(HALLUCINATION_CHANCE)) {
+    log(room, `${player.characterName}: "${randomHallucination()}"`);
+  }
 
   switch (action.type) {
     case "move": {
-      const maxHops = character.id === "cheerleader" ? 2 : 1;
-      const reachableSet = reachable(player.location, maxHops);
+      const speed = tier === "panicked" ? 1 : character.stats.speed;
+      const reachableSet = reachable(player.location, speed);
       if (!reachableSet.has(action.to)) return { error: "That location isn't reachable from here." };
-      player.location = action.to;
-      log(room, `${player.characterName} moves to ${LOCATIONS[action.to].name}.`);
+      let destination = action.to;
+      let stumbled = false;
+      if (tier === "panicked" && roll(PANIC_STUMBLE_CHANCE)) {
+        const options = [...reachableSet].filter((l) => l !== action.to);
+        if (options.length) {
+          destination = options[Math.floor(Math.random() * options.length)];
+          stumbled = true;
+        }
+      }
+      player.location = destination;
+      log(room, stumbled
+        ? `${player.characterName} panics and stumbles into ${LOCATIONS[destination].name} instead!`
+        : `${player.characterName} moves to ${LOCATIONS[destination].name}.`);
       return { ok: true };
     }
     case "search": {
       if (player.items.length >= MAX_ITEMS) return { error: "Your inventory is full." };
-      const rerollOnMiss = character.id === "nerd" || (character.id === "pothead" && loc.searchPool === "light");
+      const rerollOnMiss = character.id === "nerd" || character.id === "leader";
       let item = drawFromPool(loc.searchPool);
       if (!item && rerollOnMiss) item = drawFromPool(loc.searchPool);
       if (item) {
@@ -301,13 +400,27 @@ function teenAction(room, player, action) {
       if (idx < 0) return { error: "You don't have that item." };
       const item = player.items[idx];
       if (item.utility === "heal") {
-        if (player.hp >= 2) return { error: "You're not hurt." };
-        player.hp = 2;
+        if (player.hp >= player.hpMax) return { error: "You're not hurt." };
+        player.hp = player.hpMax;
         player.items.splice(idx, 1);
         log(room, `${player.characterName} patches up with the ${item.name}.`);
         return { ok: true };
       }
       return { error: "That item can't be used directly." };
+    }
+    case "revive": {
+      const target = room.players.get(action.targetId);
+      if (!target || target.role !== "teen" || target.location !== player.location || target.status !== "dead") {
+        return { error: "There's no one here to revive." };
+      }
+      const idx = player.items.findIndex((it) => it.id === "first_aid");
+      if (idx < 0) return { error: "You need a First Aid Kit." };
+      player.items.splice(idx, 1);
+      target.status = "alive";
+      target.hp = REVIVE_HP;
+      target.sanity = Math.max(1, Math.floor(target.sanityMax / 2));
+      log(room, `${player.characterName} revives ${target.characterName}!`);
+      return { ok: true };
     }
     case "give": {
       const target = room.players.get(action.toPlayerId);
@@ -322,18 +435,40 @@ function teenAction(room, player, action) {
       log(room, `${player.characterName} hands the ${item.name} to ${target.characterName}.`);
       return { ok: true, consumeTurn: false };
     }
+    case "repair": {
+      if (loc.id !== "parking_lot") return { error: "The car is back at the Parking Lot." };
+      if (room.objectives.carRepaired) return { error: "The car is already running." };
+      if (!player.items.some((it) => it.id === "tool_kit")) return { error: "You need a tool kit to repair the car." };
+      room.objectives.carRepaired = true;
+      log(room, `${player.characterName} gets the engine running again.`);
+      return { ok: true };
+    }
     case "fight": {
       const slasher = slasherOf(room);
       if (!slasher || slasher.location !== player.location) return { error: "The Slasher isn't here." };
-      const weapon = player.items.find((it) => it.weapon);
-      const jockBonus = character.id === "jock" ? JOCK_FIGHT_BONUS : 0;
-      const chance = TEEN_FIGHT_BASE + (weapon?.bonus ?? 0) + jockBonus;
+      const weaponIdx = player.items.findIndex((it) => it.weapon);
+      const weapon = weaponIdx >= 0 ? player.items[weaponIdx] : null;
+      const chance = FIGHT_BASE + character.stats.strength * FIGHT_STRENGTH_MULT + (weapon?.bonus ?? 0)
+        - sanityPenalty(player) - lateGameTier(room) * 10;
+      room.thingRevealed = true;
       if (roll(chance)) {
-        room.monsterHp -= 1;
-        room.thingRevealed = true;
-        log(room, `${player.characterName} lands a hit with ${weapon ? weapon.name : "bare hands"}! The monster reels (${room.monsterHp}/${MONSTER_MAX_HP} HP left).`);
+        let broke = false;
+        if (weapon) {
+          weapon.durability -= 1;
+          if (weapon.durability <= 0) {
+            player.items.splice(weaponIdx, 1);
+            broke = true;
+          }
+        }
+        const weaponName = weapon ? weapon.name : "bare hands";
+        if (roll(STUN_CHANCE)) {
+          room.monsterStunned = true;
+          log(room, `${player.characterName} lands a solid hit with ${weaponName} — the monster reels, stunned!${broke ? ` The ${weaponName} shatters!` : ""}`);
+        } else {
+          room.monsterHp -= 1;
+          log(room, `${player.characterName} wounds the monster with ${weaponName}! (${room.monsterHp}/${MONSTER_MAX_HP} HP left)${broke ? ` The ${weaponName} breaks in the process!` : ""}`);
+        }
       } else {
-        room.thingRevealed = true;
         log(room, `${player.characterName} strikes and misses — the monster retaliates!`);
         applyWound(room, player, 1);
       }
@@ -344,15 +479,15 @@ function teenAction(room, player, action) {
       if (!slasher || slasher.location !== player.location) return { error: "The Slasher isn't here." };
       if (!neighbors(player.location).includes(action.to)) return { error: "That location isn't reachable from here." };
       const killer = killerInfo(room);
-      let chance = killer.id === "stalker" ? STALKER_FLEE_CHANCE : BASE_FLEE_CHANCE;
-      if (character.id === "cheerleader") chance = CHEERLEADER_FLEE_CHANCE;
+      let chance = FLEE_BASE + character.stats.stealth * FLEE_STEALTH_MULT - sanityPenalty(player) - lateGameTier(room) * 10;
+      if (killer.id === "stalker") chance -= STALKER_FLEE_PENALTY;
       if (roll(chance)) {
         player.location = action.to;
         log(room, `${player.characterName} flees to ${LOCATIONS[action.to].name}!`);
       } else {
         log(room, `${player.characterName} tries to flee but stumbles!`);
         room.thingRevealed = true;
-        if (character.id !== "jock") applyWound(room, player, 1);
+        if (character.id !== "athlete") applyWound(room, player, 1);
         else log(room, `${player.characterName} shrugs it off.`);
       }
       return { ok: true };
@@ -373,6 +508,7 @@ function teenAction(room, player, action) {
     case "drive": {
       if (!loc.exit) return { error: "You need to reach the Entrance Road first." };
       if (hasItems(player, ["car_keys", "gas_can"]).length < 2) return { error: "You need the car keys and a gas can." };
+      if (!room.objectives.carRepaired) return { error: "The car still needs to be repaired at the Parking Lot." };
       player.status = "escaped";
       log(room, `${player.characterName} peels out down the Entrance Road and escapes!`);
       room.winner = "teens";
@@ -400,6 +536,12 @@ function applyWound(room, player, amount) {
 }
 
 function slasherAction(room, player, action) {
+  if (room.monsterStunned) {
+    room.monsterStunned = false;
+    log(room, "The Monster is still reeling and can't act this turn!");
+    return { ok: true };
+  }
+
   const killer = killerInfo(room);
 
   switch (action.type) {
@@ -408,6 +550,7 @@ function slasherAction(room, player, action) {
       player.location = action.to;
       player.stalkStreak = 0;
       log(room, `The Slasher moves to ${LOCATIONS[action.to].name}.`);
+      scareTeensAt(room, action.to);
       return { ok: true };
     }
     case "attack": {
@@ -415,7 +558,7 @@ function slasherAction(room, player, action) {
       if (!target || target.role !== "teen" || target.location !== player.location || target.status === "dead" || target.status === "escaped") {
         return { error: "That target isn't here." };
       }
-      const chance = killer.attackBase + player.stalkStreak * killer.stalkBonus;
+      const chance = killer.attackBase + player.stalkStreak * killer.stalkBonus + lateGameTier(room) * 10;
       room.thingRevealed = true;
       if (roll(chance)) {
         const dmg = killer.id === "thing" ? 2 : 1;
@@ -437,6 +580,13 @@ function slasherAction(room, player, action) {
       log(room, `Something lurks in the shadows of ${LOCATIONS[player.location].name}...`);
       return { ok: true };
     }
+    case "sabotage": {
+      if (player.location !== "parking_lot") return { error: "There's nothing to sabotage here." };
+      if (!room.objectives.carRepaired) return { error: "The car isn't repaired yet." };
+      room.objectives.carRepaired = false;
+      log(room, "The Monster tears into the engine — the car is wrecked again!");
+      return { ok: true };
+    }
     case "shortcut": {
       if (player.specialCooldown > 0) return { error: `Not ready yet (${player.specialCooldown} more turn(s)).` };
       const target = room.players.get(action.targetId);
@@ -449,6 +599,7 @@ function slasherAction(room, player, action) {
       log(room, killer.id === "thing"
         ? `Something that looked exactly like ${target.characterName} was already waiting at ${LOCATIONS[target.location].name}...`
         : `The Stalker appears out of nowhere at ${LOCATIONS[target.location].name}!`);
+      scareTeensAt(room, target.location);
       return { ok: true };
     }
     default:
@@ -466,7 +617,7 @@ export function publicState(room, forPlayerId) {
     room.phase === "playing" && !isSlasher && requester && slasher && slasher.location === requester.location && !identityHidden;
 
   let slasherNearby = null;
-  if (room.phase === "playing" && requester?.role === "teen" && requester.pickId === "pothead" && slasher) {
+  if (room.phase === "playing" && requester?.role === "teen" && slasher) {
     const near = neighbors(requester.location);
     slasherNearby = near.includes(slasher.location) ? slasher.location : null;
   }
@@ -482,6 +633,9 @@ export function publicState(room, forPlayerId) {
       pickId: p.role === "teen" || canSeeKillerType || p.id === forPlayerId ? p.pickId : null,
       status: p.status,
       hp: p.hp,
+      hpMax: p.hpMax,
+      sanity: p.sanity,
+      sanityMax: p.sanityMax,
       ready: p.ready,
       itemCount: p.items.length,
     };
@@ -503,6 +657,8 @@ export function publicState(room, forPlayerId) {
     endsAt: room.endsAt,
     monsterHp: room.monsterHp,
     monsterMaxHp: MONSTER_MAX_HP,
+    monsterStunned: room.monsterStunned,
+    objectives: room.objectives,
     log: room.log.slice(-50),
     winner: room.winner,
     winReason: room.winReason,
@@ -540,8 +696,13 @@ function stepTowardNearestTeen(room, fromLocation) {
 export function decideBotAction(room, bot) {
   const teensHere = aliveTeens(room).filter((t) => t.location === bot.location);
   if (teensHere.length > 0) {
-    const target = teensHere.reduce((weakest, t) => (t.hp < weakest.hp ? t : weakest), teensHere[0]);
+    const target = teensHere.find((t) => t.pickId === "rebel")
+      || teensHere.reduce((weakest, t) => (t.hp < weakest.hp ? t : weakest), teensHere[0]);
     return { type: "attack", targetId: target.id };
+  }
+
+  if (bot.location === "parking_lot" && room.objectives.carRepaired) {
+    return { type: "sabotage" };
   }
 
   const teensAlive = aliveTeens(room);

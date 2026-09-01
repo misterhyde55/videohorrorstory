@@ -16,27 +16,39 @@ while one player controls the Slasher stalking them.
 ## How to win
 
 **Teens** win by doing any one of the following:
-- 🚗 **Escape** — find the Car Keys and a Gas Can, reach the Entrance Road, and drive away.
-- 🔪 **Kill it** — find a weapon (Machete, Fire Axe, Shotgun) and win a fight against the monster.
+- 🚗 **Escape** — find the Car Keys, a Gas Can, and a Tool Kit; repair the car at the Parking Lot; then drive away from the Entrance Road. The Slasher can sabotage a repaired car, so don't wait too long.
+- 🔪 **Fight it off** — find a weapon and confront the monster. A hit either stuns it (skips its next turn) or wounds it; enough wounds destroys it. Weapons wear out and break after a few uses.
 - 📼 **Banish it** — gather the Black Candle, Occult Book, and Cursed VHS Tape, then perform the ritual at the Root Cellar.
 
 **The Slasher** wins if every teen is killed, or if the 10-minute clock runs
 out before the teens finish the job.
 
 Play proceeds in turn order (each teen, then the Slasher, repeating), with a
-live 10-minute countdown running the whole game. On your turn you can move
-between connected locations, search your current location for gear, fight or
-flee if the Slasher finds you, share items with teammates in the same
-location, or attempt to escape/banish the monster.
+live 10-minute countdown running the whole game. As the clock runs low, the
+Monster hits harder and isolated teens lose Sanity faster. On your turn you
+can move, search, fight or flee the Slasher, repair the car, revive a fallen
+teammate, share items, or attempt to escape/banish the monster.
+
+### Sanity
+
+Every teen has a Sanity meter alongside Health. Being alone drains it each
+turn; grouping up with a teammate restores it (faster with a Leader present).
+The Monster suddenly appearing also costs Sanity. Low Sanity makes every
+action less reliable, and a fully panicked teen can hallucinate or stumble
+into the wrong room while trying to move.
 
 ### Teens
 
-Each teen player picks a unique character in the lobby, each with a passive
-ability (`server/src/characters.js`):
-- 🏈 **The Jock** — +25% fight-hit chance, shrugs off failed escapes without injury.
+Each teen player picks a unique archetype in the lobby, with real stats
+(Health / Sanity / Speed / Stealth / Strength) plus a passive ability
+(`server/src/characters.js`):
+- 🧭 **The Leader** — teammates in your location recover Sanity faster; you find objective items more easily while searching.
+- 🏈 **The Athlete** — hits harder in a fight, moves two locations at once, shrugs off failed escapes without injury.
 - 🤓 **The Nerd** — can banish with only 2 of the 3 ritual relics, searches more thoroughly.
-- 📣 **The Cheerleader** — much better odds of escaping the Slasher, can move two locations per turn.
-- 🍃 **The Pothead** — always senses if the Slasher is one location away, finds a little extra while searching.
+- 🖤 **The Rebel** — excellent at slipping away, and draws the Monster's focus away from more vulnerable teammates.
+
+If a teen is killed, a teammate holding a First Aid Kit can revive them (at
+1 HP) by using it on them where they fell.
 
 ### The Slasher
 

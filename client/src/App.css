@@ -387,9 +387,19 @@
   font-variant-numeric: tabular-nums;
 }
 
+.stat-chip.clock-warn {
+  color: #ffb347;
+}
+
 .stat-chip.clock-danger {
   color: var(--neon-pink);
   animation: shake 0.6s infinite;
+}
+
+.stunned-chip {
+  color: var(--neon-cyan);
+  border-color: var(--neon-cyan);
+  animation: shake 0.8s infinite;
 }
 
 .board-map {
@@ -683,6 +693,20 @@
   background: linear-gradient(90deg, #a3125b, var(--neon-pink));
 }
 
+.health-sanity .health-bar-fill {
+  background: linear-gradient(90deg, #4a2f8f, var(--neon-purple));
+}
+
+.health-sanity .health-bar-track {
+  height: 14px;
+}
+
+.party-list-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
 .health-bar-pct {
   position: absolute;
   inset: 0;
@@ -776,6 +800,68 @@
   border-radius: 6px;
   margin-bottom: 0.75rem;
   font-style: italic;
+}
+
+.sense-banner.shaken {
+  background: rgba(155, 48, 255, 0.12);
+  border-color: var(--neon-purple);
+  color: #e6d4ff;
+}
+
+.sense-banner.panicked {
+  background: rgba(255, 46, 136, 0.12);
+  border-color: var(--neon-pink);
+  color: #ffd4e6;
+  animation: shake 0.8s infinite;
+}
+
+.sanity-status {
+  font-size: 0.72rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+  font-style: italic;
+}
+
+.sanity-status.shaken {
+  background: rgba(155, 48, 255, 0.15);
+  color: #e6d4ff;
+}
+
+.sanity-status.panicked {
+  background: rgba(255, 46, 136, 0.15);
+  color: #ffd4e6;
+}
+
+/* Compact character stat readout (pick cards, player card, how-to-play) */
+.stat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0.2rem 0;
+}
+
+.stat-chip-mini {
+  font-size: 0.68rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #cbb8e8;
+  white-space: nowrap;
+}
+
+.car-status-badge {
+  font-size: 0.68rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(255, 46, 136, 0.15);
+  color: var(--neon-pink);
+  text-transform: uppercase;
+}
+
+.car-status-badge.repaired {
+  background: rgba(57, 255, 138, 0.15);
+  color: var(--neon-green);
 }
 
 /* Header help button */

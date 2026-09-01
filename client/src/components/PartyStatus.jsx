@@ -14,7 +14,10 @@ export default function PartyStatus({ players, me, monsterHp, monsterMaxHp }) {
               <span className="pname">{p.characterName || p.name}{p.id === me ? " (you)" : ""}</span>
               <span className="status-tag">{p.status}</span>
             </div>
-            <HealthBar hp={p.hp} max={2} kind="teen" />
+            <div className="party-list-bars">
+              <HealthBar hp={p.hp} max={p.hpMax || 2} kind="teen" />
+              <HealthBar hp={p.sanity} max={p.sanityMax || 1} kind="sanity" />
+            </div>
           </li>
         ))}
       </ul>

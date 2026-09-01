@@ -1,5 +1,5 @@
 import { socket } from "../socket";
-import { KILLERS } from "../data/characters";
+import { KILLERS, TEEN_CHARACTERS } from "../data/characters";
 
 function act(action, onError) {
   socket.emit("action", action, (res) => {
@@ -26,6 +26,12 @@ function reachableFrom(board, locationId, hops) {
   return [...seen];
 }
 
+function sanityTier(sanity) {
+  if (sanity <= 0) return "panicked";
+  if (sanity <= 1) return "shaken";
+  return "steady";
+}
+
 export default function ActionPanel({ state, me, onError }) {
   const myTurn = state.turnPlayerId === me.id;
   const loc = state.board[me.location];
@@ -47,13 +53,19 @@ function TeenActions({ state, me, loc, onError }) {
   const items = me.items || [];
   const healItems = items.filter((it) => it.utility === "heal");
   const hasKit = (ids, min) => ids.filter((id) => items.some((it) => it.id === id)).length >= min;
+  const character = TEEN_CHARACTERS[me.pickId];
+  const tier = sanityTier(me.sanity);
+  const speed = tier === "panicked" ? 1 : character.stats.speed;
   const teammatesHere = state.players.filter(
     (p) => p.id !== me.id && p.role === "teen" && p.location === me.location && p.status !== "dead" && p.status !== "escaped"
   );
-  const isCheerleader = me.pickId === "cheerleader";
+  const deadHere = state.players.filter(
+    (p) => p.id !== me.id && p.role === "teen" && p.location === me.location && p.status === "dead"
+  );
   const isNerd = me.pickId === "nerd";
-  const moveTargets = isCheerleader ? reachableFrom(state.board, me.location, 2) : loc.connections;
+  const moveTargets = speed > 1 ? reachableFrom(state.board, me.location, speed) : loc.connections;
   const senseHere = state.slasherNearby && loc.connections.includes(state.slasherNearby);
+  const carRepaired = state.objectives?.carRepaired;
 
   return (
     <div className="action-panel">
@@ -65,8 +77,13 @@ function TeenActions({ state, me, loc, onError }) {
       {!state.slasherPresent && senseHere && (
         <div className="sense-banner">You sense something is close, in {state.board[state.slasherNearby].name}...</div>
       )}
+      {tier !== "steady" && (
+        <div className={`sense-banner ${tier}`}>
+          {tier === "panicked" ? "You're panicking — your actions may go wrong." : "You're shaken — your actions are less reliable."}
+        </div>
+      )}
 
-      <ActionGroup title={isCheerleader ? "Move to (up to 2 away)" : "Move to"}>
+      <ActionGroup title={speed > 1 ? `Move to (up to ${speed} away)` : "Move to"}>
         {moveTargets.map((toId) => (
           <button key={toId} className="btn btn-move" onClick={() => act({ type: "move", to: toId }, onError)}>
             {state.board[toId].name}
@@ -81,6 +98,15 @@ function TeenActions({ state, me, loc, onError }) {
             Use {it.name}
           </button>
         ))}
+        {loc.id === "parking_lot" && !carRepaired && (
+          <button
+            className="btn btn-secondary"
+            disabled={!items.some((it) => it.id === "tool_kit")}
+            onClick={() => act({ type: "repair" }, onError)}
+          >
+            Repair Car
+          </button>
+        )}
         {loc.ritualSite && (
           <button
             className="btn btn-accent"
@@ -93,7 +119,7 @@ function TeenActions({ state, me, loc, onError }) {
         {loc.exit && (
           <button
             className="btn btn-accent"
-            disabled={!hasKit(["car_keys", "gas_can"], 2)}
+            disabled={!hasKit(["car_keys", "gas_can"], 2) || !carRepaired}
             onClick={() => act({ type: "drive" }, onError)}
           >
             Drive Away
@@ -110,6 +136,21 @@ function TeenActions({ state, me, loc, onError }) {
           {loc.connections.map((toId) => (
             <button key={toId} className="btn btn-danger" onClick={() => act({ type: "flee", to: toId }, onError)}>
               Flee to {state.board[toId].name}
+            </button>
+          ))}
+        </ActionGroup>
+      )}
+
+      {deadHere.length > 0 && (
+        <ActionGroup title="Revive">
+          {deadHere.map((mate) => (
+            <button
+              key={mate.id}
+              className="btn btn-accent"
+              disabled={!items.some((it) => it.id === "first_aid")}
+              onClick={() => act({ type: "revive", targetId: mate.id }, onError)}
+            >
+              Revive {mate.characterName} (uses First Aid Kit)
             </button>
           ))}
         </ActionGroup>
@@ -144,6 +185,7 @@ function SlasherActions({ state, me, loc, onError }) {
   const killer = KILLERS[me.pickId];
   const specialLabel = killer?.id === "thing" ? "Mimic" : "Shortcut";
   const specialReady = !me.specialCooldown;
+  const canSabotage = loc.id === "parking_lot" && state.objectives?.carRepaired;
 
   return (
     <div className="action-panel">
@@ -166,6 +208,9 @@ function SlasherActions({ state, me, loc, onError }) {
       )}
       <ActionGroup title="Actions">
         <button className="btn btn-ghost" onClick={() => act({ type: "lurk" }, onError)}>Lurk in the Shadows</button>
+        {canSabotage && (
+          <button className="btn btn-danger" onClick={() => act({ type: "sabotage" }, onError)}>Sabotage the Car</button>
+        )}
       </ActionGroup>
       {shortcutTargets.length > 0 && (
         <ActionGroup title={`Special — ${specialLabel}${specialReady ? "" : ` (ready in ${me.specialCooldown})`}`}>

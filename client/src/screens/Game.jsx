@@ -23,14 +23,15 @@ export default function GameScreen({ state, playerId, onLeave }) {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   const clockLabel = `${minutes}:${String(seconds).padStart(2, "0")}`;
-  const clockDanger = totalSeconds <= 60;
+  const clockTier = totalSeconds <= 90 ? "danger" : totalSeconds <= 198 ? "warn" : "";
 
   return (
     <div className="game-layout">
       <div className="game-top">
         <div className="stat-chip">Round {state.round}</div>
-        <div className={`stat-chip clock${clockDanger ? " clock-danger" : ""}`}>⏱ {clockLabel}</div>
+        <div className={`stat-chip clock${clockTier ? ` clock-${clockTier}` : ""}`}>⏱ {clockLabel}</div>
         <div className="stat-chip">Room {state.code}</div>
+        {state.monsterStunned && <div className="stat-chip stunned-chip">Monster Stunned!</div>}
         <button className="btn btn-ghost" onClick={onLeave} type="button">Leave</button>
       </div>
 
@@ -56,7 +57,7 @@ export default function GameScreen({ state, playerId, onLeave }) {
       )}
 
       <div className="game-sidebar">
-        <PlayerCard me={me} />
+        <PlayerCard me={me} carRepaired={state.objectives?.carRepaired} />
         <PartyStatus players={state.players} me={playerId} monsterHp={state.monsterHp} monsterMaxHp={state.monsterMaxHp} />
         <h4>Camp Log</h4>
         <LogFeed log={state.log} />

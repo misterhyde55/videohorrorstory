@@ -18,11 +18,17 @@ function ItemRow({ title, items, owned }) {
   );
 }
 
-export default function ObjectiveTracker({ items }) {
+export default function ObjectiveTracker({ items, carRepaired }) {
   const owned = new Set((items || []).map((it) => it.id));
   return (
     <div className="objective-tracker">
       <ItemRow title="Escape Items" items={ESCAPE_ITEMS} owned={owned} />
+      <div className="objective-row">
+        <span className="objective-title">Car Status</span>
+        <span className={`car-status-badge${carRepaired ? " repaired" : ""}`}>
+          {carRepaired ? "Running" : "Needs Repair"}
+        </span>
+      </div>
       <ItemRow title="Banish Items" items={BANISH_ITEMS} owned={owned} />
     </div>
   );

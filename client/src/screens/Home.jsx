@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { TEEN_CHARACTERS, KILLERS } from "../data/characters";
+import { TEEN_CHARACTERS, KILLERS, STAT_LABELS } from "../data/characters";
 import HeroScene from "../components/HeroScene";
 
 const TAGLINE_LINES = [
@@ -112,6 +112,13 @@ export default function Home({ onCreate, onJoin, onSolo, onShowHelp, disabled })
                       <span className="pick-icon">{c.icon}</span>
                       <span className="pick-name">{c.name}</span>
                       <span className="pick-tagline">{c.tagline}</span>
+                      <div className="stat-row">
+                        {STAT_LABELS.map((s) => (
+                          <span key={s.key} className="stat-chip-mini" title={s.label}>
+                            {s.icon} {c.stats[s.key]}
+                          </span>
+                        ))}
+                      </div>
                       <span className="pick-ability">{c.ability}</span>
                     </button>
                   ))}
