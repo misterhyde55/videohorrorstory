@@ -1,0 +1,22 @@
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #0a0410;
+  color: #f2ecff;
+  font-family: "Courier New", ui-monospace, monospace;
+}
+
+button {
+  font-family: inherit;
+}
+
+input {
+  font-family: inherit;
+}

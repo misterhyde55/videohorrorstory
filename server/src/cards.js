@@ -1,0 +1,42 @@
+// Item & event decks for VHS: Video Horror Story.
+// Every item belongs to at least one "kit" needed to end the game:
+//   escape -> car_keys + gas_can, driven from the Parking Lot / Entrance Road
+//   kill   -> a weapon item, used while sharing a location with the Slasher
+//   banish -> ritual_candle + occult_book + cursed_tape, used at the Root Cellar
+
+export const ITEMS = {
+  car_keys: { id: "car_keys", name: "Car Keys", flavor: "Still on the counselor's keyring.", kit: "escape" },
+  gas_can: { id: "gas_can", name: "Gas Can", flavor: "Just enough to get down the road.", kit: "escape" },
+  machete: { id: "machete", name: "Rusty Machete", flavor: "Camp maintenance never returned this.", kit: "kill", weapon: true, bonus: 25 },
+  shotgun: { id: "shotgun", name: "Shotgun", flavor: "One shell left. Make it count.", kit: "kill", weapon: true, bonus: 35 },
+  fireaxe: { id: "fireaxe", name: "Fire Axe", flavor: "Behind glass marked EMERGENCY ONLY.", kit: "kill", weapon: true, bonus: 20 },
+  ritual_candle: { id: "ritual_candle", name: "Black Candle", flavor: "Wax the color of a bruise.", kit: "banish" },
+  occult_book: { id: "occult_book", name: "Occult Book", flavor: "The pages describe how it got out — and how to send it back.", kit: "banish" },
+  cursed_tape: { id: "cursed_tape", name: "Cursed VHS Tape", flavor: "Static crawls across the label.", kit: "banish" },
+  flashlight: { id: "flashlight", name: "Flashlight", flavor: "Cuts through the dark. Improves your searching.", utility: "search_bonus" },
+  first_aid: { id: "first_aid", name: "First Aid Kit", flavor: "Patches you up.", utility: "heal" },
+};
+
+// Search pools: weighted lists of item ids (or null for "nothing").
+const POOLS = {
+  light: ["flashlight", null, null, "first_aid", null],
+  medium: ["car_keys", "gas_can", "ritual_candle", null, "first_aid", null],
+  heavy: ["machete", "shotgun", "fireaxe", "occult_book", "cursed_tape", null],
+};
+
+export function drawFromPool(poolName, rng = Math.random) {
+  const pool = POOLS[poolName] ?? POOLS.light;
+  const pick = pool[Math.floor(rng() * pool.length)];
+  return pick ? ITEMS[pick] : null;
+}
+
+export const EVENTS = [
+  { id: "creaking_floor", text: "A floorboard creaks somewhere behind you." },
+  { id: "distant_scream", text: "You hear a scream from across camp." },
+  { id: "power_flicker", text: "The lights flicker and die for a moment." },
+  { id: "static", text: "Static hisses from a nearby TV, though it isn't plugged in." },
+];
+
+export function randomEvent(rng = Math.random) {
+  return EVENTS[Math.floor(rng() * EVENTS.length)];
+}
