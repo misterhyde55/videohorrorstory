@@ -46,13 +46,13 @@ const STEPS = [
   },
   {
     icon: "🌙",
-    title: "You're Ready!",
-    body: ["Pick your teen and try to make it to dawn.", "You can replay this anytime from the menu."],
-    final: true,
+    title: "Try It Yourself",
+    body: ["The fastest way to learn is to play. Jump into a quick 4-minute practice match:"],
+    practice: true,
   },
 ];
 
-export default function Tutorial({ onClose }) {
+export default function Tutorial({ onClose, onPractice }) {
   const [step, setStep] = useState(0);
   const current = STEPS[step];
   const isFirst = step === 0;
@@ -76,6 +76,21 @@ export default function Tutorial({ onClose }) {
             </ul>
           )}
           {current.footer && <p className="tutorial-footer">{current.footer}</p>}
+
+          {current.practice && (
+            <div className="tutorial-practice-choices">
+              <button type="button" className="tutorial-practice-btn" onClick={() => onPractice("teen")}>
+                <span className="tutorial-practice-icon">🧑</span>
+                <span>Practice as a Teen</span>
+                <small>Explore, hide, and try to survive</small>
+              </button>
+              <button type="button" className="tutorial-practice-btn killer" onClick={() => onPractice("killer")}>
+                <span className="tutorial-practice-icon">🔪</span>
+                <span>Practice as the Killer</span>
+                <small>Hunt down 4 AI-controlled teens</small>
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="tutorial-nav">
@@ -91,8 +106,8 @@ export default function Tutorial({ onClose }) {
               </button>
             )}
             {isLast ? (
-              <button className="btn btn-primary" type="button" onClick={onClose}>
-                Let's Play
+              <button className="btn btn-ghost" type="button" onClick={onClose}>
+                I'll explore on my own
               </button>
             ) : (
               <button className="btn btn-primary" type="button" onClick={() => setStep((s) => s + 1)}>

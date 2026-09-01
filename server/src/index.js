@@ -27,7 +27,8 @@ import {
 } from "./gameState.js";
 import { TEEN_CHARACTERS } from "./characters.js";
 
-const AI_TEEN_NAMES = ["Riley", "Sam", "Casey"];
+const AI_TEEN_NAMES = ["Riley", "Sam", "Casey", "Jordan"];
+const PRACTICE_DURATION_MS = 4 * 60 * 1000;
 
 const PORT = process.env.PORT || 3001;
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "*";
@@ -156,29 +157,44 @@ io.on("connection", (socket) => {
     broadcast(normalizedCode);
   });
 
-  socket.on("create_solo_room", ({ name, playerId, characterId, killerId }, ack) => {
+  socket.on("create_solo_room", ({ name, playerId, characterId, killerId, role, practice }, ack) => {
     try {
       const code = ensureRoomCode();
       const room = createRoom(code, playerId);
-      addPlayer(room, playerId, name, "teen");
-      const charResult = setCharacter(room, playerId, characterId);
-      if (charResult.error) return ack?.({ ok: false, error: charResult.error });
-
       const resolvedKillerId = KILLER_IDS.includes(killerId)
         ? killerId
         : KILLER_IDS[Math.floor(Math.random() * KILLER_IDS.length)];
-      const botId = addBot(room, "slasher", "The Slasher");
-      setKiller(room, botId, resolvedKillerId);
-      setReady(room, playerId, true);
 
-      // Solo mode isn't a solo grind: 3 AI-controlled teens round the party
-      // out to a full four, so the human isn't the Monster's only target.
-      const remainingCharacterIds = Object.keys(TEEN_CHARACTERS).filter((id) => id !== characterId);
-      remainingCharacterIds.forEach((charId, i) => {
-        const teenBotId = addBot(room, "teen", AI_TEEN_NAMES[i] || `Teen ${i + 1}`);
-        setCharacter(room, teenBotId, charId);
-        setReady(room, teenBotId, true);
-      });
+      if (role === "killer") {
+        // Practice-as-Killer: the human stalks, all 4 teens are AI-controlled.
+        addPlayer(room, playerId, name, "slasher");
+        const killerResult = setKiller(room, playerId, resolvedKillerId);
+        if (killerResult.error) return ack?.({ ok: false, error: killerResult.error });
+        setReady(room, playerId, true);
+
+        Object.keys(TEEN_CHARACTERS).forEach((charId, i) => {
+          const teenBotId = addBot(room, "teen", AI_TEEN_NAMES[i] || `Teen ${i + 1}`);
+          setCharacter(room, teenBotId, charId);
+          setReady(room, teenBotId, true);
+        });
+      } else {
+        addPlayer(room, playerId, name, "teen");
+        const charResult = setCharacter(room, playerId, characterId);
+        if (charResult.error) return ack?.({ ok: false, error: charResult.error });
+
+        const botId = addBot(room, "slasher", "The Slasher");
+        setKiller(room, botId, resolvedKillerId);
+        setReady(room, playerId, true);
+
+        // Solo mode isn't a solo grind: 3 AI-controlled teens round the party
+        // out to a full four, so the human isn't the Monster's only target.
+        const remainingCharacterIds = Object.keys(TEEN_CHARACTERS).filter((id) => id !== characterId);
+        remainingCharacterIds.forEach((charId, i) => {
+          const teenBotId = addBot(room, "teen", AI_TEEN_NAMES[i] || `Teen ${i + 1}`);
+          setCharacter(room, teenBotId, charId);
+          setReady(room, teenBotId, true);
+        });
+      }
 
       rooms.set(code, room);
       roomSockets.set(code, new Map([[playerId, socket.id]]));
@@ -187,7 +203,8 @@ io.on("connection", (socket) => {
 
       const check = canStart(room);
       if (!check.ok) return ack?.({ ok: false, error: check.reason });
-      startGame(room);
+      if (practice) room.practice = true;
+      startGame(room, { durationMs: practice ? PRACTICE_DURATION_MS : undefined });
       ack?.({ ok: true, code });
       broadcast(code);
     } catch (err) {

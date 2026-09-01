@@ -5,6 +5,7 @@ import PartyStatus from "../components/PartyStatus";
 import PlayerCard from "../components/PlayerCard";
 import LogFeed from "../components/LogFeed";
 import HoldYourBreath from "../components/HoldYourBreath";
+import PracticeTip from "../components/PracticeTip";
 
 export default function GameScreen({ state, playerId, onLeave }) {
   const [error, setError] = useState("");
@@ -43,6 +44,8 @@ export default function GameScreen({ state, playerId, onLeave }) {
         {state.monsterStunned && <div className="stat-chip stunned-chip">Monster Stunned!</div>}
         <button className="btn btn-ghost" onClick={onLeave} type="button">Leave</button>
       </div>
+
+      {state.phase === "playing" && <PracticeTip state={state} me={me} />}
 
       {error && <div className="banner banner-error" onAnimationEnd={() => setError("")}>{error}</div>}
 

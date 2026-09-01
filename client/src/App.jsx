@@ -86,6 +86,28 @@ export default function App() {
     });
   }, [playerId]);
 
+  // Launched from the tutorial's "Try It Yourself" step: a short, guided
+  // match with sensible defaults pre-picked so there's no setup friction —
+  // the whole point is to learn by doing, fast.
+  const startPractice = useCallback((role) => {
+    setShowTutorial(false);
+    try {
+      localStorage.setItem(TUTORIAL_SEEN_KEY, "1");
+    } catch {
+      // localStorage unavailable — tutorial just won't remember it was seen.
+    }
+    setError("");
+    const name = localStorage.getItem("vhs_name") || "Player";
+    localStorage.setItem("vhs_name", name);
+    const payload = role === "killer"
+      ? { name, playerId, role: "killer", killerId: "stalker", practice: true }
+      : { name, playerId, role: "teen", characterId: "leader", practice: true };
+    socket.emit("create_solo_room", payload, (res) => {
+      if (res?.ok) localStorage.setItem(SAVED_ROOM_KEY, res.code);
+      else setError(res?.error || "Failed to start practice match.");
+    });
+  }, [playerId]);
+
   const leaveRoom = useCallback(() => {
     socket.emit("leave_room");
     localStorage.removeItem(SAVED_ROOM_KEY);
@@ -128,7 +150,7 @@ export default function App() {
       {state && state.phase !== "lobby" && <GameScreen state={state} playerId={playerId} onLeave={leaveRoom} />}
 
       {showHelp && <HowToPlay onClose={() => setShowHelp(false)} />}
-      {!state && showTutorial && <Tutorial onClose={closeTutorial} />}
+      {!state && showTutorial && <Tutorial onClose={closeTutorial} onPractice={startPractice} />}
     </div>
   );
 }

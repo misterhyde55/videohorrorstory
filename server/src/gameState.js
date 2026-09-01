@@ -59,6 +59,7 @@ export function createRoom(code, hostId) {
     createdAt: Date.now(),
     comfortPairsThisRound: new Set(),
     horrorEvents: new Set(), // locationIds with an active Horror Event (blocks Rest there)
+    practice: false, // a short, guided practice match — see index.js create_solo_room
   };
 }
 
@@ -172,7 +173,7 @@ function log(room, message) {
   if (room.log.length > 200) room.log.shift();
 }
 
-export function startGame(room) {
+export function startGame(room, { durationMs } = {}) {
   const players = [...room.players.values()];
   const teens = players.filter((p) => p.role === "teen");
   const slasher = players.find((p) => p.role === "slasher");
@@ -213,7 +214,7 @@ export function startGame(room) {
   room.turnOrder = [...teens.map((p) => p.id), slasher.id];
   room.turnIndex = 0;
   room.round = 1;
-  room.endsAt = Date.now() + GAME_DURATION_MS;
+  room.endsAt = Date.now() + (durationMs ?? GAME_DURATION_MS);
   room.monsterHp = MONSTER_MAX_HP;
   room.monsterStunned = false;
   room.killerId = slasher.pickId;
@@ -930,6 +931,7 @@ export function publicState(room, forPlayerId) {
     monsterHp: room.monsterHp,
     monsterMaxHp: MONSTER_MAX_HP,
     monsterStunned: room.monsterStunned,
+    practice: room.practice,
     objectives: room.objectives,
     log: room.log.slice(-50),
     winner: room.winner,
