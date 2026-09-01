@@ -23,7 +23,11 @@
    single game table. Only small internal feeds (the Camp Log) scroll. */
 .vhs-app--game {
   height: 100dvh;
-  max-width: 1400px;
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: 1rem 1.25rem;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   overflow: hidden;
