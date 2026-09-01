@@ -128,6 +128,7 @@ export default function App() {
           </h1>
           {inGame && (
             <div className="vhs-header-log">
+              <div className="vhs-header-log-title">Game Log</div>
               <LogFeed log={state.log} />
             </div>
           )}
