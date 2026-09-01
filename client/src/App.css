@@ -1157,6 +1157,91 @@
   color: #cbb8e8;
 }
 
+/* First-time tutorial */
+.tutorial-card {
+  max-width: 560px;
+}
+
+.tutorial-body {
+  text-align: center;
+}
+
+.tutorial-icon {
+  font-size: 3.2rem;
+  line-height: 1;
+  margin-bottom: 0.5rem;
+}
+
+.tutorial-title {
+  color: var(--neon-cyan);
+  margin: 0 0 0.75rem;
+  font-size: 1.3rem;
+}
+
+.tutorial-body p {
+  text-align: left;
+  margin: 0 0 0.75rem;
+}
+
+.tutorial-list {
+  text-align: left;
+  margin: 0 0 0.75rem;
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.tutorial-footer {
+  text-align: left;
+  background: rgba(255, 46, 136, 0.1);
+  border: 1px solid rgba(255, 46, 136, 0.35);
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.85rem;
+  color: #ffd4e6;
+}
+
+.tutorial-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 1.5rem 1.25rem;
+}
+
+.tutorial-dots {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.tutorial-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--panel-border);
+}
+
+.tutorial-dot.active {
+  background: var(--neon-cyan);
+  box-shadow: 0 0 8px rgba(46, 230, 255, 0.8);
+}
+
+.tutorial-nav-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+@media (max-width: 500px) {
+  .tutorial-nav {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .tutorial-nav-buttons {
+    justify-content: flex-end;
+  }
+}
+
 /* Player HUD card */
 .player-card {
   background: rgba(0, 0, 0, 0.25);

@@ -10,7 +10,7 @@ const TAGLINE_LINES = [
   "ONE CHANCE TO SURVIVE.",
 ];
 
-export default function Home({ onCreate, onJoin, onSolo, onShowHelp, disabled }) {
+export default function Home({ onCreate, onJoin, onSolo, onShowHelp, onShowTutorial, disabled }) {
   const [name, setName] = useState(localStorage.getItem("vhs_name") || "");
   const [code, setCode] = useState("");
   const [mode, setMode] = useState(null);
@@ -52,6 +52,9 @@ export default function Home({ onCreate, onJoin, onSolo, onShowHelp, disabled })
             </button>
             <button type="button" className={`menu-item${mode === "solo" ? " active" : ""}`} onClick={() => setMode("solo")}>
               <span className="menu-arrow">{mode === "solo" ? "▶" : ""}</span> Play Solo
+            </button>
+            <button type="button" className="menu-item" onClick={onShowTutorial}>
+              <span className="menu-arrow" /> Tutorial
             </button>
             <button type="button" className="menu-item" onClick={onShowHelp}>
               <span className="menu-arrow" /> How to Play

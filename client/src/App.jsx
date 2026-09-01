@@ -4,16 +4,34 @@ import Home from "./screens/Home";
 import Lobby from "./screens/Lobby";
 import GameScreen from "./screens/Game";
 import HowToPlay from "./components/HowToPlay";
+import Tutorial from "./components/Tutorial";
 import "./App.css";
 
 const SAVED_ROOM_KEY = "vhs_room_code";
+const TUTORIAL_SEEN_KEY = "vhs_tutorial_seen";
 
 export default function App() {
   const [connected, setConnected] = useState(socket.connected);
   const [state, setState] = useState(null);
   const [error, setError] = useState("");
   const [showHelp, setShowHelp] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(() => {
+    try {
+      return !localStorage.getItem(TUTORIAL_SEEN_KEY);
+    } catch {
+      return false;
+    }
+  });
   const playerId = getPlayerId();
+
+  const closeTutorial = useCallback(() => {
+    setShowTutorial(false);
+    try {
+      localStorage.setItem(TUTORIAL_SEEN_KEY, "1");
+    } catch {
+      // localStorage unavailable — tutorial just won't remember it was seen.
+    }
+  }, []);
 
   useEffect(() => {
     const onConnect = () => {
@@ -100,6 +118,7 @@ export default function App() {
           onJoin={joinRoom}
           onSolo={soloGame}
           onShowHelp={() => setShowHelp(true)}
+          onShowTutorial={() => setShowTutorial(true)}
           disabled={!connected}
         />
       )}
@@ -109,6 +128,7 @@ export default function App() {
       {state && state.phase !== "lobby" && <GameScreen state={state} playerId={playerId} onLeave={leaveRoom} />}
 
       {showHelp && <HowToPlay onClose={() => setShowHelp(false)} />}
+      {!state && showTutorial && <Tutorial onClose={closeTutorial} />}
     </div>
   );
 }
