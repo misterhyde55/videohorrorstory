@@ -123,15 +123,30 @@ export default function App() {
       {state && (
         <header className="vhs-header">
           <h1>
+            <svg className="vhs-logo-icon" viewBox="0 0 64 40" aria-hidden="true">
+              <rect x="1.5" y="1.5" width="61" height="37" rx="4" fill="none" stroke="currentColor" strokeWidth="2.5" />
+              <rect x="9" y="8" width="46" height="16" rx="2" fill="none" stroke="currentColor" strokeWidth="2" />
+              <circle cx="21" cy="16" r="6" fill="none" stroke="currentColor" strokeWidth="2" />
+              <circle cx="43" cy="16" r="6" fill="none" stroke="currentColor" strokeWidth="2" />
+              <circle cx="21" cy="16" r="2" fill="currentColor" />
+              <circle cx="43" cy="16" r="2" fill="currentColor" />
+              <rect x="9" y="29" width="46" height="4" rx="1" fill="currentColor" opacity="0.7" />
+            </svg>
             <span className="glitch">VHS</span>
             <small>video horror story</small>
           </h1>
-          {inGame && (
-            <div className="vhs-header-log">
-              <div className="vhs-header-log-title">Game Log</div>
-              <LogFeed log={state.log} />
-            </div>
-          )}
+          <div className="vhs-header-deck">
+            <span className="vhs-rec-dot" aria-hidden="true" />
+            <span className="vhs-rec-label">REC</span>
+            {inGame ? (
+              <div className="vhs-header-log">
+                <div className="vhs-header-log-title">Game Log</div>
+                <LogFeed log={state.log} />
+              </div>
+            ) : (
+              <span className="vhs-tracking-bar" aria-hidden="true" />
+            )}
+          </div>
           <div className="vhs-header-actions">
             {!connected && <span className="badge badge-danger">reconnecting…</span>}
             <button className="btn btn-ghost header-help" onClick={() => setShowHelp(true)} type="button">

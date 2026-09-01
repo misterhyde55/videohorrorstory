@@ -71,6 +71,50 @@
   padding-bottom: 0.75rem;
 }
 
+.vhs-header-deck {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.vhs-rec-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--neon-pink);
+  box-shadow: 0 0 8px var(--neon-pink);
+  flex-shrink: 0;
+  animation: recBlink 1.2s steps(2, start) infinite;
+}
+
+@keyframes recBlink {
+  50% { opacity: 0.15; }
+}
+
+.vhs-rec-label {
+  font-family: "VT323", "Courier New", monospace;
+  font-size: 1.15rem;
+  letter-spacing: 0.2em;
+  color: var(--neon-pink);
+  flex-shrink: 0;
+}
+
+.vhs-tracking-bar {
+  flex: 1;
+  min-width: 20px;
+  height: 3px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--neon-cyan) 0,
+    var(--neon-cyan) 6px,
+    transparent 6px,
+    transparent 15px
+  );
+  opacity: 0.4;
+}
+
 .vhs-header-log {
   flex: 1;
   min-width: 0;
@@ -113,13 +157,14 @@
 }
 
 .vhs-header h1 {
-  font-size: 2.2rem;
-  letter-spacing: 0.15em;
+  font-size: 1.7rem;
+  letter-spacing: 0.06em;
   margin: 0;
   display: flex;
-  align-items: baseline;
-  gap: 0.75rem;
+  align-items: center;
+  gap: 0.6rem;
   text-transform: uppercase;
+  flex-shrink: 0;
 }
 
 .vhs-header small {
@@ -130,8 +175,18 @@
 }
 
 .glitch {
+  font-family: "Monoton", "Courier New", monospace;
+  font-weight: normal;
   color: var(--neon-pink);
-  text-shadow: 2px 0 var(--neon-cyan), -2px 0 var(--neon-purple);
+  text-shadow: 2px 0 var(--neon-cyan), -2px 0 var(--neon-purple), 0 0 16px rgba(255, 46, 136, 0.5);
+}
+
+.vhs-logo-icon {
+  width: 34px;
+  height: 22px;
+  flex-shrink: 0;
+  color: var(--neon-cyan);
+  filter: drop-shadow(0 0 4px rgba(46, 230, 255, 0.6));
 }
 
 .badge {
