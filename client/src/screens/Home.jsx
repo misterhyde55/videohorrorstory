@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { TEEN_CHARACTERS, KILLERS, STAT_LABELS } from "../data/characters";
-import HeroScene from "../components/HeroScene";
+import heroImage from "../assets/hero-tv.jpg";
 
 const TAGLINE_LINES = [
   "AN 80s HORROR ADVENTURE",
@@ -64,11 +64,11 @@ export default function Home({ onCreate, onJoin, onSolo, onShowHelp, disabled })
         </div>
 
         <div className="menu-right">
-          <div className="vcr-clock">
-            <span className="vcr-clock-digits">12:00</span>
-            <span className="vcr-clock-label">SP</span>
-          </div>
-          <HeroScene />
+          <img
+            className="hero-image"
+            src={heroImage}
+            alt="A masked killer emerges from a staticky TV screen while four kids watch from the couch."
+          />
         </div>
       </div>
 
