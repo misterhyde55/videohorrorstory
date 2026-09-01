@@ -3,6 +3,9 @@ import { createServer } from "node:http";
 import { Server } from "socket.io";
 import cors from "cors";
 import { customAlphabet } from "nanoid";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   createRoom,
   addPlayer,
@@ -22,6 +25,17 @@ const makeCode = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 4);
 const app = express();
 app.use(cors({ origin: CLIENT_ORIGIN }));
 app.get("/health", (_req, res) => res.json({ ok: true }));
+
+// If a built client (client/dist) is present alongside the server, serve it
+// so the whole app can run behind a single port — handy for previewing in a
+// sandbox where only one port gets forwarded. Not used in the normal
+// two-service deploy (Render for this server, Vercel/Netlify for the client).
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const clientDist = path.resolve(__dirname, "../../client/dist");
+if (fs.existsSync(clientDist)) {
+  app.use(express.static(clientDist));
+  app.get(/^(?!\/health).*/, (_req, res) => res.sendFile(path.join(clientDist, "index.html")));
+}
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: CLIENT_ORIGIN } });
