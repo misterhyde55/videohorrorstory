@@ -38,8 +38,16 @@ export default function HowToPlay({ onClose }) {
             <p>
               🤫 <strong>Hide</strong> — toggle Hide on your turn to hold still. It gives you a big
               defense bonus if the Slasher finds you, and while it's searching your
-              spot you can mash SPACE (or tap the on-screen button) to hold your
-              breath for the tension of it.
+              spot you mash SPACE (or tap the on-screen button) as fast as you can to
+              hold your breath — it's a real struggle, not a light tap. Hold it long
+              enough and the Slasher has to physically leave your location before it
+              can search you again, so a good hide buys you a real chance to move on.
+            </p>
+            <p>
+              🎒 <strong>Inventory</strong> — you can only carry a handful of items at
+              once. Drop anything you don't need from the Discard action to make
+              room, or search for a Canvas Bag, which permanently expands how much
+              you can carry the moment you find it.
             </p>
           </section>
 

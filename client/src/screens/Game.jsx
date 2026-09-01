@@ -3,7 +3,6 @@ import Board from "../components/Board";
 import ActionPanel from "../components/ActionPanel";
 import PartyStatus from "../components/PartyStatus";
 import PlayerCard from "../components/PlayerCard";
-import LogFeed from "../components/LogFeed";
 import HoldYourBreath from "../components/HoldYourBreath";
 import PracticeTip from "../components/PracticeTip";
 
@@ -85,8 +84,6 @@ export default function GameScreen({ state, playerId, onLeave }) {
         <PlayerCard me={me} carRepaired={state.objectives?.carRepaired} />
         {state.phase !== "ended" && <ActionPanel state={state} me={me} onError={setError} />}
         <PartyStatus players={state.players} me={playerId} monsterHp={state.monsterHp} monsterMaxHp={state.monsterMaxHp} />
-        <h4>Camp Log</h4>
-        <LogFeed log={state.log} />
       </div>
     </div>
   );

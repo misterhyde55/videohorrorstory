@@ -64,11 +64,39 @@
 
 .vhs-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 1rem;
   margin-bottom: 1rem;
   border-bottom: 2px solid var(--panel-border);
   padding-bottom: 0.75rem;
+}
+
+.vhs-header-log {
+  flex: 1;
+  min-width: 0;
+}
+
+.vhs-header-log .log-feed {
+  flex: none;
+  min-height: 0;
+  max-height: 2.9rem;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  padding: 0.3rem 0.7rem;
+}
+
+.vhs-header-log .log-feed p {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.vhs-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .vhs-header h1 {
@@ -94,7 +122,6 @@
 }
 
 .badge {
-  margin-left: auto;
   padding: 0.25rem 0.6rem;
   border-radius: 4px;
   font-size: 0.75rem;
@@ -913,6 +940,14 @@
   color: #6b5a80;
   font-size: 0.8rem;
   font-style: italic;
+}
+
+.inventory-capacity {
+  margin: 0.35rem 0 0;
+  font-size: 0.68rem;
+  color: #8a7a9c;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .log-feed {

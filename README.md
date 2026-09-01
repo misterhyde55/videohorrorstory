@@ -22,7 +22,7 @@ while one player controls the Slasher stalking them.
 - 🚗 **Escape** — find the Car Keys, a Gas Can, and a Tool Kit; repair the car where it's parked; then drive away from the exit. The Slasher can sabotage a repaired car, so don't wait too long.
 - 🔪 **Fight it off** — find a weapon and confront the monster. A hit either stuns it (skips its next turn) or wounds it; enough wounds destroys it. Weapons wear out and break after a few uses.
 - 📼 **Banish it** — gather the Black Candle, Occult Book, and Cursed VHS Tape, then perform the ritual at the ritual site.
-- 🤫 **Hide** — toggle Hide on your turn to hold still. If the Slasher finds your hiding spot it searches for a tense 10-second countdown: mash SPACE (or tap the on-screen button) to hold your breath and stay hidden. Fail — or ignore it — and you get one automatic chance to bolt to a nearby location before the Slasher catches you.
+- 🤫 **Hide** — toggle Hide on your turn to hold still. If the Slasher finds your hiding spot it searches for a tense 10-second countdown: mash SPACE (or tap the on-screen button) as fast as you can to hold your breath and stay hidden — it drains quickly, so this is meant to be a real struggle. Fail — or ignore it — and you get one automatic chance to bolt to a nearby location before the Slasher catches you. Hold your breath successfully and the Slasher can't search that spot again until it actually leaves the location.
 
 **The Slasher** wins if every teen is killed, or if the 10-minute clock runs
 out before the teens finish the job.
@@ -120,7 +120,7 @@ npm run dev:client   # Vite dev server on 5173
   connected by a nearest-neighbor graph so nodes that look close are
   actually connected. Teen starting spots are chosen by BFS distance to be
   as far from the Slasher's start as possible.
-- Items and their "kits" (escape/kill/banish) live in `server/src/cards.js`.
+- Items and their "kits" (escape/kill/banish) live in `server/src/cards.js`. Teens start with room for 6 items; drop anything unwanted with Discard, or search for a Canvas Bag, which expands your carrying capacity the moment you find it.
 - All game rules and win conditions are enforced server-side
   (`server/src/gameState.js`) — the client only renders state and sends
   action requests, so the game can't be cheated by editing client code.

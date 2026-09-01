@@ -5,6 +5,7 @@ import Lobby from "./screens/Lobby";
 import GameScreen from "./screens/Game";
 import HowToPlay from "./components/HowToPlay";
 import Tutorial from "./components/Tutorial";
+import LogFeed from "./components/LogFeed";
 import "./App.css";
 
 const SAVED_ROOM_KEY = "vhs_room_code";
@@ -125,10 +126,17 @@ export default function App() {
             <span className="glitch">VHS</span>
             <small>video horror story</small>
           </h1>
-          {!connected && <span className="badge badge-danger">reconnecting…</span>}
-          <button className="btn btn-ghost header-help" onClick={() => setShowHelp(true)} type="button">
-            How to Play
-          </button>
+          {inGame && (
+            <div className="vhs-header-log">
+              <LogFeed log={state.log} />
+            </div>
+          )}
+          <div className="vhs-header-actions">
+            {!connected && <span className="badge badge-danger">reconnecting…</span>}
+            <button className="btn btn-ghost header-help" onClick={() => setShowHelp(true)} type="button">
+              How to Play
+            </button>
+          </div>
         </header>
       )}
 

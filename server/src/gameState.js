@@ -84,6 +84,7 @@ export function addPlayer(room, id, name, roleOverride) {
     pickId: null, // teen character id, or killer id for the slasher
     location: null,
     items: [],
+    itemCapacity: MAX_ITEMS,
     hp: 2,
     hpMax: 2,
     sanity: 0,
@@ -91,6 +92,7 @@ export function addPlayer(room, id, name, roleOverride) {
     hiding: false,
     searching: false,
     searchEndsAt: null,
+    evadeCooldownLocation: null, // set on a successful hold-breath — the Slasher must leave this location before it can search here again
     status: "alive", // alive | dead | escaped
     stalkStreak: 0,
     specialCooldown: 0,
@@ -197,6 +199,7 @@ export function startGame(room, { durationMs } = {}) {
     const character = TEEN_CHARACTERS[p.pickId];
     p.location = generated.startLocations.teens[i % generated.startLocations.teens.length];
     p.items = [];
+    p.itemCapacity = MAX_ITEMS;
     p.hp = character.stats.health;
     p.hpMax = character.stats.health;
     p.sanity = SANITY_START;
@@ -204,6 +207,7 @@ export function startGame(room, { durationMs } = {}) {
     p.hiding = false;
     p.searching = false;
     p.searchEndsAt = null;
+    p.evadeCooldownLocation = null;
     p.status = "alive";
     p.characterName = character.name;
     p.broken = false;
@@ -398,6 +402,15 @@ function applySanityTick(room, player) {
   loseSanity(room, player, drain);
 }
 
+// A teen who successfully held their breath is safe from another search at
+// that spot until the Slasher actually leaves — this clears that immunity
+// for anyone who was relying on the location the Slasher just left.
+function clearEvadeCooldown(room, locationId) {
+  aliveTeens(room).forEach((t) => {
+    if (t.evadeCooldownLocation === locationId) t.evadeCooldownLocation = null;
+  });
+}
+
 // The jump-scare of the Monster appearing costs Sanity immediately. Skipped
 // for a still-disguised Thing, since the teens don't consciously see it.
 function scareTeensAt(room, locationId) {
@@ -537,11 +550,13 @@ function teenAction(room, player, action) {
 
   if (player.hiding && !["hide", "pass"].includes(action.type)) {
     player.hiding = false;
+    player.evadeCooldownLocation = null;
   }
 
   switch (action.type) {
     case "hide": {
       player.hiding = !player.hiding;
+      if (!player.hiding) player.evadeCooldownLocation = null;
       log(room, player.hiding
         ? `${player.characterName} hides and holds still.`
         : `${player.characterName} comes out of hiding.`);
@@ -567,10 +582,18 @@ function teenAction(room, player, action) {
       return { ok: true };
     }
     case "search": {
-      if (player.items.length >= MAX_ITEMS) return { error: "Your inventory is full." };
       const rerollOnMiss = character.id === "nerd" || character.id === "leader";
       let item = drawFromPool(loc.searchPool);
       if (!item && rerollOnMiss) item = drawFromPool(loc.searchPool);
+      if (item?.utility === "capacity") {
+        player.itemCapacity += item.capacityBonus;
+        log(room, `${player.characterName} searches ${loc.name} and finds a ${item.name}! More room to carry gear now.`);
+        return { ok: true };
+      }
+      if (item && player.items.length >= player.itemCapacity) {
+        log(room, `${player.characterName} searches ${loc.name} and finds ${item.name}, but there's no room left to carry it.`);
+        return { ok: true };
+      }
       if (item) {
         player.items.push(item);
         log(room, `${player.characterName} searches ${loc.name} and finds ${item.name}.`);
@@ -579,6 +602,13 @@ function teenAction(room, player, action) {
         log(room, `${player.characterName} searches ${loc.name} and finds nothing. ${ev.text}`);
       }
       return { ok: true };
+    }
+    case "discard": {
+      const idx = player.items.findIndex((it) => it.id === action.itemId);
+      if (idx < 0) return { error: "You don't have that item." };
+      const [item] = player.items.splice(idx, 1);
+      log(room, `${player.characterName} drops the ${item.name}.`);
+      return { ok: true, consumeTurn: false };
     }
     case "use_item": {
       const idx = player.items.findIndex((it) => it.id === action.itemId);
@@ -627,7 +657,7 @@ function teenAction(room, player, action) {
       }
       const idx = player.items.findIndex((it) => it.id === action.itemId);
       if (idx < 0) return { error: "You don't have that item." };
-      if (target.items.length >= MAX_ITEMS) return { error: "Their inventory is full." };
+      if (target.items.length >= target.itemCapacity) return { error: "Their inventory is full." };
       const [item] = player.items.splice(idx, 1);
       target.items.push(item);
       log(room, `${player.characterName} hands the ${item.name} to ${target.characterName}.`);
@@ -792,6 +822,7 @@ export function resolveSearch(room, teenId, heldBreath) {
 
   if (heldBreath) {
     player.hiding = true;
+    player.evadeCooldownLocation = player.location;
     log(room, `${player.characterName} holds perfectly still. The Killer moves on without finding them.`);
     return { found: false };
   }
@@ -837,8 +868,10 @@ function slasherAction(room, player, action) {
     case "move": {
       if (frozen) return { error: "The Slasher is still getting its bearings and can't move yet." };
       if (!neighborsOf(room, player.location).includes(action.to)) return { error: "That location isn't reachable from here." };
+      const prevLocation = player.location;
       player.location = action.to;
       player.stalkStreak = 0;
+      clearEvadeCooldown(room, prevLocation);
       log(room, `The Slasher moves to ${room.board[action.to].name}.`);
       scareTeensAt(room, action.to);
       return { ok: true };
@@ -853,6 +886,9 @@ function slasherAction(room, player, action) {
       player.stalkStreak = 0;
 
       if (target.hiding) {
+        if (target.evadeCooldownLocation === target.location) {
+          return { error: `${target.characterName} gave you the slip here — you'll need to leave and come back before you can search again.` };
+        }
         target.searching = true;
         target.searchEndsAt = Date.now() + SEARCH_DURATION_MS;
         log(room, `The ${killer.name} corners ${target.characterName}'s hiding spot and starts searching...`);
@@ -893,9 +929,11 @@ function slasherAction(room, player, action) {
       if (!target || target.role !== "teen" || target.status === "dead" || target.status === "escaped") {
         return { error: "Invalid target." };
       }
+      const prevLocation = player.location;
       player.location = target.location;
       player.stalkStreak = 0;
       player.specialCooldown = SPECIAL_COOLDOWN;
+      clearEvadeCooldown(room, prevLocation);
       log(room, killer.id === "thing"
         ? `Something that looked exactly like ${target.characterName} was already waiting at ${room.board[target.location].name}...`
         : `The Stalker appears out of nowhere at ${room.board[target.location].name}!`);
@@ -939,6 +977,7 @@ export function publicState(room, forPlayerId) {
       hiding: p.hiding,
       searching: p.searching,
       searchEndsAt: p.searchEndsAt,
+      evadeSafe: p.role === "teen" && p.hiding && p.evadeCooldownLocation === p.location,
       broken: p.broken,
       ready: p.ready,
       isBot: p.isBot,
@@ -948,6 +987,7 @@ export function publicState(room, forPlayerId) {
     if (canSeeLocation) base.location = p.location;
     if (p.id === forPlayerId) {
       base.items = p.items;
+      base.itemCapacity = p.itemCapacity;
       base.specialCooldown = p.specialCooldown;
     }
     return base;
@@ -1003,7 +1043,7 @@ function stepTowardNearestTeen(room, fromLocation) {
 
 export function decideBotAction(room, bot) {
   const teensHere = aliveTeens(room).filter((t) => t.location === bot.location);
-  const attackable = teensHere.filter((t) => !t.searching);
+  const attackable = teensHere.filter((t) => !t.searching && !(t.hiding && t.evadeCooldownLocation === t.location));
   if (attackable.length > 0) {
     const target = attackable.find((t) => t.pickId === "rebel")
       || attackable.reduce((weakest, t) => (t.hp < weakest.hp ? t : weakest), attackable[0]);

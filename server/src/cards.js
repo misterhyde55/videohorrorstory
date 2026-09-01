@@ -19,13 +19,14 @@ export const ITEMS = {
   cassette_player: { id: "cassette_player", name: "Cassette Player", flavor: "Warped tape, but the mixtape still plays.", utility: "sanity", sanityAmount: 1 },
   family_photo: { id: "family_photo", name: "Family Photo", flavor: "Creased at the corners from being carried everywhere.", utility: "sanity", sanityAmount: 1, noMonsterHere: true },
   favorite_vhs: { id: "favorite_vhs", name: "Favorite VHS", flavor: "You've watched this a hundred times. It still helps.", utility: "sanity", sanityAmount: 2, noMonsterHere: true },
+  canvas_bag: { id: "canvas_bag", name: "Canvas Bag", flavor: "More room to carry what you find.", utility: "capacity", capacityBonus: 2 },
 };
 
 // Search pools: weighted lists of item ids (or null for "nothing").
 const POOLS = {
-  light: ["flashlight", null, null, "first_aid", "cassette_player", "family_photo", null],
-  medium: ["car_keys", "gas_can", "tool_kit", "ritual_candle", null, "first_aid", "favorite_vhs", null],
-  heavy: ["machete", "shotgun", "fireaxe", "occult_book", "cursed_tape", null],
+  light: ["flashlight", null, null, "first_aid", "cassette_player", "family_photo", "canvas_bag", null],
+  medium: ["car_keys", "gas_can", "tool_kit", "ritual_candle", null, "first_aid", "favorite_vhs", "canvas_bag", null],
+  heavy: ["machete", "shotgun", "fireaxe", "occult_book", "cursed_tape", "canvas_bag", null],
 };
 
 // Returns a fresh copy of the item so mutable per-instance state (like a

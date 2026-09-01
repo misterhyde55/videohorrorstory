@@ -74,7 +74,10 @@ function TeenActions({ state, me, loc, onError }) {
       {state.slasherPresent && (
         <div className="danger-banner">The Slasher is here with you!</div>
       )}
-      {me.hiding && !state.slasherPresent && (
+      {me.hiding && me.evadeSafe && (
+        <div className="sense-banner hiding-banner">You gave the Killer the slip — you're safe here until it moves on.</div>
+      )}
+      {me.hiding && !me.evadeSafe && !state.slasherPresent && (
         <div className="sense-banner hiding-banner">You're hidden and holding still.</div>
       )}
       {!state.slasherPresent && senseHere && (
@@ -205,16 +208,33 @@ function TeenActions({ state, me, loc, onError }) {
           )}
         </ActionGroup>
       )}
+
+      {items.length > 0 && (
+        <ActionGroup title="Discard">
+          {items.map((it, i) => (
+            <button
+              key={it.id + i}
+              className="btn btn-ghost"
+              onClick={() => act({ type: "discard", itemId: it.id }, onError)}
+            >
+              Drop {it.name}
+            </button>
+          ))}
+        </ActionGroup>
+      )}
     </div>
   );
 }
 
 function SlasherActions({ state, me, loc, onError }) {
   const targets = state.players.filter(
-    (p) => p.role === "teen" && p.location === me.location && p.status !== "dead" && p.status !== "escaped" && !p.searching
+    (p) => p.role === "teen" && p.location === me.location && p.status !== "dead" && p.status !== "escaped" && !p.searching && !p.evadeSafe
   );
   const searchingHere = state.players.filter(
     (p) => p.role === "teen" && p.location === me.location && p.searching
+  );
+  const evadedHere = state.players.filter(
+    (p) => p.role === "teen" && p.location === me.location && p.evadeSafe
   );
   const shortcutTargets = state.players.filter(
     (p) => p.role === "teen" && p.location !== me.location && p.status !== "dead" && p.status !== "escaped"
@@ -252,6 +272,11 @@ function SlasherActions({ state, me, loc, onError }) {
       {searchingHere.length > 0 && (
         <div className="sense-banner">
           Already searching for {searchingHere.map((t) => t.characterName).join(", ")}…
+        </div>
+      )}
+      {evadedHere.length > 0 && (
+        <div className="sense-banner">
+          {evadedHere.map((t) => t.characterName).join(", ")} gave you the slip here — move on and come back to try again.
         </div>
       )}
       <ActionGroup title="Actions">

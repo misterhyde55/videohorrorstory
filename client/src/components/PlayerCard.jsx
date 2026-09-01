@@ -65,14 +65,14 @@ export default function PlayerCard({ me, carRepaired }) {
             onClick={() => setExpanded((v) => !v)}
             aria-expanded={expanded}
           >
-            <span>Gear &amp; Objectives{itemCount > 0 ? ` (${itemCount})` : ""}</span>
+            <span>Gear &amp; Objectives ({itemCount}/{me.itemCapacity})</span>
             <span className={`player-card-toggle-arrow${expanded ? " open" : ""}`} aria-hidden="true">▾</span>
           </button>
           {expanded && (
             <div className="player-card-collapsible">
               <ObjectiveTracker items={me.items} carRepaired={carRepaired} />
               <div className="player-card-divider" />
-              <Inventory items={me.items} />
+              <Inventory items={me.items} capacity={me.itemCapacity} />
             </div>
           )}
         </>
