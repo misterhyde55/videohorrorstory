@@ -1186,7 +1186,7 @@
 
 .glitch-lg {
   font-family: "Creepster", "Courier New", monospace;
-  font-size: clamp(3.2rem, 8vw, 5.5rem);
+  font-size: clamp(3.6rem, 8vw, 6.5rem);
   color: var(--neon-pink);
   text-shadow: 3px 0 var(--neon-cyan), -3px 0 var(--neon-purple), 0 0 30px rgba(255, 46, 136, 0.5);
   letter-spacing: 0.03em;
@@ -1195,7 +1195,7 @@
 
 .menu-subtitle {
   font-family: "Creepster", "Courier New", monospace;
-  font-size: clamp(1.1rem, 2.5vw, 1.6rem);
+  font-size: clamp(1.4rem, 3.2vw, 2.1rem);
   color: var(--neon-pink);
   border-bottom: 2px solid var(--neon-pink);
   display: inline-block;
@@ -1207,10 +1207,10 @@
 
 .menu-tagline {
   font-family: "VT323", "Courier New", monospace;
-  font-size: 1.15rem;
+  font-size: 1.65rem;
   line-height: 1.4;
   color: #d9c9f5;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
 }
 
 .menu-tagline p {
@@ -1231,11 +1231,11 @@
   border: none;
   color: #6fb8e6;
   font-family: "VT323", "Courier New", monospace;
-  font-size: 1.3rem;
-  letter-spacing: 0.04em;
+  font-size: 1.75rem;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   text-align: left;
-  padding: 0.1rem 0;
+  padding: 0.15rem 0;
   cursor: pointer;
 }
 
@@ -1257,11 +1257,11 @@
 .menu-footer-box {
   border: 1px solid var(--panel-border);
   border-radius: 6px;
-  padding: 0.6rem 0.9rem;
+  padding: 0.8rem 1.1rem;
   font-family: "VT323", "Courier New", monospace;
-  font-size: 1.05rem;
+  font-size: 1.4rem;
   color: #cbb8e8;
-  width: fit-content;
+  width: 100%;
   margin-top: auto;
 }
 
