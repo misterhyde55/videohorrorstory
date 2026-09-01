@@ -945,3 +945,194 @@
   border-top: 1px dashed rgba(255, 255, 255, 0.1);
   margin: 0.6rem 0;
 }
+
+/* ============ Main menu (Home) screen ============ */
+
+.menu-screen {
+  background: linear-gradient(180deg, #0d0616, #150a24 60%, #1a0d26);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 0 50px rgba(155, 48, 255, 0.2);
+}
+
+.menu-hero {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(280px, 1.1fr);
+  gap: 1.5rem;
+  padding: 2rem 2rem 1rem;
+}
+
+@media (max-width: 760px) {
+  .menu-hero {
+    grid-template-columns: 1fr;
+  }
+  .menu-right {
+    display: none;
+  }
+}
+
+.menu-left {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.menu-logo {
+  line-height: 1;
+}
+
+.glitch-lg {
+  font-family: "Creepster", "Courier New", monospace;
+  font-size: clamp(3.2rem, 8vw, 5.5rem);
+  color: var(--neon-pink);
+  text-shadow: 3px 0 var(--neon-cyan), -3px 0 var(--neon-purple), 0 0 30px rgba(255, 46, 136, 0.5);
+  letter-spacing: 0.03em;
+  display: block;
+}
+
+.menu-subtitle {
+  font-family: "Creepster", "Courier New", monospace;
+  font-size: clamp(1.1rem, 2.5vw, 1.6rem);
+  color: var(--neon-pink);
+  border-bottom: 2px solid var(--neon-pink);
+  display: inline-block;
+  padding-bottom: 0.2rem;
+  margin-top: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.menu-tagline {
+  font-family: "VT323", "Courier New", monospace;
+  font-size: 1.15rem;
+  line-height: 1.4;
+  color: #d9c9f5;
+  letter-spacing: 0.03em;
+}
+
+.menu-tagline p {
+  margin: 0;
+}
+
+.menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  color: #6fb8e6;
+  font-family: "VT323", "Courier New", monospace;
+  font-size: 1.3rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: left;
+  padding: 0.1rem 0;
+  cursor: pointer;
+}
+
+.menu-item:hover {
+  color: #9fd8fb;
+}
+
+.menu-item.active {
+  color: var(--neon-pink);
+  text-shadow: 0 0 8px rgba(255, 46, 136, 0.6);
+}
+
+.menu-arrow {
+  display: inline-block;
+  width: 1rem;
+  color: var(--neon-pink);
+}
+
+.menu-footer-box {
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  padding: 0.6rem 0.9rem;
+  font-family: "VT323", "Courier New", monospace;
+  font-size: 1.05rem;
+  color: #cbb8e8;
+  width: fit-content;
+  margin-top: auto;
+}
+
+.menu-right {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  min-height: 220px;
+  border: 1px solid var(--panel-border);
+}
+
+.hero-scene {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.hero-static {
+  animation: staticFlicker 2.4s steps(2) infinite;
+}
+
+@keyframes staticFlicker {
+  0%, 100% { opacity: 1; }
+  45% { opacity: 0.85; }
+  50% { opacity: 1; }
+  75% { opacity: 0.9; }
+}
+
+.vcr-clock {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  z-index: 2;
+  background: #050208;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 0.3rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+}
+
+.vcr-clock-digits {
+  font-family: "VT323", "Courier New", monospace;
+  font-size: 1.3rem;
+  color: var(--neon-green);
+  animation: blink 1s steps(1) infinite;
+}
+
+.vcr-clock-label {
+  font-family: "VT323", "Courier New", monospace;
+  font-size: 0.65rem;
+  color: #6fb8e6;
+  letter-spacing: 0.1em;
+}
+
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0.25; }
+}
+
+.tape-slot {
+  border-top: 1px dashed var(--panel-border);
+  padding: 1.25rem 2rem 2rem;
+}
+
+.tape-prompt {
+  font-family: "VT323", "Courier New", monospace;
+  font-size: 1.2rem;
+  color: var(--neon-green);
+  letter-spacing: 0.05em;
+  margin: 0;
+  animation: blink 1.4s steps(1) infinite;
+}

@@ -1,10 +1,19 @@
 import { useState } from "react";
 import { TEEN_CHARACTERS, KILLERS } from "../data/characters";
+import HeroScene from "../components/HeroScene";
 
-export default function Home({ onCreate, onJoin, onSolo, disabled }) {
+const TAGLINE_LINES = [
+  "AN 80s HORROR ADVENTURE",
+  "A CURSED TAPE.",
+  "A MONSTER FROM BEYOND.",
+  "FOUR KIDS.",
+  "ONE CHANCE TO SURVIVE.",
+];
+
+export default function Home({ onCreate, onJoin, onSolo, onShowHelp, disabled }) {
   const [name, setName] = useState(localStorage.getItem("vhs_name") || "");
   const [code, setCode] = useState("");
-  const [mode, setMode] = useState("create");
+  const [mode, setMode] = useState(null);
   const [soloCharacter, setSoloCharacter] = useState(null);
   const [soloKiller, setSoloKiller] = useState(null);
 
@@ -20,104 +29,132 @@ export default function Home({ onCreate, onJoin, onSolo, disabled }) {
   }
 
   return (
-    <div className="panel home-panel">
-      <p className="tagline">
-        A haunted VCR has released something into the world. Four teenagers. One night.
-        <br />
-        Escape. Kill it. Or send it back into the tape.
-      </p>
+    <div className="menu-screen">
+      <div className="menu-hero">
+        <div className="menu-left">
+          <div className="menu-logo">
+            <span className="glitch-lg">VHS</span>
+            <div className="menu-subtitle">Video Horror Story</div>
+          </div>
 
-      <div className="tabs">
-        <button className={mode === "create" ? "tab active" : "tab"} onClick={() => setMode("create")} type="button">
-          Host a Game
-        </button>
-        <button className={mode === "join" ? "tab active" : "tab"} onClick={() => setMode("join")} type="button">
-          Join a Game
-        </button>
-        <button className={mode === "solo" ? "tab active" : "tab"} onClick={() => setMode("solo")} type="button">
-          Play Solo
-        </button>
+          <div className="menu-tagline">
+            {TAGLINE_LINES.map((line) => (
+              <p key={line}>{line}</p>
+            ))}
+          </div>
+
+          <nav className="menu-list">
+            <button type="button" className={`menu-item${mode === "create" ? " active" : ""}`} onClick={() => setMode("create")}>
+              <span className="menu-arrow">{mode === "create" ? "▶" : ""}</span> Host a Game
+            </button>
+            <button type="button" className={`menu-item${mode === "join" ? " active" : ""}`} onClick={() => setMode("join")}>
+              <span className="menu-arrow">{mode === "join" ? "▶" : ""}</span> Join a Game
+            </button>
+            <button type="button" className={`menu-item${mode === "solo" ? " active" : ""}`} onClick={() => setMode("solo")}>
+              <span className="menu-arrow">{mode === "solo" ? "▶" : ""}</span> Play Solo
+            </button>
+            <button type="button" className="menu-item" onClick={onShowHelp}>
+              <span className="menu-arrow" /> How to Play
+            </button>
+          </nav>
+
+          <div className="menu-footer-box">
+            Rewind the past.<br />Survive the night.
+          </div>
+        </div>
+
+        <div className="menu-right">
+          <div className="vcr-clock">
+            <span className="vcr-clock-digits">12:00</span>
+            <span className="vcr-clock-label">SP</span>
+          </div>
+          <HeroScene />
+        </div>
       </div>
 
-      <form onSubmit={submit} className={mode === "solo" ? "form-stack solo-form" : "form-stack"}>
-        <label>
-          Your Name
-          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={20} placeholder="Ashley" required />
-        </label>
+      <div className="tape-slot">
+        {!mode && <p className="tape-prompt">◀ Insert Tape — pick an option above ▶</p>}
 
-        {mode === "join" && (
-          <label>
-            Room Code
-            <input
-              value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-              maxLength={4}
-              placeholder="XXXX"
-              required
-              className="code-input"
-            />
-          </label>
+        {mode && (
+          <form onSubmit={submit} className={mode === "solo" ? "form-stack solo-form" : "form-stack"}>
+            <label>
+              Your Name
+              <input value={name} onChange={(e) => setName(e.target.value)} maxLength={20} placeholder="Ashley" required />
+            </label>
+
+            {mode === "join" && (
+              <label>
+                Room Code
+                <input
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.toUpperCase())}
+                  maxLength={4}
+                  placeholder="XXXX"
+                  required
+                  className="code-input"
+                />
+              </label>
+            )}
+
+            {mode === "solo" && (
+              <>
+                <p className="solo-blurb">Play against an AI-controlled Slasher — no other players needed.</p>
+
+                <span className="solo-label">Choose Your Teen</span>
+                <div className="pick-grid">
+                  {Object.values(TEEN_CHARACTERS).map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className={`pick-card${soloCharacter === c.id ? " selected" : ""}`}
+                      onClick={() => setSoloCharacter(c.id)}
+                    >
+                      <span className="pick-icon">{c.icon}</span>
+                      <span className="pick-name">{c.name}</span>
+                      <span className="pick-tagline">{c.tagline}</span>
+                      <span className="pick-ability">{c.ability}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <span className="solo-label">Choose Your Opponent</span>
+                <div className="pick-grid">
+                  <button
+                    type="button"
+                    className={`pick-card killer${soloKiller === null ? " selected" : ""}`}
+                    onClick={() => setSoloKiller(null)}
+                  >
+                    <span className="pick-icon">🎲</span>
+                    <span className="pick-name">Surprise Me</span>
+                    <span className="pick-tagline">Randomly picks a killer for you.</span>
+                  </button>
+                  {Object.values(KILLERS).map((k) => (
+                    <button
+                      key={k.id}
+                      type="button"
+                      className={`pick-card killer${soloKiller === k.id ? " selected" : ""}`}
+                      onClick={() => setSoloKiller(k.id)}
+                    >
+                      <span className="pick-icon">{k.icon}</span>
+                      <span className="pick-name">{k.name}</span>
+                      <span className="pick-tagline">{k.tagline}</span>
+                      <span className="pick-ability">{k.ability}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={disabled || (mode === "solo" && !soloCharacter)}
+            >
+              {mode === "create" ? "Create Room" : mode === "join" ? "Join Room" : "Start Solo Game"}
+            </button>
+          </form>
         )}
-
-        {mode === "solo" && (
-          <>
-            <p className="solo-blurb">
-              Play against an AI-controlled Slasher — no other players needed.
-            </p>
-
-            <span className="solo-label">Choose Your Teen</span>
-            <div className="pick-grid">
-              {Object.values(TEEN_CHARACTERS).map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  className={`pick-card${soloCharacter === c.id ? " selected" : ""}`}
-                  onClick={() => setSoloCharacter(c.id)}
-                >
-                  <span className="pick-icon">{c.icon}</span>
-                  <span className="pick-name">{c.name}</span>
-                  <span className="pick-tagline">{c.tagline}</span>
-                  <span className="pick-ability">{c.ability}</span>
-                </button>
-              ))}
-            </div>
-
-            <span className="solo-label">Choose Your Opponent</span>
-            <div className="pick-grid">
-              <button
-                type="button"
-                className={`pick-card killer${soloKiller === null ? " selected" : ""}`}
-                onClick={() => setSoloKiller(null)}
-              >
-                <span className="pick-icon">🎲</span>
-                <span className="pick-name">Surprise Me</span>
-                <span className="pick-tagline">Randomly picks a killer for you.</span>
-              </button>
-              {Object.values(KILLERS).map((k) => (
-                <button
-                  key={k.id}
-                  type="button"
-                  className={`pick-card killer${soloKiller === k.id ? " selected" : ""}`}
-                  onClick={() => setSoloKiller(k.id)}
-                >
-                  <span className="pick-icon">{k.icon}</span>
-                  <span className="pick-name">{k.name}</span>
-                  <span className="pick-tagline">{k.tagline}</span>
-                  <span className="pick-ability">{k.ability}</span>
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-
-        <button
-          type="submit"
-          className="btn btn-primary"
-          disabled={disabled || (mode === "solo" && !soloCharacter)}
-        >
-          {mode === "create" ? "Create Room" : mode === "join" ? "Join Room" : "Start Solo Game"}
-        </button>
-      </form>
+      </div>
     </div>
   );
 }

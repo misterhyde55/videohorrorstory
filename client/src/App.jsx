@@ -77,20 +77,30 @@ export default function App() {
   return (
     <div className="vhs-app">
       <div className="scanlines" />
-      <header className="vhs-header">
-        <h1>
-          <span className="glitch">VHS</span>
-          <small>video horror story</small>
-        </h1>
-        {!connected && <span className="badge badge-danger">reconnecting…</span>}
-        <button className="btn btn-ghost header-help" onClick={() => setShowHelp(true)} type="button">
-          How to Play
-        </button>
-      </header>
+      {state && (
+        <header className="vhs-header">
+          <h1>
+            <span className="glitch">VHS</span>
+            <small>video horror story</small>
+          </h1>
+          {!connected && <span className="badge badge-danger">reconnecting…</span>}
+          <button className="btn btn-ghost header-help" onClick={() => setShowHelp(true)} type="button">
+            How to Play
+          </button>
+        </header>
+      )}
 
       {error && <div className="banner banner-error">{error}</div>}
 
-      {!state && <Home onCreate={createRoom} onJoin={joinRoom} onSolo={soloGame} disabled={!connected} />}
+      {!state && (
+        <Home
+          onCreate={createRoom}
+          onJoin={joinRoom}
+          onSolo={soloGame}
+          onShowHelp={() => setShowHelp(true)}
+          disabled={!connected}
+        />
+      )}
       {state && state.phase === "lobby" && (
         <Lobby state={state} playerId={playerId} onLeave={leaveRoom} onShowHelp={() => setShowHelp(true)} />
       )}
