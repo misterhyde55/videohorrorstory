@@ -1,13 +1,27 @@
 import { socket } from "../socket";
+import { TEEN_CHARACTERS, KILLERS } from "../data/characters";
 
-export default function Lobby({ state, playerId, onLeave }) {
+export default function Lobby({ state, playerId, onLeave, onShowHelp }) {
   const me = state.players.find((p) => p.id === playerId);
   const isHost = state.players[0]?.id === playerId;
   const slasherCount = state.players.filter((p) => p.role === "slasher").length;
   const teenCount = state.players.filter((p) => p.role === "teen").length;
+  const takenCharacters = new Set(
+    state.players.filter((p) => p.role === "teen" && p.id !== playerId && p.pickId).map((p) => p.pickId)
+  );
 
   function setRole(role) {
     socket.emit("set_role", { role });
+  }
+  function setCharacter(characterId) {
+    socket.emit("set_character", { characterId }, (res) => {
+      if (!res?.ok) alert(res?.error || "Could not select character.");
+    });
+  }
+  function setKiller(killerId) {
+    socket.emit("set_killer", { killerId }, (res) => {
+      if (!res?.ok) alert(res?.error || "Could not select killer.");
+    });
   }
   function toggleReady() {
     socket.emit("set_ready", { ready: !me.ready });
@@ -23,6 +37,7 @@ export default function Lobby({ state, playerId, onLeave }) {
       <div className="room-code-box">
         <span>Room Code</span>
         <strong>{state.code}</strong>
+        <button className="btn btn-ghost" onClick={onShowHelp} type="button">How to Play</button>
         <button className="btn btn-ghost" onClick={onLeave} type="button">Leave</button>
       </div>
 
@@ -33,7 +48,11 @@ export default function Lobby({ state, playerId, onLeave }) {
             {state.players.map((p) => (
               <li key={p.id} className={p.id === playerId ? "me" : ""}>
                 <span className={`role-tag role-${p.role}`}>{p.role === "slasher" ? "Slasher" : "Teen"}</span>
-                <span className="pname">{p.name}{p.id === playerId ? " (you)" : ""}</span>
+                <span className="pname">
+                  {p.name}{p.id === playerId ? " (you)" : ""}
+                  {p.pickId && p.role === "teen" && ` — ${TEEN_CHARACTERS[p.pickId]?.name}`}
+                  {p.pickId && p.role === "slasher" && ` — ${KILLERS[p.pickId]?.name}`}
+                </span>
                 <span className={p.ready ? "ready-dot ready" : "ready-dot"}>{p.ready ? "Ready" : "Waiting"}</span>
               </li>
             ))}
@@ -69,15 +88,55 @@ export default function Lobby({ state, playerId, onLeave }) {
           )}
         </div>
 
-        <div className="rules-card">
-          <h3>How to Survive</h3>
-          <p><strong>Teens</strong> search the camp for gear, then either:</p>
-          <ul>
-            <li>🚗 <strong>Escape</strong> — find the Car Keys + Gas Can, reach the Entrance Road, and drive.</li>
-            <li>🔪 <strong>Kill it</strong> — find a weapon and fight the monster where you find it.</li>
-            <li>📼 <strong>Banish it</strong> — gather the Candle, Occult Book &amp; Cursed Tape and perform the ritual at the Root Cellar.</li>
-          </ul>
-          <p><strong>The Slasher</strong> stalks the camp and attacks any teen it catches. All teens dead, or the tape reel runs out — the Slasher wins.</p>
+        <div>
+          {me?.role === "teen" ? (
+            <>
+              <h3>Choose Your Teen</h3>
+              <div className="pick-grid">
+                {Object.values(TEEN_CHARACTERS).map((c) => {
+                  const taken = takenCharacters.has(c.id);
+                  const selected = me.pickId === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className={`pick-card${selected ? " selected" : ""}${taken ? " taken" : ""}`}
+                      disabled={taken}
+                      onClick={() => setCharacter(c.id)}
+                    >
+                      <span className="pick-icon">{c.icon}</span>
+                      <span className="pick-name">{c.name}</span>
+                      <span className="pick-tagline">{c.tagline}</span>
+                      <span className="pick-ability">{c.ability}</span>
+                      {taken && <span className="pick-taken-badge">Taken</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          ) : me?.role === "slasher" ? (
+            <>
+              <h3>Choose Your Killer</h3>
+              <div className="pick-grid">
+                {Object.values(KILLERS).map((k) => {
+                  const selected = me.pickId === k.id;
+                  return (
+                    <button
+                      key={k.id}
+                      type="button"
+                      className={`pick-card killer${selected ? " selected" : ""}`}
+                      onClick={() => setKiller(k.id)}
+                    >
+                      <span className="pick-icon">{k.icon}</span>
+                      <span className="pick-name">{k.name}</span>
+                      <span className="pick-tagline">{k.tagline}</span>
+                      <span className="pick-ability">{k.ability}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          ) : null}
         </div>
       </div>
     </div>

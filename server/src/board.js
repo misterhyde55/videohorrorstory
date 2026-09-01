@@ -10,6 +10,7 @@ export const LOCATIONS = {
     description: "The dirt road out of camp. Freedom, if the car will start.",
     connections: ["parking_lot", "woods_north"],
     exit: true,
+    type: "road",
   },
   parking_lot: {
     id: "parking_lot",
@@ -17,6 +18,7 @@ export const LOCATIONS = {
     description: "A battered station wagon sits here, out of gas.",
     connections: ["entrance_road", "main_lodge", "woods_south"],
     searchPool: "light",
+    type: "lot",
   },
   main_lodge: {
     id: "main_lodge",
@@ -24,6 +26,7 @@ export const LOCATIONS = {
     description: "The counselors' lodge. Someone left the lights on.",
     connections: ["parking_lot", "mess_hall", "cabin_row_a"],
     searchPool: "medium",
+    type: "lodge",
   },
   mess_hall: {
     id: "mess_hall",
@@ -31,6 +34,7 @@ export const LOCATIONS = {
     description: "Rows of long tables. A knife block sits by the kitchen.",
     connections: ["main_lodge", "boat_house", "cabin_row_b"],
     searchPool: "medium",
+    type: "hall",
   },
   cabin_row_a: {
     id: "cabin_row_a",
@@ -38,6 +42,7 @@ export const LOCATIONS = {
     description: "Bunks and graffiti from summers past.",
     connections: ["main_lodge", "cabin_row_b", "watchtower"],
     searchPool: "light",
+    type: "cabin",
   },
   cabin_row_b: {
     id: "cabin_row_b",
@@ -45,6 +50,7 @@ export const LOCATIONS = {
     description: "The last cabin's door hangs off its hinges.",
     connections: ["mess_hall", "cabin_row_a", "old_barn"],
     searchPool: "light",
+    type: "cabin",
   },
   boat_house: {
     id: "boat_house",
@@ -52,6 +58,7 @@ export const LOCATIONS = {
     description: "The lake laps against rotted docks.",
     connections: ["mess_hall", "woods_south"],
     searchPool: "medium",
+    type: "water",
   },
   woods_south: {
     id: "woods_south",
@@ -59,6 +66,7 @@ export const LOCATIONS = {
     description: "A narrow trail swallowed by fog.",
     connections: ["parking_lot", "boat_house", "old_barn"],
     searchPool: "light",
+    type: "trail",
   },
   woods_north: {
     id: "woods_north",
@@ -66,6 +74,7 @@ export const LOCATIONS = {
     description: "Trees close in on both sides. Something is watching.",
     connections: ["entrance_road", "watchtower", "old_barn"],
     searchPool: "light",
+    type: "trail",
   },
   old_barn: {
     id: "old_barn",
@@ -73,6 +82,7 @@ export const LOCATIONS = {
     description: "Rusted tools hang from the rafters.",
     connections: ["cabin_row_b", "woods_south", "woods_north", "root_cellar"],
     searchPool: "heavy",
+    type: "barn",
   },
   watchtower: {
     id: "watchtower",
@@ -80,6 +90,7 @@ export const LOCATIONS = {
     description: "A rickety tower overlooking the whole camp.",
     connections: ["cabin_row_a", "woods_north"],
     searchPool: "medium",
+    type: "tower",
   },
   root_cellar: {
     id: "root_cellar",
@@ -88,6 +99,7 @@ export const LOCATIONS = {
     connections: ["old_barn"],
     searchPool: "heavy",
     ritualSite: true,
+    type: "cellar",
   },
 };
 

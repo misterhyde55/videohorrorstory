@@ -16,13 +16,29 @@ while one player controls the Slasher stalking them.
 - 🔪 **Kill it** — find a weapon (Machete, Fire Axe, Shotgun) and win a fight against the monster.
 - 📼 **Banish it** — gather the Black Candle, Occult Book, and Cursed VHS Tape, then perform the ritual at the Root Cellar.
 
-**The Slasher** wins if every teen is killed, or if the reel runs out (a
-turn timer) before the teens finish the job.
+**The Slasher** wins if every teen is killed, or if the 10-minute clock runs
+out before the teens finish the job.
 
-Play proceeds in turn order (each teen, then the Slasher, repeating). On your
-turn you can move between connected locations, search your current location
-for gear, fight or flee if the Slasher finds you, share items with teammates
-in the same location, or attempt to escape/banish the monster.
+Play proceeds in turn order (each teen, then the Slasher, repeating), with a
+live 10-minute countdown running the whole game. On your turn you can move
+between connected locations, search your current location for gear, fight or
+flee if the Slasher finds you, share items with teammates in the same
+location, or attempt to escape/banish the monster.
+
+### Teens
+
+Each teen player picks a unique character in the lobby, each with a passive
+ability (`server/src/characters.js`):
+- 🏈 **The Jock** — +25% fight-hit chance, shrugs off failed escapes without injury.
+- 🤓 **The Nerd** — can banish with only 2 of the 3 ritual relics, searches more thoroughly.
+- 📣 **The Cheerleader** — much better odds of escaping the Slasher, can move two locations per turn.
+- 🍃 **The Pothead** — always senses if the Slasher is one location away, finds a little extra while searching.
+
+### The Slasher
+
+The Slasher player picks one killer type in the lobby:
+- 🔪 **The Stalker** — hits harder the longer it stalks a target, escapes against it are harder, can shortcut straight to a tracked teen.
+- 🛸 **The Thing** — stays undetected by teens until it strikes, and its attacks deal double damage.
 
 ## Project layout
 

@@ -12,9 +12,12 @@ import {
   removePlayer,
   setRole,
   setReady,
+  setCharacter,
+  setKiller,
   canStart,
   startGame,
   applyAction,
+  checkClockExpired,
   publicState,
 } from "./gameState.js";
 
@@ -120,6 +123,26 @@ io.on("connection", (socket) => {
     broadcast(meta.code);
   });
 
+  socket.on("set_character", ({ characterId }, ack) => {
+    const meta = socketMeta.get(socket.id);
+    if (!meta) return;
+    const room = rooms.get(meta.code);
+    if (!room) return;
+    const result = setCharacter(room, meta.playerId, characterId);
+    ack?.(result);
+    broadcast(meta.code);
+  });
+
+  socket.on("set_killer", ({ killerId }, ack) => {
+    const meta = socketMeta.get(socket.id);
+    if (!meta) return;
+    const room = rooms.get(meta.code);
+    if (!room) return;
+    const result = setKiller(room, meta.playerId, killerId);
+    ack?.(result);
+    broadcast(meta.code);
+  });
+
   socket.on("start_game", (_payload, ack) => {
     const meta = socketMeta.get(socket.id);
     if (!meta) return;
@@ -170,6 +193,12 @@ function handleLeave(socket, { onlyLobby = false } = {}) {
   }
   broadcast(meta.code);
 }
+
+setInterval(() => {
+  for (const [code, room] of rooms) {
+    if (checkClockExpired(room)) broadcast(code);
+  }
+}, 1000);
 
 httpServer.listen(PORT, () => {
   console.log(`VHS server listening on :${PORT}`);

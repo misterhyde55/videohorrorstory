@@ -1,6 +1,24 @@
 import { LAYOUT } from "../screens/board-layout";
 
-export default function Board({ board, players, me, myLocation }) {
+const TYPE_ICONS = {
+  road: "🛣️",
+  lot: "🚗",
+  lodge: "🏠",
+  hall: "🍽️",
+  cabin: "🏕️",
+  water: "🌊",
+  trail: "🌲",
+  barn: "🚜",
+  tower: "🗼",
+  cellar: "⚰️",
+};
+
+const STARS = [
+  [6, 8], [14, 4], [22, 12], [33, 5], [41, 15], [52, 6], [60, 10], [70, 4],
+  [78, 14], [88, 7], [95, 17], [10, 20], [30, 22], [50, 20], [66, 22], [85, 24],
+];
+
+export default function Board({ board, players, me, myLocation, slasherNearby }) {
   const drawnPairs = new Set();
   const lines = [];
   Object.values(board).forEach((loc) => {
@@ -23,24 +41,75 @@ export default function Board({ board, players, me, myLocation }) {
 
   return (
     <div className="board-map">
-      <svg className="board-lines" viewBox="0 0 100 100" preserveAspectRatio="none">
-        {lines.map(({ key, a, b }) => (
-          <line key={key} x1={a.x} y1={a.y} x2={b.x} y2={b.y} />
+      <svg className="board-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <defs>
+          <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#fff7d6" stopOpacity="0.9" />
+            <stop offset="100%" stopColor="#fff7d6" stopOpacity="0" />
+          </radialGradient>
+          <radialGradient id="lakeGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#1c5d6b" />
+            <stop offset="100%" stopColor="#123a44" />
+          </radialGradient>
+        </defs>
+
+        <rect x="0" y="0" width="100" height="100" fill="#150a24" />
+        <rect x="0" y="0" width="100" height="100" fill="url(#vignette)" />
+
+        {STARS.map(([x, y], i) => (
+          <circle key={i} cx={x} cy={y} r={0.35} fill="#ffffff" opacity="0.6" className="board-star" />
         ))}
+        <circle cx="90" cy="10" r="14" fill="url(#moonGlow)" />
+        <circle cx="90" cy="10" r="4.2" fill="#fdf6dd" />
+
+        {/* woods */}
+        {[[16, 12], [22, 18], [10, 22], [30, 8], [92, 30], [96, 40], [60, 4], [50, 12]].map(([x, y], i) => (
+          <circle key={"t1" + i} cx={x} cy={y} r={4.5} fill="#0f2e1c" opacity="0.8" />
+        ))}
+        {[[38, 82], [46, 90], [30, 88], [56, 84], [64, 92], [72, 82], [12, 30], [8, 40]].map(([x, y], i) => (
+          <circle key={"t2" + i} cx={x} cy={y} r={5} fill="#122f1d" opacity="0.8" />
+        ))}
+
+        {/* lake near the boat house */}
+        <ellipse cx="86" cy="42" rx="13" ry="9" fill="url(#lakeGlow)" opacity="0.9" />
+        <ellipse cx="86" cy="42" rx="13" ry="9" fill="none" stroke="#2ee6ff" strokeOpacity="0.25" strokeWidth="0.4" />
+
+        {/* dirt paths */}
+        {lines.map(({ key, a, b }) => (
+          <line key={key} x1={a.x} y1={a.y} x2={b.x} y2={b.y} className="board-path" />
+        ))}
+
+        <rect x="0" y="0" width="100" height="100" fill="url(#fogGradient)" opacity="0.5" />
+        <defs>
+          <linearGradient id="fogGradient" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stopColor="#3a2450" stopOpacity="0.55" />
+            <stop offset="35%" stopColor="#3a2450" stopOpacity="0" />
+          </linearGradient>
+          <radialGradient id="vignette" cx="50%" cy="50%" r="75%">
+            <stop offset="60%" stopColor="#000000" stopOpacity="0" />
+            <stop offset="100%" stopColor="#000000" stopOpacity="0.55" />
+          </radialGradient>
+        </defs>
       </svg>
+
+      <div className="board-fog" />
+
       {Object.values(board).map((loc) => {
         const pos = LAYOUT[loc.id];
         if (!pos) return null;
         const tokens = tokensByLocation[loc.id] || [];
         const isMine = loc.id === myLocation;
+        const isSensed = slasherNearby === loc.id;
         return (
           <div
             key={loc.id}
-            className={`map-node${isMine ? " here" : ""}${loc.ritualSite ? " ritual" : ""}${loc.exit ? " exit" : ""}`}
+            className={`map-node${isMine ? " here" : ""}${loc.ritualSite ? " ritual" : ""}${loc.exit ? " exit" : ""}${isSensed ? " sensed" : ""}`}
             style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
             title={loc.description}
           >
-            <div className="map-node-label">{loc.name}</div>
+            <div className="map-node-label">
+              <span className="map-node-icon">{TYPE_ICONS[loc.type] || "📍"}</span> {loc.name}
+            </div>
             <div className="map-node-tokens">
               {tokens.map((p) => (
                 <span

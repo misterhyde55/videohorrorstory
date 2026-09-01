@@ -1,9 +1,29 @@
 import { socket } from "../socket";
+import { KILLERS } from "../data/characters";
 
 function act(action, onError) {
   socket.emit("action", action, (res) => {
     if (!res?.ok) onError?.(res?.error || "Action failed.");
   });
+}
+
+function reachableFrom(board, locationId, hops) {
+  let frontier = new Set([locationId]);
+  const seen = new Set([locationId]);
+  for (let i = 0; i < hops; i++) {
+    const next = new Set();
+    for (const loc of frontier) {
+      for (const n of board[loc].connections) {
+        if (!seen.has(n)) {
+          seen.add(n);
+          next.add(n);
+        }
+      }
+    }
+    frontier = next;
+  }
+  seen.delete(locationId);
+  return [...seen];
 }
 
 export default function ActionPanel({ state, me, onError }) {
@@ -26,10 +46,14 @@ export default function ActionPanel({ state, me, onError }) {
 function TeenActions({ state, me, loc, onError }) {
   const items = me.items || [];
   const healItems = items.filter((it) => it.utility === "heal");
-  const hasKit = (ids) => ids.every((id) => items.some((it) => it.id === id));
+  const hasKit = (ids, min) => ids.filter((id) => items.some((it) => it.id === id)).length >= min;
   const teammatesHere = state.players.filter(
     (p) => p.id !== me.id && p.role === "teen" && p.location === me.location && p.status !== "dead" && p.status !== "escaped"
   );
+  const isCheerleader = me.pickId === "cheerleader";
+  const isNerd = me.pickId === "nerd";
+  const moveTargets = isCheerleader ? reachableFrom(state.board, me.location, 2) : loc.connections;
+  const senseHere = state.slasherNearby && loc.connections.includes(state.slasherNearby);
 
   return (
     <div className="action-panel">
@@ -38,9 +62,12 @@ function TeenActions({ state, me, loc, onError }) {
       {state.slasherPresent && (
         <div className="danger-banner">The Slasher is here with you!</div>
       )}
+      {!state.slasherPresent && senseHere && (
+        <div className="sense-banner">You sense something is close, in {state.board[state.slasherNearby].name}...</div>
+      )}
 
-      <ActionGroup title="Move to">
-        {loc.connections.map((toId) => (
+      <ActionGroup title={isCheerleader ? "Move to (up to 2 away)" : "Move to"}>
+        {moveTargets.map((toId) => (
           <button key={toId} className="btn btn-move" onClick={() => act({ type: "move", to: toId }, onError)}>
             {state.board[toId].name}
           </button>
@@ -57,16 +84,16 @@ function TeenActions({ state, me, loc, onError }) {
         {loc.ritualSite && (
           <button
             className="btn btn-accent"
-            disabled={!hasKit(["ritual_candle", "occult_book", "cursed_tape"])}
+            disabled={!hasKit(["ritual_candle", "occult_book", "cursed_tape"], isNerd ? 2 : 3)}
             onClick={() => act({ type: "ritual" }, onError)}
           >
-            Perform Ritual
+            Perform Ritual{isNerd ? " (needs any 2)" : ""}
           </button>
         )}
         {loc.exit && (
           <button
             className="btn btn-accent"
-            disabled={!hasKit(["car_keys", "gas_can"])}
+            disabled={!hasKit(["car_keys", "gas_can"], 2)}
             onClick={() => act({ type: "drive" }, onError)}
           >
             Drive Away
@@ -111,6 +138,12 @@ function SlasherActions({ state, me, loc, onError }) {
   const targets = state.players.filter(
     (p) => p.role === "teen" && p.location === me.location && p.status !== "dead" && p.status !== "escaped"
   );
+  const shortcutTargets = state.players.filter(
+    (p) => p.role === "teen" && p.location !== me.location && p.status !== "dead" && p.status !== "escaped"
+  );
+  const killer = KILLERS[me.pickId];
+  const specialLabel = killer?.id === "thing" ? "Mimic" : "Shortcut";
+  const specialReady = !me.specialCooldown;
 
   return (
     <div className="action-panel">
@@ -134,6 +167,20 @@ function SlasherActions({ state, me, loc, onError }) {
       <ActionGroup title="Actions">
         <button className="btn btn-ghost" onClick={() => act({ type: "lurk" }, onError)}>Lurk in the Shadows</button>
       </ActionGroup>
+      {shortcutTargets.length > 0 && (
+        <ActionGroup title={`Special — ${specialLabel}${specialReady ? "" : ` (ready in ${me.specialCooldown})`}`}>
+          {shortcutTargets.map((t) => (
+            <button
+              key={t.id}
+              className="btn btn-danger"
+              disabled={!specialReady}
+              onClick={() => act({ type: "shortcut", targetId: t.id }, onError)}
+            >
+              {specialLabel} to {t.characterName}
+            </button>
+          ))}
+        </ActionGroup>
+      )}
     </div>
   );
 }

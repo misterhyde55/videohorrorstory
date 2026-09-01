@@ -3,6 +3,7 @@ import { socket, getPlayerId } from "./socket";
 import Home from "./screens/Home";
 import Lobby from "./screens/Lobby";
 import GameScreen from "./screens/Game";
+import HowToPlay from "./components/HowToPlay";
 import "./App.css";
 
 const SAVED_ROOM_KEY = "vhs_room_code";
@@ -11,6 +12,7 @@ export default function App() {
   const [connected, setConnected] = useState(socket.connected);
   const [state, setState] = useState(null);
   const [error, setError] = useState("");
+  const [showHelp, setShowHelp] = useState(false);
   const playerId = getPlayerId();
 
   useEffect(() => {
@@ -72,13 +74,20 @@ export default function App() {
           <small>video horror story</small>
         </h1>
         {!connected && <span className="badge badge-danger">reconnecting…</span>}
+        <button className="btn btn-ghost header-help" onClick={() => setShowHelp(true)} type="button">
+          How to Play
+        </button>
       </header>
 
       {error && <div className="banner banner-error">{error}</div>}
 
       {!state && <Home onCreate={createRoom} onJoin={joinRoom} disabled={!connected} />}
-      {state && state.phase === "lobby" && <Lobby state={state} playerId={playerId} onLeave={leaveRoom} />}
+      {state && state.phase === "lobby" && (
+        <Lobby state={state} playerId={playerId} onLeave={leaveRoom} onShowHelp={() => setShowHelp(true)} />
+      )}
       {state && state.phase !== "lobby" && <GameScreen state={state} playerId={playerId} onLeave={leaveRoom} />}
+
+      {showHelp && <HowToPlay onClose={() => setShowHelp(false)} />}
     </div>
   );
 }
