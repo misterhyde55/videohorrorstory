@@ -3,61 +3,51 @@ import { useState } from "react";
 const STEPS = [
   {
     icon: "📼",
-    title: "The Story",
-    body: [
-      "A cursed VHS tape has let a monster loose in Crescent Lake Camp.",
-      "You play one of four teenagers trying to make it to dawn. One other player — or the AI in Solo Mode — controls the killer stalking you all.",
-    ],
+    title: "Welcome to VHS",
+    body: ["A monster escaped a cursed tape into camp.", "You're one of 4 teens. One player (or the AI) plays the monster."],
   },
   {
     icon: "🎯",
-    title: "Your Goal",
-    body: ["Survive the night by pulling off ONE of these three:"],
+    title: "Your Goal: Survive",
+    body: ["Do ONE of these three to win:"],
     list: [
-      "🚗 Escape — find the Car Keys, a Gas Can & a Tool Kit, repair the car, then drive away.",
-      "🔪 Fight it off — find a weapon and wound the monster enough times to destroy it.",
-      "📼 Banish it — gather the Black Candle, Occult Book & Cursed Tape, then perform the ritual.",
+      "🚗 Escape — fix the car, then drive away.",
+      "🔪 Fight — hurt the monster enough to destroy it.",
+      "📼 Banish — collect 3 relics, then do the ritual.",
     ],
-    footer: "A 10-minute clock is always running in the background. If it hits zero before you finish the job, the killer wins by default.",
+    footer: "⏱️ You have 10 minutes. Run out of time and the monster wins.",
   },
   {
     icon: "🎲",
-    title: "On Your Turn",
-    body: [
-      "Turns rotate through every teen, then the killer, on repeat.",
-      "Each turn you take ONE action: move to a connected location, search for supplies, use an item, hide, rest, comfort a teammate, or make your move toward escaping, fighting, or banishing.",
-      "Choose carefully — every action costs your whole turn, so know what you're walking into.",
-    ],
+    title: "Taking Your Turn",
+    body: ["Everyone takes turns — teens first, then the monster.", "Pick ONE action on your turn:"],
+    list: ["🚶 Move to a new room", "🔦 Search for supplies", "🤫 Hide, 🛏️ Rest, or 🤝 help a teammate"],
   },
   {
     icon: "🧠",
-    title: "Watch Your Sanity",
-    body: [
-      "Sanity runs 0–10, starting at 8. Being alone drains it every turn, and the monster jump-scaring you costs Sanity too.",
-      "Low Sanity makes everything less reliable — hit rock bottom and you'll hallucinate or stumble into the wrong room while trying to move.",
-    ],
+    title: "Stay Sane",
+    body: ["Sanity is your fear meter. It drops when you're alone or scared.", "Low Sanity = shaky, unreliable actions."],
     list: [
-      "Stick with a teammate — it won't heal you, but it stops the bleeding.",
-      "🛏️ Rest at a Safe Location, 🤝 Comfort a teammate, or use a 📼 Sanity item to actively recover.",
-      "Hit 0 Sanity and you go Broken — recovery crawls to +1/round until you claw your way back to 3.",
+      "👥 Stick together — stops it from dropping further.",
+      "🛏️ Rest, 🤝 get Comforted, or use an item to heal it.",
+      "💀 Hit 0 and you break down.",
     ],
   },
   {
     icon: "🔪",
     title: "The Killer",
-    body: [
-      "The killer's location is hidden from you until it's standing right where you are — you'll only sense it when it's one room over.",
-      "Caught out in the open, it can just attack. Toggle Hide beforehand, and getting found instead triggers a tense Hold Your Breath moment — mash SPACE to stay quiet and it may move on.",
-      "No way out? Flee to a connected room, or fight back if you're carrying a weapon.",
+    body: ["You can't see it coming — it's invisible until it's in your room."],
+    list: [
+      "🤫 Hide before it finds you.",
+      "🏃 Flee to another room.",
+      "⚔️ Fight back if you have a weapon.",
     ],
+    footer: "😮 If it finds your hiding spot, hold your breath (mash SPACE) to stay quiet!",
   },
   {
     icon: "🌙",
-    title: "Ready to Survive?",
-    body: [
-      "Pick a teen, keep an eye on your Health and Sanity, and work with your team — human or AI — to make it to dawn.",
-      "You can revisit this tutorial anytime from the main menu.",
-    ],
+    title: "You're Ready!",
+    body: ["Pick your teen and try to make it to dawn.", "You can replay this anytime from the menu."],
     final: true,
   },
 ];
