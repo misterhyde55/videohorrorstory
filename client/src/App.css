@@ -398,8 +398,14 @@
   background: #150a24;
   border: 1px solid var(--panel-border);
   border-radius: 10px;
-  min-height: 420px;
+  min-height: 640px;
   overflow: hidden;
+}
+
+@media (max-width: 900px) {
+  .board-map {
+    min-height: 480px;
+  }
 }
 
 .board-bg {
@@ -446,19 +452,20 @@
 .map-node {
   position: absolute;
   transform: translate(-50%, -50%);
-  background: rgba(20, 8, 30, 0.82);
+  background: rgba(20, 8, 30, 0.85);
   backdrop-filter: blur(1px);
   border: 1px solid var(--panel-border);
   border-radius: 8px;
-  padding: 0.4rem 0.6rem;
-  min-width: 96px;
+  padding: 0.55rem 0.8rem;
+  min-width: 128px;
   text-align: center;
-  font-size: 0.7rem;
+  font-size: 0.82rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .map-node.here {
   border-color: var(--neon-cyan);
-  box-shadow: 0 0 14px rgba(46, 230, 255, 0.5);
+  box-shadow: 0 0 16px rgba(46, 230, 255, 0.5);
 }
 
 .map-node.ritual {
@@ -475,9 +482,25 @@
   animation: shake 0.8s infinite;
 }
 
+.map-node.flash {
+  animation: moveFlash 1s ease-out;
+}
+
+@keyframes moveFlash {
+  0% {
+    border-color: var(--neon-green);
+    box-shadow: 0 0 26px rgba(57, 255, 138, 0.95);
+    transform: translate(-50%, -50%) scale(1.12);
+  }
+  100% {
+    box-shadow: 0 0 0 rgba(57, 255, 138, 0);
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
 .map-node-label {
   color: #cbb8e8;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.35rem;
 }
 
 .map-node-icon {
@@ -486,19 +509,19 @@
 
 .map-node-tokens {
   display: flex;
-  gap: 0.2rem;
+  gap: 0.3rem;
   justify-content: center;
   flex-wrap: wrap;
-  min-height: 1.2rem;
+  min-height: 1.7rem;
 }
 
 .token {
-  width: 1.2rem;
-  height: 1.2rem;
+  width: 1.7rem;
+  height: 1.7rem;
   border-radius: 50%;
   background: var(--neon-cyan);
   color: #06232b;
-  font-size: 0.65rem;
+  font-size: 0.85rem;
   font-weight: bold;
   display: inline-flex;
   align-items: center;
@@ -516,7 +539,7 @@
 }
 
 .token-me {
-  outline: 2px solid white;
+  outline: 3px solid white;
 }
 
 .action-panel {
@@ -595,13 +618,28 @@
 
 .party-list li {
   display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.06);
+}
+
+.party-list li:last-child {
+  border-bottom: none;
+}
+
+.party-list-row {
+  display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.8rem;
 }
 
 .party-list li.dead {
   opacity: 0.4;
+}
+
+.party-list li.dead .pname {
   text-decoration: line-through;
 }
 
@@ -612,25 +650,49 @@
   text-transform: uppercase;
 }
 
-.health-bar {
+/* Bigger percentage-labeled health bars */
+.health-bar-big {
   display: flex;
-  gap: 2px;
+  flex-direction: column;
+  gap: 0.2rem;
 }
 
-.pip {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  background: #3a2450;
-  display: inline-block;
+.health-bar-label {
+  font-size: 0.7rem;
+  color: #8a7aa0;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
-.pip.filled {
-  background: var(--neon-green);
+.health-bar-track {
+  position: relative;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  overflow: hidden;
 }
 
-.health-monster .pip.filled {
-  background: var(--neon-pink);
+.health-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #1e9e56, var(--neon-green));
+  transition: width 0.3s ease;
+}
+
+.health-monster .health-bar-fill {
+  background: linear-gradient(90deg, #a3125b, var(--neon-pink));
+}
+
+.health-bar-pct {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: bold;
+  color: #f2ecff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
 
 .inventory-list {
@@ -924,8 +986,8 @@
   font-style: italic;
 }
 
-.player-card-hp {
-  margin-bottom: 0.5rem;
+.player-card .health-bar-big {
+  margin-bottom: 0.6rem;
 }
 
 .player-card-cooldown {
@@ -1135,4 +1197,53 @@
   letter-spacing: 0.05em;
   margin: 0;
   animation: blink 1.4s steps(1) infinite;
+}
+
+/* Objective item tracker (Escape / Banish kits) */
+.objective-tracker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.objective-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.objective-title {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #8a7aa0;
+  min-width: 90px;
+}
+
+.objective-icons {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.objective-icon {
+  width: 1.9rem;
+  height: 1.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--panel-border);
+  font-size: 1rem;
+  filter: grayscale(1);
+  opacity: 0.35;
+  transition: filter 0.3s, opacity 0.3s, box-shadow 0.3s, border-color 0.3s;
+}
+
+.objective-icon.lit {
+  filter: grayscale(0);
+  opacity: 1;
+  border-color: var(--neon-green);
+  box-shadow: 0 0 10px rgba(57, 255, 138, 0.5);
 }

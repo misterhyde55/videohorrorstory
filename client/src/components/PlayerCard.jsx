@@ -1,5 +1,7 @@
 import { TEEN_CHARACTERS, KILLERS } from "../data/characters";
 import Inventory from "./Inventory";
+import HealthBar from "./HealthBar";
+import ObjectiveTracker from "./ObjectiveTracker";
 
 export default function PlayerCard({ me }) {
   const isSlasher = me.role === "slasher";
@@ -16,11 +18,7 @@ export default function PlayerCard({ me }) {
         </div>
       </div>
       {!isSlasher && (
-        <div className="health-bar health-teen player-card-hp">
-          {Array.from({ length: 2 }).map((_, i) => (
-            <span key={i} className={i < me.hp ? "pip filled" : "pip"} />
-          ))}
-        </div>
+        <HealthBar hp={me.hp} max={2} kind="teen" label="Health" />
       )}
       {isSlasher && (
         <div className="player-card-cooldown">
@@ -30,6 +28,8 @@ export default function PlayerCard({ me }) {
       <p className="player-card-ability">{info.ability}</p>
       {!isSlasher && (
         <>
+          <div className="player-card-divider" />
+          <ObjectiveTracker items={me.items} />
           <div className="player-card-divider" />
           <Inventory items={me.items} />
         </>

@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { LAYOUT } from "../screens/board-layout";
 
 const TYPE_ICONS = {
@@ -19,6 +20,27 @@ const STARS = [
 ];
 
 export default function Board({ board, players, me, myLocation, slasherNearby }) {
+  const prevLocationsRef = useRef({});
+  const [flashLocations, setFlashLocations] = useState(new Set());
+
+  useEffect(() => {
+    const prev = prevLocationsRef.current;
+    const changed = new Set();
+    players.forEach((p) => {
+      if (!p.location) return;
+      if (prev[p.id] && prev[p.id] !== p.location) changed.add(p.location);
+    });
+    prevLocationsRef.current = Object.fromEntries(
+      players.filter((p) => p.location).map((p) => [p.id, p.location])
+    );
+    if (changed.size > 0) {
+      setFlashLocations(changed);
+      const timer = setTimeout(() => setFlashLocations(new Set()), 1000);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [players]);
+
   const drawnPairs = new Set();
   const lines = [];
   Object.values(board).forEach((loc) => {
@@ -71,8 +93,8 @@ export default function Board({ board, players, me, myLocation, slasherNearby })
         ))}
 
         {/* lake near the boat house */}
-        <ellipse cx="86" cy="42" rx="13" ry="9" fill="url(#lakeGlow)" opacity="0.9" />
-        <ellipse cx="86" cy="42" rx="13" ry="9" fill="none" stroke="#2ee6ff" strokeOpacity="0.25" strokeWidth="0.4" />
+        <ellipse cx="90" cy="38" rx="13" ry="9" fill="url(#lakeGlow)" opacity="0.9" />
+        <ellipse cx="90" cy="38" rx="13" ry="9" fill="none" stroke="#2ee6ff" strokeOpacity="0.25" strokeWidth="0.4" />
 
         {/* dirt paths */}
         {lines.map(({ key, a, b }) => (
@@ -100,10 +122,11 @@ export default function Board({ board, players, me, myLocation, slasherNearby })
         const tokens = tokensByLocation[loc.id] || [];
         const isMine = loc.id === myLocation;
         const isSensed = slasherNearby === loc.id;
+        const isFlashing = flashLocations.has(loc.id);
         return (
           <div
             key={loc.id}
-            className={`map-node${isMine ? " here" : ""}${loc.ritualSite ? " ritual" : ""}${loc.exit ? " exit" : ""}${isSensed ? " sensed" : ""}`}
+            className={`map-node${isMine ? " here" : ""}${loc.ritualSite ? " ritual" : ""}${loc.exit ? " exit" : ""}${isSensed ? " sensed" : ""}${isFlashing ? " flash" : ""}`}
             style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
             title={loc.description}
           >
