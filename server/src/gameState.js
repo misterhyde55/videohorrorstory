@@ -413,12 +413,17 @@ function clearEvadeCooldown(room, locationId) {
 
 // The jump-scare of the Monster appearing costs Sanity immediately. Skipped
 // for a still-disguised Thing, since the teens don't consciously see it.
+// Distraction: a Rebel in the room draws the Monster's focus, so teammates
+// alongside them are spared the jump-scare (the Rebel isn't spared their own).
 function scareTeensAt(room, locationId) {
   const killer = killerInfo(room);
   if (killer.id === "thing" && !room.thingRevealed) return;
-  aliveTeens(room)
-    .filter((t) => t.location === locationId)
-    .forEach((t) => loseSanity(room, t, 1));
+  const teensHere = aliveTeens(room).filter((t) => t.location === locationId);
+  const hasRebel = teensHere.some((t) => t.pickId === "rebel");
+  teensHere.forEach((t) => {
+    if (hasRebel && t.pickId !== "rebel") return;
+    loseSanity(room, t, 1);
+  });
 }
 
 function advanceTurn(room) {
@@ -582,9 +587,17 @@ function teenAction(room, player, action) {
       return { ok: true };
     }
     case "search": {
-      const rerollOnMiss = character.id === "nerd" || character.id === "leader";
+      // Quick Study: the Nerd rerolls a total miss ("searches more thoroughly").
+      // Rally: the Leader gets one bonus draw whenever the result isn't an
+      // escape/banish kit item, and takes it only if it upgrades to one
+      // ("finds objective items more easily") — never trades away a decent
+      // non-kit find for nothing.
       let item = drawFromPool(loc.searchPool);
-      if (!item && rerollOnMiss) item = drawFromPool(loc.searchPool);
+      if (!item && character.id === "nerd") item = drawFromPool(loc.searchPool);
+      if (character.id === "leader" && !item?.kit) {
+        const bonus = drawFromPool(loc.searchPool);
+        if (bonus?.kit) item = bonus;
+      }
       if (item?.utility === "capacity") {
         player.itemCapacity += item.capacityBonus;
         log(room, `${player.characterName} searches ${loc.name} and finds a ${item.name}! More room to carry gear now.`);
@@ -839,6 +852,8 @@ export function resolveSearch(room, teenId, heldBreath) {
   if (dest && roll(chance)) {
     player.location = dest;
     log(room, `${player.characterName} is found — but scrambles away to ${room.board[dest].name}!`);
+  } else if (character.id === "athlete") {
+    log(room, `${player.characterName} is found — but shrugs off the scare and holds their ground.`);
   } else {
     log(room, `${player.characterName} is found and caught!`);
     applyWound(room, player, killer.id === "thing" ? 2 : 1);

@@ -8,7 +8,7 @@ export const TEEN_CHARACTERS = {
     icon: "🧭",
     tagline: "Keeps everyone together and on task.",
     stats: { health: 2, speed: 1, stealth: 1, strength: 1 },
-    ability: "Rally — your Comfort action restores extra Sanity, and you find objective items more easily while searching.",
+    ability: "Rally — your Comfort action restores extra Sanity, and you're better at finding objective items (Escape/Banish kit) while searching.",
   },
   athlete: {
     id: "athlete",
@@ -43,7 +43,7 @@ export const KILLERS = {
     icon: "🔪",
     tagline: "Slow. Silent. Never stops.",
     ability: "Relentless — hits harder the longer it stalks a target, escape attempts against it are less likely to work, and it can shortcut straight to any teen it's tracking.",
-    attackBase: 45,
+    attackBase: 32,
     stalkBonus: 18,
   },
   thing: {
@@ -52,7 +52,7 @@ export const KILLERS = {
     icon: "🛸",
     tagline: "It could be anyone. It could be anything.",
     ability: "Mimicry — stays hidden in plain sight until it strikes, and a successful attack is devastating.",
-    attackBase: 35,
+    attackBase: 24,
     stalkBonus: 12,
   },
 };
