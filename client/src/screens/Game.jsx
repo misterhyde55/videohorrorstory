@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import Board from "../components/Board";
 import ActionPanel from "../components/ActionPanel";
-import PartyStatus from "../components/PartyStatus";
 import PlayerCard from "../components/PlayerCard";
 import HoldYourBreath from "../components/HoldYourBreath";
 import PracticeTip from "../components/PracticeTip";
@@ -77,13 +76,16 @@ export default function GameScreen({ state, playerId, onLeave }) {
           me={playerId}
           myLocation={me.location}
           slasherNearby={state.slasherNearby}
+          slasherPresent={state.slasherPresent}
+          killerName={killerName}
+          monsterHp={state.monsterHp}
+          monsterMaxHp={state.monsterMaxHp}
         />
       )}
 
       <div className="game-sidebar">
-        <PlayerCard me={me} carRepaired={state.objectives?.carRepaired} />
+        <PlayerCard me={me} carRepaired={state.objectives?.carRepaired} monsterHp={state.monsterHp} monsterMaxHp={state.monsterMaxHp} />
         {state.phase !== "ended" && <ActionPanel state={state} me={me} onError={setError} />}
-        <PartyStatus players={state.players} me={playerId} monsterHp={state.monsterHp} monsterMaxHp={state.monsterMaxHp} />
       </div>
     </div>
   );

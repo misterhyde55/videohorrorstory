@@ -765,6 +765,180 @@
   border: 2px dashed #cbb8e8;
 }
 
+/* Survivor status HUD — overlaid on the board, top-left, DBD-style:
+   portrait + name + Health/Sanity bars stacked per teen. */
+.survivor-hud {
+  position: absolute;
+  top: 0.6rem;
+  left: 0.6rem;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  pointer-events: none;
+}
+
+.survivor-card {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(10, 6, 16, 0.72);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 0.3rem 0.6rem 0.3rem 0.3rem;
+  backdrop-filter: blur(2px);
+}
+
+.survivor-card.is-me {
+  border-color: var(--neon-cyan);
+}
+
+.survivor-card.dead,
+.survivor-card.escaped {
+  opacity: 0.5;
+}
+
+.survivor-portrait {
+  position: relative;
+  width: 2.1rem;
+  height: 2.1rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #3a2550, #150a20);
+  border: 2px solid var(--panel-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+}
+
+.survivor-card.is-me .survivor-portrait {
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 8px rgba(46, 230, 255, 0.5);
+}
+
+.survivor-portrait-x {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--neon-pink);
+  font-weight: bold;
+  font-size: 1.2rem;
+  text-shadow: 0 0 6px rgba(255, 46, 136, 0.9);
+}
+
+.survivor-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 7rem;
+}
+
+.survivor-name {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #f2ecff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.survivor-status-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--neon-pink);
+}
+
+.survivor-bar-track {
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.survivor-bar-track .survivor-bar-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.survivor-bar-track.hp .survivor-bar-fill {
+  background: linear-gradient(90deg, #1e9e56, var(--neon-green));
+}
+
+.survivor-bar-track.sanity {
+  height: 4px;
+}
+
+.survivor-bar-track.sanity .survivor-bar-fill {
+  background: linear-gradient(90deg, #4a2f8f, var(--neon-purple));
+}
+
+/* Monster boss bar — Elden Ring style, only shown while face to face
+   with the Slasher, floating over the top-center of the board. */
+.boss-bar {
+  position: absolute;
+  top: 0.6rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 11;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  width: min(420px, 70%);
+  pointer-events: none;
+  animation: bossBarIn 0.4s ease-out;
+}
+
+@keyframes bossBarIn {
+  0% { opacity: 0; transform: translateX(-50%) translateY(-10px) scale(0.96); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+.boss-bar-name {
+  font-family: "Bungee", "Courier New", monospace;
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--neon-pink);
+  text-shadow: 0 0 10px rgba(255, 46, 136, 0.8), 0 2px 2px rgba(0, 0, 0, 0.9);
+}
+
+.boss-bar-track {
+  position: relative;
+  width: 100%;
+  height: 10px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid #6b1030;
+  border-radius: 2px;
+  box-shadow: 0 0 12px rgba(255, 46, 136, 0.4), inset 0 0 6px rgba(0, 0, 0, 0.8);
+  overflow: hidden;
+}
+
+.boss-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #7a0f30, #d1265f, var(--neon-pink));
+  transition: width 0.4s ease;
+}
+
+.boss-bar-notches {
+  position: absolute;
+  inset: 0;
+}
+
+.boss-bar-notch {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(0, 0, 0, 0.6);
+}
+
 .action-panel {
   flex-shrink: 0;
   background: var(--panel-bg);
@@ -838,66 +1012,6 @@
   letter-spacing: 0.08em;
 }
 
-.party-status {
-  flex-shrink: 0;
-}
-
-.monster-row {
-  padding-bottom: 0.35rem;
-  margin-bottom: 0.35rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.monster-row .pname {
-  color: var(--neon-pink);
-}
-
-.party-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.party-list li {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.76rem;
-  padding: 0.15rem 0;
-}
-
-.party-list-row {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  flex: 1;
-  min-width: 0;
-}
-
-.party-list li .pname {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.party-list li.dead {
-  opacity: 0.4;
-}
-
-.party-list li.dead .pname {
-  text-decoration: line-through;
-}
-
-.status-tag {
-  font-size: 0.62rem;
-  color: #8a7aa0;
-  text-transform: uppercase;
-  flex-shrink: 0;
-}
-
 /* Bigger percentage-labeled health bars */
 .health-bar-big {
   display: flex;
@@ -937,26 +1051,6 @@
 
 .health-sanity .health-bar-track {
   height: 14px;
-}
-
-.party-list-bars {
-  display: flex;
-  gap: 0.3rem;
-  flex-shrink: 0;
-}
-
-.health-bar-mini {
-  width: 3.2rem;
-  height: 7px;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid var(--panel-border);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.health-bar-mini .health-bar-fill {
-  height: 100%;
-  transition: width 0.3s ease;
 }
 
 .health-bar-pct {

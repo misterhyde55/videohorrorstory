@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import SurvivorHud from "./SurvivorHud";
+import MonsterHealthBar from "./MonsterHealthBar";
 
 const TYPE_ICONS = {
   road: "🛣️",
@@ -23,7 +25,18 @@ const STARS = [
   [78, 14], [88, 7], [95, 17], [10, 20], [30, 22], [50, 20], [66, 22], [85, 24],
 ];
 
-export default function Board({ board, layout, players, me, myLocation, slasherNearby }) {
+export default function Board({
+  board,
+  layout,
+  players,
+  me,
+  myLocation,
+  slasherNearby,
+  slasherPresent,
+  killerName,
+  monsterHp,
+  monsterMaxHp,
+}) {
   const prevLocationsRef = useRef({});
   const [flashLocations, setFlashLocations] = useState(new Set());
 
@@ -119,6 +132,9 @@ export default function Board({ board, layout, players, me, myLocation, slasherN
       </svg>
 
       <div className="board-fog" />
+
+      <SurvivorHud players={players} me={me} />
+      <MonsterHealthBar show={!!slasherPresent} name={killerName} hp={monsterHp} max={monsterMaxHp} />
 
       {Object.values(board).map((loc) => {
         const pos = layout[loc.id];

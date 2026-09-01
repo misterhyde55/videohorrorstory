@@ -10,7 +10,7 @@ function sanityTier(sanity) {
   return "steady";
 }
 
-export default function PlayerCard({ me, carRepaired }) {
+export default function PlayerCard({ me, carRepaired, monsterHp, monsterMaxHp }) {
   const [expanded, setExpanded] = useState(false);
   const isSlasher = me.role === "slasher";
   const info = isSlasher ? KILLERS[me.pickId] : TEEN_CHARACTERS[me.pickId];
@@ -51,9 +51,12 @@ export default function PlayerCard({ me, carRepaired }) {
       )}
 
       {isSlasher && (
-        <div className="player-card-cooldown">
-          {me.specialCooldown > 0 ? `Special ready in ${me.specialCooldown}` : "Special ready"}
-        </div>
+        <>
+          <HealthBar hp={monsterHp} max={monsterMaxHp} kind="monster" label="Monster Health" />
+          <div className="player-card-cooldown">
+            {me.specialCooldown > 0 ? `Special ready in ${me.specialCooldown}` : "Special ready"}
+          </div>
+        </>
       )}
 
       {!isSlasher && (
