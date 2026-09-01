@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { TEEN_CHARACTERS, KILLERS, STAT_LABELS } from "../data/characters";
 import Inventory from "./Inventory";
 import HealthBar from "./HealthBar";
@@ -10,11 +11,13 @@ function sanityTier(sanity) {
 }
 
 export default function PlayerCard({ me, carRepaired }) {
+  const [expanded, setExpanded] = useState(false);
   const isSlasher = me.role === "slasher";
   const info = isSlasher ? KILLERS[me.pickId] : TEEN_CHARACTERS[me.pickId];
   if (!info) return null;
 
   const tier = !isSlasher ? sanityTier(me.sanity) : null;
+  const itemCount = (me.items || []).length;
 
   return (
     <div className={`player-card${isSlasher ? " killer" : ""}`}>
@@ -56,9 +59,22 @@ export default function PlayerCard({ me, carRepaired }) {
       {!isSlasher && (
         <>
           <div className="player-card-divider" />
-          <ObjectiveTracker items={me.items} carRepaired={carRepaired} />
-          <div className="player-card-divider" />
-          <Inventory items={me.items} />
+          <button
+            type="button"
+            className="player-card-toggle"
+            onClick={() => setExpanded((v) => !v)}
+            aria-expanded={expanded}
+          >
+            <span>Gear &amp; Objectives{itemCount > 0 ? ` (${itemCount})` : ""}</span>
+            <span className={`player-card-toggle-arrow${expanded ? " open" : ""}`} aria-hidden="true">▾</span>
+          </button>
+          {expanded && (
+            <div className="player-card-collapsible">
+              <ObjectiveTracker items={me.items} carRepaired={carRepaired} />
+              <div className="player-card-divider" />
+              <Inventory items={me.items} />
+            </div>
+          )}
         </>
       )}
     </div>

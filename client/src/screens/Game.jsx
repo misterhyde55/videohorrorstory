@@ -35,19 +35,24 @@ export default function GameScreen({ state, playerId, onLeave }) {
   const clockLabel = `${minutes}:${String(seconds).padStart(2, "0")}`;
   const clockTier = totalSeconds <= 90 ? "danger" : totalSeconds <= 198 ? "warn" : "";
 
+  const slasherPlayer = state.players.find((p) => p.role === "slasher");
+  const killerName = state.killers?.[slasherPlayer?.pickId]?.name || "The Slasher";
+
   return (
     <div className="game-layout">
-      <div className="game-top">
-        <div className="stat-chip">Round {state.round}</div>
-        <div className={`stat-chip clock${clockTier ? ` clock-${clockTier}` : ""}`}>⏱ {clockLabel}</div>
-        <div className="stat-chip">Room {state.code}</div>
-        {state.monsterStunned && <div className="stat-chip stunned-chip">Monster Stunned!</div>}
-        <button className="btn btn-ghost" onClick={onLeave} type="button">Leave</button>
+      <div className="game-top-stack">
+        <div className="game-top">
+          <div className="stat-chip">Round {state.round}</div>
+          <div className={`stat-chip clock${clockTier ? ` clock-${clockTier}` : ""}`}>⏱ {clockLabel}</div>
+          <div className="stat-chip">Room {state.code}</div>
+          {state.monsterStunned && <div className="stat-chip stunned-chip">Monster Stunned!</div>}
+          <button className="btn btn-ghost" onClick={onLeave} type="button">Leave</button>
+        </div>
+
+        {state.phase === "playing" && <PracticeTip state={state} me={me} />}
+
+        {error && <div className="banner banner-error" onAnimationEnd={() => setError("")}>{error}</div>}
       </div>
-
-      {state.phase === "playing" && <PracticeTip state={state} me={me} />}
-
-      {error && <div className="banner banner-error" onAnimationEnd={() => setError("")}>{error}</div>}
 
       {breathOverlay && (
         <HoldYourBreath
@@ -61,7 +66,7 @@ export default function GameScreen({ state, playerId, onLeave }) {
 
       {state.phase === "ended" ? (
         <div className={`endgame ${state.winner}`}>
-          <h2>{state.winner === "teens" ? "The Teens Survive" : "The Slasher Wins"}</h2>
+          <h2>{state.winner === "teens" ? "The Teens Survive" : `${killerName} Wins`}</h2>
           <p>{state.winReason}</p>
           <button className="btn btn-primary" onClick={onLeave} type="button">Back to Menu</button>
         </div>

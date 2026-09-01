@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { socket } from "../socket";
 
-const DECAY_PER_TICK = 6;
-const DECAY_INTERVAL_MS = 220;
-const REFILL_PER_PRESS = 14;
+const DECAY_PER_SEC = 34; // breath bleeds out fast — this is meant to hurt
+const REFILL_PER_PRESS = 8; // each real keypress/tap; holding the key down doesn't count
 const TICK_MS = 100;
 const RESOLUTION_DISPLAY_MS = 1700;
 
@@ -39,20 +38,17 @@ export default function HoldYourBreath({ searchEndsAt, searching, hiding, onReso
     function onKeyDown(e) {
       if (e.code === "Space") {
         e.preventDefault();
+        if (e.repeat) return; // holding the key down must not substitute for mashing it
         refill();
       }
     }
     window.addEventListener("keydown", onKeyDown);
 
-    let decayAccum = 0;
+    const decayPerTick = (DECAY_PER_SEC * TICK_MS) / 1000;
     const interval = setInterval(() => {
       if (resolvedRef.current) return;
-      decayAccum += TICK_MS;
-      if (decayAccum >= DECAY_INTERVAL_MS) {
-        decayAccum = 0;
-        breathRef.current = Math.max(0, breathRef.current - DECAY_PER_TICK);
-        setBreath(breathRef.current);
-      }
+      breathRef.current = Math.max(0, breathRef.current - decayPerTick);
+      setBreath(breathRef.current);
 
       const remaining = Math.max(0, (searchEndsAt ?? Date.now()) - Date.now());
       setMsLeft(remaining);
@@ -99,7 +95,7 @@ export default function HoldYourBreath({ searchEndsAt, searching, hiding, onReso
         <div className="hold-breath-content">
           <div className="hold-breath-title">THE MONSTER IS NEARBY</div>
           <div className="hold-breath-title-sub">HOLD YOUR BREATH</div>
-          <div className="hold-breath-sub">Press SPACE repeatedly to stay quiet for {secondsLeft}s…</div>
+          <div className="hold-breath-sub">MASH SPACE as fast as you can — don't stop for {secondsLeft}s…</div>
           <div className="breath-meter-track">
             <div className="breath-meter-fill" style={{ width: `${breath}%` }} />
           </div>

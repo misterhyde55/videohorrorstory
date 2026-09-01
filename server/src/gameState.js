@@ -426,10 +426,11 @@ function advanceTurn(room) {
 
 export function checkClockExpired(room) {
   if (room.phase === "playing" && room.endsAt && Date.now() >= room.endsAt) {
+    const killer = killerInfo(room);
     room.winner = "slasher";
-    room.winReason = "The tape ran out. Dawn never comes for them.";
+    room.winReason = `The tape ran out. ${killer.name} wins — dawn never comes for them.`;
     room.phase = "ended";
-    log(room, "REEL END. The tape runs out — the Slasher wins.");
+    log(room, `REEL END. The tape runs out — ${killer.name} wins.`);
     return true;
   }
   return false;
@@ -445,10 +446,11 @@ function checkWin(room) {
     return;
   }
   if (aliveTeens(room).length === 0) {
+    const killer = killerInfo(room);
     room.winner = "slasher";
-    room.winReason = "Every teen has fallen.";
+    room.winReason = `Every teen has fallen. ${killer.name} wins.`;
     room.phase = "ended";
-    log(room, "Silence falls over the camp. The Slasher wins.");
+    log(room, `Silence falls over the camp. ${killer.name} wins.`);
     return;
   }
 }

@@ -41,6 +41,17 @@ const GENERAL_TEMPLATES = [
   { name: "Garage", description: "Tools hang on pegboards, half in shadow.", type: "barn", searchPool: "heavy" },
   { name: "Cemetery", description: "Headstones lean at odd angles in the fog.", type: "graveyard", searchPool: "light" },
   { name: "Church", description: "Pews are overturned. The doors won't lock.", type: "church", searchPool: "medium", safe: true },
+  { name: "Campground", description: "Rows of pitched tents circle a dead campfire.", type: "camp", searchPool: "medium", safe: true },
+  { name: "Outhouse", description: "A single rickety outhouse tucked behind the campground tree line.", type: "minor", searchPool: "light" },
+  { name: "Campfire Circle", description: "A ring of stumps around cold ashes, right at the heart of the campground.", type: "minor", searchPool: "light" },
+  { name: "Toolshed", description: "A cramped shed crammed with rusted garden tools.", type: "minor", searchPool: "light" },
+  { name: "Fishing Dock", description: "A short dock jutting out over black water.", type: "water", searchPool: "light" },
+  { name: "Ranger Station", description: "A locked radio room; the maps on the wall are years out of date.", type: "lodge", searchPool: "medium" },
+  { name: "Ice Cream Shack", description: "A boarded-up shack, its freezer long since dead.", type: "store", searchPool: "light" },
+  { name: "Amphitheater", description: "Rotting benches face a stage nobody's used in years.", type: "hall", searchPool: "medium" },
+  { name: "Nurse's Station", description: "A cot, a first aid cabinet, and a smell of antiseptic.", type: "lodge", searchPool: "medium", safe: true },
+  { name: "Bait & Tackle Shop", description: "Fishing gear rusts on the walls behind a dusty counter.", type: "store", searchPool: "light" },
+  { name: "Storm Drain Tunnel", description: "A narrow concrete crawlspace running under the camp road.", type: "minor", searchPool: "light" },
 ];
 
 const GENERAL_COUNT = 12;
