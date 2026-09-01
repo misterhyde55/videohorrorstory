@@ -98,7 +98,9 @@ export default function Home({ onCreate, onJoin, onSolo, onShowHelp, disabled })
 
             {mode === "solo" && (
               <>
-                <p className="solo-blurb">Play against an AI-controlled Slasher — no other players needed.</p>
+                <p className="solo-blurb">
+                  No other players needed — 3 AI teens join your side, and an AI plays the Slasher.
+                </p>
 
                 <span className="solo-label">Choose Your Teen</span>
                 <div className="pick-grid">

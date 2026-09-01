@@ -908,6 +908,7 @@ export function publicState(room, forPlayerId) {
       searchEndsAt: p.searchEndsAt,
       broken: p.broken,
       ready: p.ready,
+      isBot: p.isBot,
       itemCount: p.items.length,
     };
     const canSeeLocation = room.phase !== "playing" || p.role === "teen" || isSlasher || p.id === forPlayerId;
@@ -992,6 +993,125 @@ export function decideBotAction(room, bot) {
   const step = stepTowardNearestTeen(room, bot.location);
   if (step) return { type: "move", to: step };
   return { type: "lurk" };
+}
+
+// Generic BFS: finds the first step from fromLocation toward the nearest
+// location matching isTarget. Used by AI teen companions to path toward a
+// Safe Location, the car site, the ritual site, or the exit.
+function stepToward(room, fromLocation, isTarget) {
+  const firstStep = new Map([[fromLocation, null]]);
+  const queue = [fromLocation];
+  while (queue.length) {
+    const current = queue.shift();
+    for (const next of neighborsOf(room, current)) {
+      if (firstStep.has(next)) continue;
+      const step = current === fromLocation ? next : firstStep.get(current);
+      firstStep.set(next, step);
+      if (isTarget(room.board[next])) return step;
+      queue.push(next);
+    }
+  }
+  return null;
+}
+
+const TEEN_MISTAKE_CHANCE = 12; // percent
+
+// AI-controlled teen companions for Solo Mode. Priority order: escape a
+// pending search, survive a Monster encounter, hide from one sensed nearby,
+// patch up, revive a fallen teammate, tend to Sanity, chase the current
+// objective, or explore. A small chance of a "mistake" (a random, possibly
+// suboptimal move) keeps them from feeling like perfectly coordinated
+// computer players — real teenagers in a slasher movie panic sometimes.
+export function decideTeenBotAction(room, bot) {
+  const loc = room.board[bot.location];
+  const character = TEEN_CHARACTERS[bot.pickId];
+  const neighbors = neighborsOf(room, bot.location);
+  const randomNeighbor = () => (neighbors.length ? neighbors[Math.floor(Math.random() * neighbors.length)] : null);
+
+  // Already mid-search (the Slasher cornered a hiding spot) — moving away
+  // on this turn auto-resolves it as a successful getaway.
+  if (bot.searching) {
+    const dest = randomNeighbor();
+    return dest ? { type: "move", to: dest } : { type: "pass" };
+  }
+
+  const slasher = slasherOf(room);
+  const monsterHere = slasher && slasher.location === bot.location;
+
+  if (monsterHere) {
+    const weapon = bot.items.find((it) => it.weapon);
+    if (weapon && bot.hp > 1 && roll(65)) return { type: "fight" };
+    const dest = randomNeighbor();
+    return dest ? { type: "flee", to: dest } : { type: "pass" };
+  }
+
+  // Sense the Monster next door but it hasn't arrived yet — worth hiding.
+  const monsterNearby = slasher && neighbors.includes(slasher.location);
+  if (monsterNearby && !bot.hiding && roll(40)) {
+    return { type: "hide" };
+  }
+
+  // Occasional believable mistake: act on a whim instead of the "best" plan.
+  if (roll(TEEN_MISTAKE_CHANCE)) {
+    const mistakes = [{ type: "search" }, { type: "pass" }];
+    const dest = randomNeighbor();
+    if (dest) mistakes.push({ type: "move", to: dest });
+    return mistakes[Math.floor(Math.random() * mistakes.length)];
+  }
+
+  // Patch up before anything else if hurt and able to.
+  if (bot.hp < bot.hpMax) {
+    const healIdx = bot.items.findIndex((it) => it.utility === "heal");
+    if (healIdx >= 0) return { type: "use_item", itemId: bot.items[healIdx].id };
+  }
+
+  // Rescue a fallen teammate sharing this location.
+  const deadHere = [...room.players.values()].filter(
+    (p) => p.role === "teen" && p.location === bot.location && p.status === "dead"
+  );
+  if (deadHere.length > 0 && bot.items.some((it) => it.id === "first_aid")) {
+    return { type: "revive", targetId: deadHere[0].id };
+  }
+
+  // Tend to Sanity: rest if it's safe to, or comfort a struggling teammate.
+  if (bot.sanity <= 3) {
+    if (loc.safe && bot.sanity < bot.sanityMax) return { type: "rest" };
+    const teammateHere = aliveTeens(room).find(
+      (t) => t.id !== bot.id && t.location === bot.location && t.sanity < t.sanityMax
+    );
+    if (teammateHere) return { type: "comfort", targetId: teammateHere.id };
+  }
+
+  // Chase the current objective.
+  const hasToolKit = bot.items.some((it) => it.id === "tool_kit");
+  const hasKeysGas = bot.items.filter((it) => it.id === "car_keys" || it.id === "gas_can").length;
+  const ritualHave = bot.items.filter((it) => ["ritual_candle", "occult_book", "cursed_tape"].includes(it.id)).length;
+  const ritualNeed = character?.id === "nerd" ? 2 : 3;
+
+  if (loc.carSite && !room.objectives.carRepaired && hasToolKit) return { type: "repair" };
+  if (loc.ritualSite && ritualHave >= ritualNeed) return { type: "ritual" };
+  if (loc.exit && room.objectives.carRepaired && hasKeysGas >= 2) return { type: "drive" };
+
+  // Head toward whatever's most useful right now.
+  let target = null;
+  if (!room.objectives.carRepaired && !hasToolKit) target = (l) => l.carSite;
+  else if (room.objectives.carRepaired && hasKeysGas < 2) target = (l) => l.exit;
+  else if (ritualHave < ritualNeed) target = (l) => l.ritualSite;
+
+  if (target && !target(loc)) {
+    const step = stepToward(room, bot.location, target);
+    if (step) return { type: "move", to: step };
+  }
+
+  // No pressing objective: search here fairly often, otherwise explore —
+  // occasionally toward a living teammate to regroup rather than scatter.
+  if (roll(45) && bot.items.length < MAX_ITEMS) return { type: "search" };
+  if (roll(30)) {
+    const step = stepTowardNearestTeen(room, bot.location);
+    if (step) return { type: "move", to: step };
+  }
+  const dest = randomNeighbor();
+  return dest ? { type: "move", to: dest } : { type: "pass" };
 }
 
 export const KILLER_IDS = Object.keys(KILLERS);

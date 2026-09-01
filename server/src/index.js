@@ -20,10 +20,14 @@ import {
   applyAction,
   checkClockExpired,
   decideBotAction,
+  decideTeenBotAction,
   publicState,
   reportHoldBreath,
   KILLER_IDS,
 } from "./gameState.js";
+import { TEEN_CHARACTERS } from "./characters.js";
+
+const AI_TEEN_NAMES = ["Riley", "Sam", "Casey"];
 
 const PORT = process.env.PORT || 3001;
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "*";
@@ -100,7 +104,8 @@ function maybeRunBot(code) {
     const liveId = liveRoom.turnOrder[liveRoom.turnIndex];
     const liveBot = liveRoom.players.get(liveId);
     if (!liveBot?.isBot) return;
-    const result = applyAction(liveRoom, liveId, decideBotAction(liveRoom, liveBot));
+    const decide = liveBot.role === "slasher" ? decideBotAction : decideTeenBotAction;
+    const result = applyAction(liveRoom, liveId, decide(liveRoom, liveBot));
     scheduleSearchSettlement(code, result);
     broadcast(code);
   }, 1100 + Math.random() * 700);
@@ -165,6 +170,15 @@ io.on("connection", (socket) => {
       const botId = addBot(room, "slasher", "The Slasher");
       setKiller(room, botId, resolvedKillerId);
       setReady(room, playerId, true);
+
+      // Solo mode isn't a solo grind: 3 AI-controlled teens round the party
+      // out to a full four, so the human isn't the Monster's only target.
+      const remainingCharacterIds = Object.keys(TEEN_CHARACTERS).filter((id) => id !== characterId);
+      remainingCharacterIds.forEach((charId, i) => {
+        const teenBotId = addBot(room, "teen", AI_TEEN_NAMES[i] || `Teen ${i + 1}`);
+        setCharacter(room, teenBotId, charId);
+        setReady(room, teenBotId, true);
+      });
 
       rooms.set(code, room);
       roomSockets.set(code, new Map([[playerId, socket.id]]));
