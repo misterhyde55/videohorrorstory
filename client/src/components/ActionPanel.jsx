@@ -27,8 +27,8 @@ function reachableFrom(board, locationId, hops) {
 }
 
 function sanityTier(sanity) {
-  if (sanity <= 0) return "panicked";
-  if (sanity <= 1) return "shaken";
+  if (sanity <= 2) return "panicked";
+  if (sanity <= 5) return "shaken";
   return "steady";
 }
 
@@ -51,7 +51,7 @@ export default function ActionPanel({ state, me, onError }) {
 
 function TeenActions({ state, me, loc, onError }) {
   const items = me.items || [];
-  const healItems = items.filter((it) => it.utility === "heal");
+  const usableItems = items.filter((it) => it.utility === "heal" || it.utility === "sanity");
   const hasKit = (ids, min) => ids.filter((id) => items.some((it) => it.id === id)).length >= min;
   const character = TEEN_CHARACTERS[me.pickId];
   const tier = sanityTier(me.sanity);
@@ -96,11 +96,21 @@ function TeenActions({ state, me, loc, onError }) {
 
       <ActionGroup title="Actions">
         <button className="btn btn-secondary" onClick={() => act({ type: "search" }, onError)}>Search Area</button>
-        {healItems.map((it) => (
+        {usableItems.map((it) => (
           <button key={it.id} className="btn btn-secondary" onClick={() => act({ type: "use_item", itemId: it.id }, onError)}>
             Use {it.name}
           </button>
         ))}
+        {loc.safe && (
+          <button
+            className="btn btn-secondary"
+            disabled={me.sanity >= me.sanityMax || state.slasherPresent}
+            title={loc.safe ? "Rest here to recover 1 Sanity (once per Safe Location, up to 3 times each)" : ""}
+            onClick={() => act({ type: "rest" }, onError)}
+          >
+            Rest
+          </button>
+        )}
         {loc.carSite && !carRepaired && (
           <button
             className="btn btn-secondary"
@@ -160,6 +170,21 @@ function TeenActions({ state, me, loc, onError }) {
               onClick={() => act({ type: "revive", targetId: mate.id }, onError)}
             >
               Revive {mate.characterName} (uses First Aid Kit)
+            </button>
+          ))}
+        </ActionGroup>
+      )}
+
+      {teammatesHere.length > 0 && (
+        <ActionGroup title="Comfort">
+          {teammatesHere.map((mate) => (
+            <button
+              key={mate.id}
+              className="btn btn-secondary"
+              disabled={mate.sanity >= mate.sanityMax}
+              onClick={() => act({ type: "comfort", targetId: mate.id }, onError)}
+            >
+              Comfort {mate.characterName}
             </button>
           ))}
         </ActionGroup>

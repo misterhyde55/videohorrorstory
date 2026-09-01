@@ -1,5 +1,5 @@
 import { generateBoard } from "./board.js";
-import { drawFromPool, randomEvent, randomHallucination } from "./cards.js";
+import { drawFromPool, randomEvent, randomHallucination, drawTraumaCard } from "./cards.js";
 import { TEEN_CHARACTERS, KILLERS, SPECIAL_COOLDOWN } from "./characters.js";
 
 const MAX_TEENS = 4;
@@ -23,6 +23,19 @@ const HALLUCINATION_CHANCE = 30;
 const REVIVE_HP = 1;
 const SEARCH_DURATION_MS = 10000;
 
+// ---- Sanity Recovery Rules (exact spec) ----
+const SANITY_MAX = 10;
+const SANITY_START = 8;
+const REST_GAIN = 1;
+const REST_LOCATION_CAP = 3; // per Safe Location, per player, per game
+const COMFORT_GAIN = 1;
+const COMFORT_LIMIT = 3; // per player, per game (as the receiver)
+const ITEM_SANITY_LIMIT = 4; // per player, per game
+const OBJECTIVE_SANITY_LIMIT = 4; // per player, per game
+const BROKEN_ENTER_SANITY = 0;
+const BROKEN_RECOVER_SANITY = 3;
+const BROKEN_ROUND_CAP = 1; // max Sanity gain per round while Broken
+
 export function createRoom(code, hostId) {
   return {
     code,
@@ -44,6 +57,8 @@ export function createRoom(code, hostId) {
     winner: null, // 'teens' | 'slasher'
     winReason: null,
     createdAt: Date.now(),
+    comfortPairsThisRound: new Set(),
+    horrorEvents: new Set(), // locationIds with an active Horror Event (blocks Rest there)
   };
 }
 
@@ -69,6 +84,16 @@ export function addPlayer(room, id, name, roleOverride) {
     specialCooldown: 0,
     ready: false,
     isBot: false,
+    broken: false,
+    hasBeenBroken: false,
+    traumaCard: null,
+    brokenGainRound: null,
+    brokenGainThisRound: 0,
+    restGainByLocation: {},
+    comfortGainTotal: 0,
+    comfortReceivedRound: null,
+    itemSanityGainTotal: 0,
+    objectiveSanityGainTotal: 0,
   });
 }
 
@@ -162,13 +187,23 @@ export function startGame(room) {
     p.items = [];
     p.hp = character.stats.health;
     p.hpMax = character.stats.health;
-    p.sanity = character.stats.sanity;
-    p.sanityMax = character.stats.sanity;
+    p.sanity = SANITY_START;
+    p.sanityMax = SANITY_MAX;
     p.hiding = false;
     p.searching = false;
     p.searchEndsAt = null;
     p.status = "alive";
     p.characterName = character.name;
+    p.broken = false;
+    p.hasBeenBroken = false;
+    p.traumaCard = null;
+    p.brokenGainRound = null;
+    p.brokenGainThisRound = 0;
+    p.restGainByLocation = {};
+    p.comfortGainTotal = 0;
+    p.comfortReceivedRound = null;
+    p.itemSanityGainTotal = 0;
+    p.objectiveSanityGainTotal = 0;
   });
   slasher.location = generated.startLocations.slasher;
   slasher.stalkStreak = 0;
@@ -187,6 +222,8 @@ export function startGame(room) {
   room.winner = null;
   room.winReason = null;
   room.log = [];
+  room.comfortPairsThisRound = new Set();
+  room.horrorEvents = new Set();
   log(room, "The static clears. The night begins.");
   return room;
 }
@@ -222,8 +259,8 @@ function lateGameTier(room) {
 }
 
 function sanityTier(player) {
-  if (player.sanity <= 0) return "panicked";
-  if (player.sanity <= 1) return "shaken";
+  if (player.sanity <= 2) return "panicked";
+  if (player.sanity <= 5) return "shaken";
   return "steady";
 }
 
@@ -234,24 +271,103 @@ function sanityPenalty(player) {
   return 0;
 }
 
-// Being alone drains Sanity; grouping up with teammates restores it (faster
-// if a Leader is present). Called once per completed teen turn.
-function applySanityTick(room, player) {
-  const roommates = aliveTeens(room).filter((t) => t.location === player.location);
-  const others = roommates.filter((t) => t.id !== player.id);
-  const before = sanityTier(player);
-  if (others.length > 0) {
-    const hasLeader = roommates.some((t) => t.pickId === "leader");
-    player.sanity = Math.min(player.sanityMax, player.sanity + (hasLeader ? 2 : 1));
-  } else {
-    const drain = lateGameTier(room) >= 2 ? 2 : 1;
-    player.sanity = Math.max(0, player.sanity - drain);
-  }
-  const after = sanityTier(player);
+// ---- Sanity Recovery Rules engine ----
+// Every Sanity change funnels through gainSanity/loseSanity so the Broken
+// state, the 10-point cap, and the once-per-game Broken rule are always
+// enforced in one place, no matter which of the five approved recovery
+// channels (Trauma/Card, Objectives, Items, Comfort, Rest) — or which loss
+// source (isolation, jump-scares, wounds) — triggered it.
+
+function logSanityTierChange(room, player, before, after) {
   if (after === before) return;
   if (after === "panicked") log(room, `${player.characterName} is panicking — their mind is unraveling.`);
   else if (after === "shaken") log(room, `${player.characterName} is badly shaken.`);
   else if (after === "steady") log(room, `${player.characterName} steadies their nerves.`);
+}
+
+function enterBroken(room, player) {
+  player.broken = true;
+  player.hasBeenBroken = true;
+  const card = drawTraumaCard();
+  player.traumaCard = card.text;
+  log(room, `${player.characterName} breaks down completely. [Trauma: ${card.text}]`);
+}
+
+// Applies Sanity loss (isolation drain, jump-scares, etc). Reaching 0 for
+// the first time makes the player Broken; if they've already recovered
+// from a prior Broken state once, they floor at 1 instead of breaking again.
+function loseSanity(room, player, amount) {
+  if (amount <= 0 || player.status !== "alive") return;
+  const before = sanityTier(player);
+  let next = player.sanity - amount;
+  if (next <= BROKEN_ENTER_SANITY) {
+    next = player.hasBeenBroken && !player.broken ? 1 : 0;
+  }
+  player.sanity = Math.max(0, next);
+  if (player.sanity <= BROKEN_ENTER_SANITY && !player.hasBeenBroken) enterBroken(room, player);
+  logSanityTierChange(room, player, before, sanityTier(player));
+}
+
+// Applies Sanity gain from an approved recovery source. While Broken, gain
+// is capped at BROKEN_ROUND_CAP per round regardless of source. Returns the
+// amount actually applied (after the Broken cap and the max-10 clamp), so
+// callers can charge their own per-source lifetime limit accurately.
+function gainSanity(room, player, amount) {
+  if (amount <= 0 || player.status !== "alive") return 0;
+  let allowed = amount;
+  if (player.broken) {
+    if (player.brokenGainRound !== room.round) {
+      player.brokenGainRound = room.round;
+      player.brokenGainThisRound = 0;
+    }
+    allowed = Math.max(0, Math.min(allowed, BROKEN_ROUND_CAP - player.brokenGainThisRound));
+  }
+  const before = sanityTier(player);
+  const startSanity = player.sanity;
+  player.sanity = Math.min(SANITY_MAX, player.sanity + allowed);
+  const actual = player.sanity - startSanity;
+  if (player.broken) player.brokenGainThisRound += actual;
+  if (player.broken && player.sanity >= BROKEN_RECOVER_SANITY) {
+    player.broken = false;
+    log(room, `${player.characterName} pulls themself back together.`);
+  }
+  logSanityTierChange(room, player, before, sanityTier(player));
+  return actual;
+}
+
+// Objective and Item recovery each have their own +4-per-game lifetime cap.
+// Grants are clipped to whatever headroom remains under that cap so the
+// running total can never exceed it.
+function grantObjectiveSanity(room, player, amount) {
+  const remaining = OBJECTIVE_SANITY_LIMIT - player.objectiveSanityGainTotal;
+  if (remaining <= 0) return 0;
+  const grant = Math.min(amount, remaining);
+  player.objectiveSanityGainTotal += grant;
+  return gainSanity(room, player, grant);
+}
+
+function grantItemSanity(room, player, amount) {
+  const remaining = ITEM_SANITY_LIMIT - player.itemSanityGainTotal;
+  if (remaining <= 0) return 0;
+  const grant = Math.min(amount, remaining);
+  player.itemSanityGainTotal += grant;
+  return gainSanity(room, player, grant);
+}
+
+// Hook for a future location-scoped Horror Event system; nothing currently
+// populates room.horrorEvents, so this is inert until one does.
+function hasActiveHorrorEvent(room, locationId) {
+  return room.horrorEvents.has(locationId);
+}
+
+// Isolation drains Sanity; grouping up with teammates only protects against
+// that drain now — actual recovery only comes from the five approved
+// channels (Rest, Comfort, Items, Objectives, Trauma/Card).
+function applySanityTick(room, player) {
+  const roommates = aliveTeens(room).filter((t) => t.location === player.location);
+  if (roommates.length > 1) return;
+  const drain = lateGameTier(room) >= 2 ? 2 : 1;
+  loseSanity(room, player, drain);
 }
 
 // The jump-scare of the Monster appearing costs Sanity immediately. Skipped
@@ -261,13 +377,7 @@ function scareTeensAt(room, locationId) {
   if (killer.id === "thing" && !room.thingRevealed) return;
   aliveTeens(room)
     .filter((t) => t.location === locationId)
-    .forEach((t) => {
-      const before = sanityTier(t);
-      t.sanity = Math.max(0, t.sanity - 1);
-      const after = sanityTier(t);
-      if (after !== before && after === "panicked") log(room, `${t.characterName} is panicking — their mind is unraveling.`);
-      else if (after !== before && after === "shaken") log(room, `${t.characterName} is badly shaken.`);
-    });
+    .forEach((t) => loseSanity(room, t, 1));
 }
 
 function advanceTurn(room) {
@@ -276,7 +386,10 @@ function advanceTurn(room) {
   if (n === 0) return;
   for (let i = 0; i < n; i++) {
     room.turnIndex = (room.turnIndex + 1) % n;
-    if (room.turnIndex === 0) room.round += 1;
+    if (room.turnIndex === 0) {
+      room.round += 1;
+      room.comfortPairsThisRound = new Set();
+    }
     const pid = currentPlayerId(room);
     const player = room.players.get(pid);
     if (player && player.status !== "dead" && player.status !== "escaped") break;
@@ -356,7 +469,17 @@ export function applyAction(room, playerId, action) {
   const result = player.role === "slasher" ? slasherAction(room, player, action) : teenAction(room, player, action);
   if (result?.error) return result;
 
-  if (player.role === "teen" && player.status === "alive" && result?.consumeTurn !== false) {
+  // Skip the ambient isolation tick on a turn where the action already
+  // attempted a Sanity recovery (Rest, a Sanity item, an objective reward)
+  // — even one fully capped to zero effect — otherwise a lone teen's own
+  // recovery action could get canceled out (or double-punished) by the
+  // same-turn passive drain.
+  if (
+    player.role === "teen" &&
+    player.status === "alive" &&
+    result?.consumeTurn !== false &&
+    !result?.sanityActionTaken
+  ) {
     applySanityTick(room, player);
   }
   if (player.role === "slasher" && action.type !== "shortcut" && player.specialCooldown > 0) {
@@ -438,6 +561,18 @@ function teenAction(room, player, action) {
         log(room, `${player.characterName} patches up with the ${item.name}.`);
         return { ok: true };
       }
+      if (item.utility === "sanity") {
+        const slasher = slasherOf(room);
+        const monsterHere = slasher && slasher.location === player.location;
+        if (item.noMonsterHere && monsterHere) return { error: "Not with the Slasher right here." };
+        if (player.sanity >= player.sanityMax) return { error: "You're already at ease." };
+        const grant = grantItemSanity(room, player, item.sanityAmount);
+        player.items.splice(idx, 1);
+        log(room, grant > 0
+          ? `${player.characterName} uses the ${item.name} and feels a little steadier.`
+          : `${player.characterName} uses the ${item.name}, but it doesn't seem to help anymore.`);
+        return { ok: true, sanityActionTaken: true };
+      }
       return { error: "That item can't be used directly." };
     }
     case "revive": {
@@ -451,6 +586,7 @@ function teenAction(room, player, action) {
       target.status = "alive";
       target.hp = REVIVE_HP;
       target.sanity = Math.max(1, Math.floor(target.sanityMax / 2));
+      if (target.broken && target.sanity >= BROKEN_RECOVER_SANITY) target.broken = false;
       log(room, `${player.characterName} revives ${target.characterName}!`);
       return { ok: true };
     }
@@ -472,8 +608,9 @@ function teenAction(room, player, action) {
       if (room.objectives.carRepaired) return { error: "The car is already running." };
       if (!player.items.some((it) => it.id === "tool_kit")) return { error: "You need a tool kit to repair the car." };
       room.objectives.carRepaired = true;
+      grantObjectiveSanity(room, player, 1);
       log(room, `${player.characterName} gets the engine running again.`);
-      return { ok: true };
+      return { ok: true, sanityActionTaken: true };
     }
     case "fight": {
       const slasher = slasherOf(room);
@@ -483,6 +620,7 @@ function teenAction(room, player, action) {
       const chance = FIGHT_BASE + character.stats.strength * FIGHT_STRENGTH_MULT + (weapon?.bonus ?? 0)
         - sanityPenalty(player) - lateGameTier(room) * 10;
       room.thingRevealed = true;
+      let killedMonster = false;
       if (roll(chance)) {
         let broke = false;
         if (weapon) {
@@ -499,12 +637,16 @@ function teenAction(room, player, action) {
         } else {
           room.monsterHp -= 1;
           log(room, `${player.characterName} wounds the monster with ${weaponName}! (${room.monsterHp}/${MONSTER_MAX_HP} HP left)${broke ? ` The ${weaponName} breaks in the process!` : ""}`);
+          if (room.monsterHp <= 0) {
+            grantObjectiveSanity(room, player, 2);
+            killedMonster = true;
+          }
         }
       } else {
         log(room, `${player.characterName} strikes and misses — the monster retaliates!`);
         applyWound(room, player, 1);
       }
-      return { ok: true };
+      return { ok: true, sanityActionTaken: killedMonster };
     }
     case "flee": {
       const slasher = slasherOf(room);
@@ -534,13 +676,15 @@ function teenAction(room, player, action) {
       }
       removeItems(player, have);
       room.monsterHp = 0;
+      grantObjectiveSanity(room, player, 2);
       log(room, `${player.characterName} performs the ritual. The monster is dragged screaming back into the tape.`);
-      return { ok: true };
+      return { ok: true, sanityActionTaken: true };
     }
     case "drive": {
       if (!loc.exit) return { error: "You need to find the way out first." };
       if (hasItems(player, ["car_keys", "gas_can"]).length < 2) return { error: "You need the car keys and a gas can." };
       if (!room.objectives.carRepaired) return { error: "The car still needs to be repaired first." };
+      grantObjectiveSanity(room, player, 2);
       player.status = "escaped";
       log(room, `${player.characterName} peels out and escapes!`);
       room.winner = "teens";
@@ -550,6 +694,45 @@ function teenAction(room, player, action) {
     }
     case "pass": {
       log(room, player.hiding ? `${player.characterName} stays hidden, listening.` : `${player.characterName} waits, listening.`);
+      return { ok: true };
+    }
+    case "rest": {
+      if (!loc.safe) return { error: "This isn't a safe place to rest." };
+      const slasher = slasherOf(room);
+      if (slasher && slasher.location === player.location) return { error: "You can't rest with the Slasher right here!" };
+      if (hasActiveHorrorEvent(room, player.location)) return { error: "Something's still wrong here — you can't settle down." };
+      if (player.sanity >= player.sanityMax) return { error: "You're already at ease." };
+      const gained = player.restGainByLocation[player.location] || 0;
+      if (gained >= REST_LOCATION_CAP) return { error: "You've calmed down as much as you can here. Try somewhere else." };
+      const grant = Math.min(REST_GAIN, REST_LOCATION_CAP - gained);
+      player.restGainByLocation[player.location] = gained + grant;
+      gainSanity(room, player, grant);
+      log(room, `${player.characterName} rests at ${loc.name} and steadies their nerves a little.`);
+      return { ok: true, sanityActionTaken: true };
+    }
+    case "comfort": {
+      const target = room.players.get(action.targetId);
+      if (!target || target.role !== "teen" || target.location !== player.location || target.status !== "alive") {
+        return { error: "That teammate isn't here." };
+      }
+      if (target.id === player.id) return { error: "You can't comfort yourself." };
+      if (target.comfortReceivedRound === room.round) {
+        return { error: `${target.characterName} already had someone comfort them this round.` };
+      }
+      if (target.comfortGainTotal >= COMFORT_LIMIT) {
+        return { error: `${target.characterName} doesn't need any more comforting.` };
+      }
+      if (room.comfortPairsThisRound.has(`${target.id}>${player.id}`)) {
+        return { error: "You two already comforted each other this round." };
+      }
+      const baseGain = player.pickId === "leader" ? 2 : COMFORT_GAIN;
+      const remaining = COMFORT_LIMIT - target.comfortGainTotal;
+      const grant = Math.min(baseGain, remaining);
+      target.comfortGainTotal += grant;
+      target.comfortReceivedRound = room.round;
+      room.comfortPairsThisRound.add(`${player.id}>${target.id}`);
+      gainSanity(room, target, grant);
+      log(room, `${player.characterName} comforts ${target.characterName}.`);
       return { ok: true };
     }
     default:
@@ -723,6 +906,7 @@ export function publicState(room, forPlayerId) {
       hiding: p.hiding,
       searching: p.searching,
       searchEndsAt: p.searchEndsAt,
+      broken: p.broken,
       ready: p.ready,
       itemCount: p.items.length,
     };

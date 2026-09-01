@@ -32,11 +32,23 @@ teammate, share items, or attempt to escape/banish the monster.
 
 ### Sanity
 
-Every teen has a Sanity meter alongside Health. Being alone drains it each
-turn; grouping up with a teammate restores it (faster with a Leader present).
-The Monster suddenly appearing also costs Sanity. Low Sanity makes every
-action less reliable, and a fully panicked teen can hallucinate or stumble
-into the wrong room while trying to move.
+Every teen has a Sanity meter (0–10, starting at 8) alongside Health. Being
+alone drains it each turn — grouping up with a teammate only stops the
+drain, it doesn't heal you — and the Monster suddenly appearing costs
+Sanity too. Low Sanity makes every action less reliable, and a fully
+panicked teen can hallucinate or stumble into the wrong room while trying
+to move.
+
+Recovering it takes a deliberate turn and one of five capped channels:
+**Rest** (+1, at a Safe Location, max 3 per location per game), **Comfort**
+(+1 to a teammate in your location, +2 from The Leader; max 3 received per
+game, once per round), **Sanity items** (Cassette Player/Family Photo +1,
+Favorite VHS +2; max 4 from items per game), and **Objectives** (repairing
+the car +1, banishing/destroying the Monster or escaping +2; max 4 from
+objectives per game). Hitting 0 makes a teen **Broken** — they draw a
+Trauma Card and can only recover 1 Sanity per round until they reach 3
+again; it can only happen once per game, after which a bad scare bottoms
+them out at 1 Sanity instead.
 
 ### Teens
 

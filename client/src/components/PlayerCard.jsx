@@ -4,8 +4,8 @@ import HealthBar from "./HealthBar";
 import ObjectiveTracker from "./ObjectiveTracker";
 
 function sanityTier(sanity) {
-  if (sanity <= 0) return "panicked";
-  if (sanity <= 1) return "shaken";
+  if (sanity <= 2) return "panicked";
+  if (sanity <= 5) return "shaken";
   return "steady";
 }
 
@@ -30,7 +30,11 @@ export default function PlayerCard({ me, carRepaired }) {
         <>
           <HealthBar hp={me.hp} max={me.hpMax} kind="teen" label="Health" />
           <HealthBar hp={me.sanity} max={me.sanityMax} kind="sanity" label="Sanity" />
-          {tier !== "steady" && (
+          {me.broken ? (
+            <div className="sanity-status panicked">
+              BROKEN — recover to 3 Sanity to steady yourself
+            </div>
+          ) : tier !== "steady" && (
             <div className={`sanity-status ${tier}`}>
               {tier === "panicked" ? "Panicked — actions are much less reliable" : "Shaken — actions are less reliable"}
             </div>

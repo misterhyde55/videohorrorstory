@@ -16,12 +16,15 @@ export const ITEMS = {
   cursed_tape: { id: "cursed_tape", name: "Cursed VHS Tape", flavor: "Static crawls across the label.", kit: "banish" },
   flashlight: { id: "flashlight", name: "Flashlight", flavor: "Cuts through the dark. Improves your searching.", utility: "search_bonus" },
   first_aid: { id: "first_aid", name: "First Aid Kit", flavor: "Patches you up — or brings someone back.", utility: "heal" },
+  cassette_player: { id: "cassette_player", name: "Cassette Player", flavor: "Warped tape, but the mixtape still plays.", utility: "sanity", sanityAmount: 1 },
+  family_photo: { id: "family_photo", name: "Family Photo", flavor: "Creased at the corners from being carried everywhere.", utility: "sanity", sanityAmount: 1, noMonsterHere: true },
+  favorite_vhs: { id: "favorite_vhs", name: "Favorite VHS", flavor: "You've watched this a hundred times. It still helps.", utility: "sanity", sanityAmount: 2, noMonsterHere: true },
 };
 
 // Search pools: weighted lists of item ids (or null for "nothing").
 const POOLS = {
-  light: ["flashlight", null, null, "first_aid", null],
-  medium: ["car_keys", "gas_can", "tool_kit", "ritual_candle", null, "first_aid", null],
+  light: ["flashlight", null, null, "first_aid", "cassette_player", "family_photo", null],
+  medium: ["car_keys", "gas_can", "tool_kit", "ritual_candle", null, "first_aid", "favorite_vhs", null],
   heavy: ["machete", "shotgun", "fireaxe", "occult_book", "cursed_tape", null],
 };
 
@@ -53,4 +56,17 @@ export const HALLUCINATIONS = [
 
 export function randomHallucination(rng = Math.random) {
   return HALLUCINATIONS[Math.floor(rng() * HALLUCINATIONS.length)];
+}
+
+// Drawn once when a teen's Sanity hits 0 and they become Broken. Flavor
+// only — no unique mechanical effect beyond the standard Broken state.
+export const TRAUMA_CARDS = [
+  { id: "cant_stop_shaking", text: "Can't Stop Shaking — you flinch at every sound for the rest of the night." },
+  { id: "thousand_yard_stare", text: "Thousand-Yard Stare — you keep seeing it, even when it isn't there." },
+  { id: "frozen_up", text: "Frozen Up — your hands won't stop trembling." },
+  { id: "cold_sweat", text: "Cold Sweat — you can't shake the feeling you're being watched." },
+];
+
+export function drawTraumaCard(rng = Math.random) {
+  return TRAUMA_CARDS[Math.floor(rng() * TRAUMA_CARDS.length)];
 }

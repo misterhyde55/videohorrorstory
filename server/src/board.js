@@ -21,11 +21,13 @@ const RITUAL_TEMPLATES = [
 
 const CAR_SITE_TEMPLATE = { name: "Parking Lot", description: "A battered station wagon sits here, out of gas.", type: "lot", searchPool: "light" };
 
+// safe: true marks a Safe Location — teens can Rest there (see gameState.js)
+// as long as the Monster isn't in the room with them.
 const GENERAL_TEMPLATES = [
-  { name: "Main Lodge", description: "The counselors' lodge. Someone left the lights on.", type: "lodge", searchPool: "medium" },
+  { name: "Main Lodge", description: "The counselors' lodge. Someone left the lights on.", type: "lodge", searchPool: "medium", safe: true },
   { name: "Mess Hall", description: "Rows of long tables. A knife block sits by the kitchen.", type: "hall", searchPool: "medium" },
-  { name: "Cabin Row A", description: "Bunks and graffiti from summers past.", type: "cabin", searchPool: "light" },
-  { name: "Cabin Row B", description: "The last cabin's door hangs off its hinges.", type: "cabin", searchPool: "light" },
+  { name: "Cabin Row A", description: "Bunks and graffiti from summers past.", type: "cabin", searchPool: "light", safe: true },
+  { name: "Cabin Row B", description: "The last cabin's door hangs off its hinges.", type: "cabin", searchPool: "light", safe: true },
   { name: "Boat House", description: "The lake laps against rotted docks.", type: "water", searchPool: "medium" },
   { name: "North Trail", description: "Trees close in on both sides. Something is watching.", type: "trail", searchPool: "light" },
   { name: "South Trail", description: "A narrow trail swallowed by fog.", type: "trail", searchPool: "light" },
@@ -34,11 +36,11 @@ const GENERAL_TEMPLATES = [
   { name: "Gas Station", description: "A single rusted pump out front. The bell over the door doesn't ring anymore.", type: "lot", searchPool: "medium" },
   { name: "Video Store", description: "Rows of tapes nobody's returned in years.", type: "store", searchPool: "medium" },
   { name: "Old Movie Theater", description: "The marquee still flickers, half-lit.", type: "theater", searchPool: "heavy" },
-  { name: "High School Gym", description: "Bleachers gather dust under a busted scoreboard.", type: "school", searchPool: "medium" },
-  { name: "Diner", description: "Cold coffee still sits on the counter.", type: "store", searchPool: "light" },
+  { name: "High School Gym", description: "Bleachers gather dust under a busted scoreboard.", type: "school", searchPool: "medium", safe: true },
+  { name: "Diner", description: "Cold coffee still sits on the counter.", type: "store", searchPool: "light", safe: true },
   { name: "Garage", description: "Tools hang on pegboards, half in shadow.", type: "barn", searchPool: "heavy" },
   { name: "Cemetery", description: "Headstones lean at odd angles in the fog.", type: "graveyard", searchPool: "light" },
-  { name: "Church", description: "Pews are overturned. The doors won't lock.", type: "church", searchPool: "medium" },
+  { name: "Church", description: "Pews are overturned. The doors won't lock.", type: "church", searchPool: "medium", safe: true },
 ];
 
 const GENERAL_COUNT = 12;
@@ -204,6 +206,7 @@ export function generateBoard(rng = Math.random) {
       type: n.type,
       searchPool: n.searchPool,
       connections: [...adjacency.get(n.id)],
+      safe: !!n.safe,
       ...(n.exit ? { exit: true } : {}),
       ...(n.ritualSite ? { ritualSite: true } : {}),
       ...(n.carSite ? { carSite: true } : {}),
