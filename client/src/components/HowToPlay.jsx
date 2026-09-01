@@ -100,6 +100,13 @@ export default function HowToPlay({ onClose }) {
               in place to build up a stalking bonus, sabotage a repaired car at the
               Parking Lot, or use your special ability once it's off cooldown.
             </p>
+            <p>
+              You can't move (or use your special ability) for your first 2 turns —
+              a head start for the teens. Your attacks also start out weak, ease
+              back to normal by the time the clock's about 40% gone, then get more
+              dangerous as it runs low, so the back half of the night is when you
+              really come into your own.
+            </p>
           </section>
 
           <section>

@@ -12,6 +12,9 @@ function computeTip(state, me) {
     if (teensHere.length > 0) {
       return "🔪 A teen is right here — Attack!";
     }
+    if (state.slasherFrozen) {
+      return "🕐 You're still getting your bearings — you can't move for a couple of turns. Lurk and wait.";
+    }
     if (me.specialCooldown === 0) {
       return "⚡ Your special ability is ready — try it on a teen elsewhere on the map.";
     }

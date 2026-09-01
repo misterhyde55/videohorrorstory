@@ -227,13 +227,19 @@ function SlasherActions({ state, me, loc, onError }) {
   return (
     <div className="action-panel">
       <h4>Your Turn — {loc.name}</h4>
-      <ActionGroup title="Move to">
-        {loc.connections.map((toId) => (
-          <button key={toId} className="btn btn-move" onClick={() => act({ type: "move", to: toId }, onError)}>
-            {state.board[toId].name}
-          </button>
-        ))}
-      </ActionGroup>
+      {state.slasherFrozen ? (
+        <div className="sense-banner">
+          🩸 Still getting your bearings — you can't move for your first couple of turns. Attack, Lurk, or Sabotage still work if a teen wanders up.
+        </div>
+      ) : (
+        <ActionGroup title="Move to">
+          {loc.connections.map((toId) => (
+            <button key={toId} className="btn btn-move" onClick={() => act({ type: "move", to: toId }, onError)}>
+              {state.board[toId].name}
+            </button>
+          ))}
+        </ActionGroup>
+      )}
       {targets.length > 0 && (
         <ActionGroup title="Attack">
           {targets.map((t) => (
@@ -254,7 +260,7 @@ function SlasherActions({ state, me, loc, onError }) {
           <button className="btn btn-danger" onClick={() => act({ type: "sabotage" }, onError)}>Sabotage the Car</button>
         )}
       </ActionGroup>
-      {shortcutTargets.length > 0 && (
+      {!state.slasherFrozen && shortcutTargets.length > 0 && (
         <ActionGroup title={`Special — ${specialLabel}${specialReady ? "" : ` (ready in ${me.specialCooldown})`}`}>
           {shortcutTargets.map((t) => (
             <button

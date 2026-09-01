@@ -23,6 +23,17 @@ const HALLUCINATION_CHANCE = 30;
 const REVIVE_HP = 1;
 const SEARCH_DURATION_MS = 10000;
 
+// The Slasher can't move (or shortcut) for its first 2 turns — a head
+// start so teens can scatter and gear up before the hunt begins.
+const SLASHER_FROZEN_ROUNDS = 2;
+
+// Killer attack-chance ramp: weak at the start of the clock, normal by the
+// midgame, and dangerous again in the final third (see difficultyModifier).
+const EARLY_GAME_PENALTY_TIER1 = 20; // first ~20% of the clock elapsed
+const EARLY_GAME_PENALTY_TIER2 = 10; // ~20-40% elapsed
+const EARLY_GAME_TIER1_ELAPSED = 0.2;
+const EARLY_GAME_TIER2_ELAPSED = 0.4;
+
 // ---- Sanity Recovery Rules (exact spec) ----
 const SANITY_MAX = 10;
 const SANITY_START = 8;
@@ -214,7 +225,8 @@ export function startGame(room, { durationMs } = {}) {
   room.turnOrder = [...teens.map((p) => p.id), slasher.id];
   room.turnIndex = 0;
   room.round = 1;
-  room.endsAt = Date.now() + (durationMs ?? GAME_DURATION_MS);
+  room.gameDurationMs = durationMs ?? GAME_DURATION_MS;
+  room.endsAt = Date.now() + room.gameDurationMs;
   room.monsterHp = MONSTER_MAX_HP;
   room.monsterStunned = false;
   room.killerId = slasher.pickId;
@@ -251,12 +263,27 @@ function neighborsOf(room, locationId) {
 
 // 0 = normal, 1 = final third of the clock, 2 = final countdown. The Monster
 // hits harder and Sanity drains faster for isolated teens as this rises.
+// Scaled to the room's own clock (GAME_DURATION_MS normally, but a shorter
+// practice match runs its own faster arc) rather than a fixed duration.
 function lateGameTier(room) {
   if (!room.endsAt) return 0;
-  const fraction = (room.endsAt - Date.now()) / GAME_DURATION_MS;
+  const fraction = (room.endsAt - Date.now()) / (room.gameDurationMs ?? GAME_DURATION_MS);
   if (fraction <= 0.15) return 2;
   if (fraction <= 0.33) return 1;
   return 0;
+}
+
+// The Monster's attack chance ramps up over the course of the match: eased
+// in for the first ~40% of the clock so a fresh encounter isn't an instant
+// death sentence, back to normal through the midgame, then the existing
+// late-game tiers make it dangerous again as the clock runs out.
+function killerDifficultyModifier(room) {
+  if (!room.endsAt) return -EARLY_GAME_PENALTY_TIER1;
+  const total = room.gameDurationMs ?? GAME_DURATION_MS;
+  const elapsedFraction = 1 - (room.endsAt - Date.now()) / total;
+  if (elapsedFraction <= EARLY_GAME_TIER1_ELAPSED) return -EARLY_GAME_PENALTY_TIER1;
+  if (elapsedFraction <= EARLY_GAME_TIER2_ELAPSED) return -EARLY_GAME_PENALTY_TIER2;
+  return lateGameTier(room) * 10;
 }
 
 function sanityTier(player) {
@@ -802,9 +829,11 @@ function slasherAction(room, player, action) {
   }
 
   const killer = killerInfo(room);
+  const frozen = room.round <= SLASHER_FROZEN_ROUNDS;
 
   switch (action.type) {
     case "move": {
+      if (frozen) return { error: "The Slasher is still getting its bearings and can't move yet." };
       if (!neighborsOf(room, player.location).includes(action.to)) return { error: "That location isn't reachable from here." };
       player.location = action.to;
       player.stalkStreak = 0;
@@ -828,7 +857,7 @@ function slasherAction(room, player, action) {
         return { ok: true, searchStarted: { teenId: target.id, endsAt: target.searchEndsAt } };
       }
 
-      const chance = killer.attackBase + player.stalkStreak * killer.stalkBonus + lateGameTier(room) * 10;
+      const chance = killer.attackBase + player.stalkStreak * killer.stalkBonus + killerDifficultyModifier(room);
       if (roll(chance)) {
         const dmg = killer.id === "thing" ? 2 : 1;
         log(room, killer.id === "thing"
@@ -856,6 +885,7 @@ function slasherAction(room, player, action) {
       return { ok: true };
     }
     case "shortcut": {
+      if (frozen) return { error: "The Slasher is still getting its bearings and can't move yet." };
       if (player.specialCooldown > 0) return { error: `Not ready yet (${player.specialCooldown} more turn(s)).` };
       const target = room.players.get(action.targetId);
       if (!target || target.role !== "teen" || target.status === "dead" || target.status === "escaped") {
@@ -932,6 +962,7 @@ export function publicState(room, forPlayerId) {
     monsterMaxHp: MONSTER_MAX_HP,
     monsterStunned: room.monsterStunned,
     practice: room.practice,
+    slasherFrozen: room.phase === "playing" && room.round <= SLASHER_FROZEN_ROUNDS,
     objectives: room.objectives,
     log: room.log.slice(-50),
     winner: room.winner,
@@ -986,6 +1017,9 @@ export function decideBotAction(room, bot) {
 
   const teensAlive = aliveTeens(room);
   if (teensAlive.length === 0) return { type: "lurk" };
+
+  // Can't move or shortcut yet — still within the opening head-start window.
+  if (room.round <= SLASHER_FROZEN_ROUNDS) return { type: "lurk" };
 
   if (bot.specialCooldown === 0 && Math.random() < 0.35) {
     const target = teensAlive[Math.floor(Math.random() * teensAlive.length)];

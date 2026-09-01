@@ -28,8 +28,12 @@ while one player controls the Slasher stalking them.
 out before the teens finish the job.
 
 Play proceeds in turn order (each teen, then the Slasher, repeating), with a
-live 10-minute countdown running the whole game. As the clock runs low, the
-Monster hits harder and isolated teens lose Sanity faster. On your turn you
+live 10-minute countdown running the whole game. The Slasher can't move (or
+use its special ability) for its first 2 turns — a head start for the teens
+to scatter and gear up before the hunt begins. Its attacks also start out
+weak, ease up to normal by the time the clock's about 40% gone, and then get
+more dangerous as the clock runs low, alongside isolated teens losing Sanity
+faster. On your turn you
 can move, search, fight or flee the Slasher, repair the car, revive a fallen
 teammate, share items, or attempt to escape/banish the monster.
 
