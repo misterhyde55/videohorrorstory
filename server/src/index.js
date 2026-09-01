@@ -21,6 +21,7 @@ import {
   checkClockExpired,
   decideBotAction,
   publicState,
+  reportHoldBreath,
   KILLER_IDS,
 } from "./gameState.js";
 
@@ -66,6 +67,21 @@ function broadcast(code) {
   maybeRunBot(code);
 }
 
+// If an action started a timed search (the Slasher cornered a hiding teen),
+// schedule a server-side fallback that resolves it as a failed hold-breath
+// if the client never reports back (e.g. the tab is idle or disconnects) —
+// this is what makes ignoring the search actually costly.
+function scheduleSearchSettlement(code, result) {
+  if (!result?.searchStarted) return;
+  const { teenId, endsAt } = result.searchStarted;
+  setTimeout(() => {
+    const liveRoom = rooms.get(code);
+    if (!liveRoom) return;
+    reportHoldBreath(liveRoom, teenId, false);
+    broadcast(code);
+  }, Math.max(0, endsAt - Date.now()) + 1200);
+}
+
 // If it's currently a bot's turn, schedule it to act after a short "thinking"
 // delay. Guarded by botTimersPending so a burst of broadcasts never queues
 // more than one pending move per room.
@@ -84,7 +100,8 @@ function maybeRunBot(code) {
     const liveId = liveRoom.turnOrder[liveRoom.turnIndex];
     const liveBot = liveRoom.players.get(liveId);
     if (!liveBot?.isBot) return;
-    applyAction(liveRoom, liveId, decideBotAction(liveRoom, liveBot));
+    const result = applyAction(liveRoom, liveId, decideBotAction(liveRoom, liveBot));
+    scheduleSearchSettlement(code, result);
     broadcast(code);
   }, 1100 + Math.random() * 700);
 }
@@ -222,7 +239,17 @@ io.on("connection", (socket) => {
     const room = rooms.get(meta.code);
     if (!room) return;
     const result = applyAction(room, meta.playerId, action);
+    scheduleSearchSettlement(meta.code, result);
     ack?.(result);
+    broadcast(meta.code);
+  });
+
+  socket.on("hold_breath_result", ({ success }) => {
+    const meta = socketMeta.get(socket.id);
+    if (!meta) return;
+    const room = rooms.get(meta.code);
+    if (!room) return;
+    reportHoldBreath(room, meta.playerId, !!success);
     broadcast(meta.code);
   });
 

@@ -186,7 +186,10 @@ function TeenActions({ state, me, loc, onError }) {
 
 function SlasherActions({ state, me, loc, onError }) {
   const targets = state.players.filter(
-    (p) => p.role === "teen" && p.location === me.location && p.status !== "dead" && p.status !== "escaped"
+    (p) => p.role === "teen" && p.location === me.location && p.status !== "dead" && p.status !== "escaped" && !p.searching
+  );
+  const searchingHere = state.players.filter(
+    (p) => p.role === "teen" && p.location === me.location && p.searching
   );
   const shortcutTargets = state.players.filter(
     (p) => p.role === "teen" && p.location !== me.location && p.status !== "dead" && p.status !== "escaped"
@@ -210,10 +213,15 @@ function SlasherActions({ state, me, loc, onError }) {
         <ActionGroup title="Attack">
           {targets.map((t) => (
             <button key={t.id} className="btn btn-danger" onClick={() => act({ type: "attack", targetId: t.id }, onError)}>
-              Attack {t.characterName}
+              {t.hiding ? `Search for ${t.characterName}` : `Attack ${t.characterName}`}
             </button>
           ))}
         </ActionGroup>
+      )}
+      {searchingHere.length > 0 && (
+        <div className="sense-banner">
+          Already searching for {searchingHere.map((t) => t.characterName).join(", ")}…
+        </div>
       )}
       <ActionGroup title="Actions">
         <button className="btn btn-ghost" onClick={() => act({ type: "lurk" }, onError)}>Lurk in the Shadows</button>

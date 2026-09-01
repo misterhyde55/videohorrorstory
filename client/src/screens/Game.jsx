@@ -25,7 +25,7 @@ export default function GameScreen({ state, playerId, onLeave }) {
   const seconds = totalSeconds % 60;
   const clockLabel = `${minutes}:${String(seconds).padStart(2, "0")}`;
   const clockTier = totalSeconds <= 90 ? "danger" : totalSeconds <= 198 ? "warn" : "";
-  const showHoldBreath = me.role === "teen" && me.hiding && state.slasherPresent && state.phase === "playing";
+  const showHoldBreath = me.role === "teen" && me.searching && state.phase === "playing";
 
   return (
     <div className="game-layout">
@@ -39,7 +39,9 @@ export default function GameScreen({ state, playerId, onLeave }) {
 
       {error && <div className="banner banner-error" onAnimationEnd={() => setError("")}>{error}</div>}
 
-      {showHoldBreath && <HoldYourBreath key={state.turnPlayerId + String(state.round)} />}
+      {showHoldBreath && (
+        <HoldYourBreath key={state.turnPlayerId + String(state.round)} searchEndsAt={me.searchEndsAt} />
+      )}
 
       {state.phase === "ended" ? (
         <div className={`endgame ${state.winner}`}>
@@ -48,21 +50,19 @@ export default function GameScreen({ state, playerId, onLeave }) {
           <button className="btn btn-primary" onClick={onLeave} type="button">Back to Menu</button>
         </div>
       ) : (
-        <>
-          <Board
-            board={state.board}
-            layout={state.layout}
-            players={state.players}
-            me={playerId}
-            myLocation={me.location}
-            slasherNearby={state.slasherNearby}
-          />
-          <ActionPanel state={state} me={me} onError={setError} />
-        </>
+        <Board
+          board={state.board}
+          layout={state.layout}
+          players={state.players}
+          me={playerId}
+          myLocation={me.location}
+          slasherNearby={state.slasherNearby}
+        />
       )}
 
       <div className="game-sidebar">
         <PlayerCard me={me} carRepaired={state.objectives?.carRepaired} />
+        {state.phase !== "ended" && <ActionPanel state={state} me={me} onError={setError} />}
         <PartyStatus players={state.players} me={playerId} monsterHp={state.monsterHp} monsterMaxHp={state.monsterMaxHp} />
         <h4>Camp Log</h4>
         <LogFeed log={state.log} />

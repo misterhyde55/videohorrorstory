@@ -14,7 +14,6 @@ const STUN_CHANCE = 50;
 const FLEE_BASE = 30;
 const FLEE_STEALTH_MULT = 12;
 const STALKER_FLEE_PENALTY = 15;
-const HIDING_DEFENSE = 35;
 
 const SHAKEN_PENALTY = 10;
 const PANIC_PENALTY = 20;
@@ -22,6 +21,7 @@ const PANIC_STUMBLE_CHANCE = 20;
 const HALLUCINATION_CHANCE = 30;
 
 const REVIVE_HP = 1;
+const SEARCH_DURATION_MS = 10000;
 
 export function createRoom(code, hostId) {
   return {
@@ -62,6 +62,8 @@ export function addPlayer(room, id, name, roleOverride) {
     sanity: 0,
     sanityMax: 0,
     hiding: false,
+    searching: false,
+    searchEndsAt: null,
     status: "alive", // alive | dead | escaped
     stalkStreak: 0,
     specialCooldown: 0,
@@ -163,6 +165,8 @@ export function startGame(room) {
     p.sanity = character.stats.sanity;
     p.sanityMax = character.stats.sanity;
     p.hiding = false;
+    p.searching = false;
+    p.searchEndsAt = null;
     p.status = "alive";
     p.characterName = character.name;
   });
@@ -361,7 +365,7 @@ export function applyAction(room, playerId, action) {
 
   checkWin(room);
   if (!room.winner && result?.consumeTurn !== false) advanceTurn(room);
-  return { ok: true };
+  return result?.searchStarted ? { ok: true, searchStarted: result.searchStarted } : { ok: true };
 }
 
 function teenAction(room, player, action) {
@@ -372,6 +376,10 @@ function teenAction(room, player, action) {
 
   if (tier === "panicked" && roll(HALLUCINATION_CHANCE)) {
     log(room, `${player.characterName}: "${randomHallucination()}"`);
+  }
+
+  if (player.searching && action.type === "move") {
+    resolveSearch(room, player.id, true);
   }
 
   if (player.hiding && !["hide", "pass"].includes(action.type)) {
@@ -559,6 +567,49 @@ function applyWound(room, player, amount) {
   }
 }
 
+// Resolves a search that was started when the Slasher cornered a hiding
+// teen. heldBreath=true means the teen survived the 10-second window
+// (mashed space in time, or acted their way out); heldBreath=false means
+// they were caught still and get one automatic chance to bolt.
+export function resolveSearch(room, teenId, heldBreath) {
+  const player = room.players.get(teenId);
+  if (!player || !player.searching) return null;
+  player.searching = false;
+  player.searchEndsAt = null;
+
+  if (heldBreath) {
+    player.hiding = true;
+    log(room, `${player.characterName} holds perfectly still. The Killer moves on without finding them.`);
+    return { found: false };
+  }
+
+  player.hiding = false;
+  const character = TEEN_CHARACTERS[player.pickId];
+  const killer = killerInfo(room);
+  const chance = FLEE_BASE + character.stats.stealth * FLEE_STEALTH_MULT
+    - sanityPenalty(player) - lateGameTier(room) * 10
+    - (killer.id === "stalker" ? STALKER_FLEE_PENALTY : 0);
+  const options = neighborsOf(room, player.location);
+  const dest = options[Math.floor(Math.random() * options.length)];
+
+  if (dest && roll(chance)) {
+    player.location = dest;
+    log(room, `${player.characterName} is found — but scrambles away to ${room.board[dest].name}!`);
+  } else {
+    log(room, `${player.characterName} is found and caught!`);
+    applyWound(room, player, killer.id === "thing" ? 2 : 1);
+    checkWin(room);
+  }
+  return { found: true };
+}
+
+export function reportHoldBreath(room, playerId, success) {
+  const player = room.players.get(playerId);
+  if (!player || !player.searching) return { error: "No active search." };
+  resolveSearch(room, playerId, success);
+  return { ok: true };
+}
+
 function slasherAction(room, player, action) {
   if (room.monsterStunned) {
     room.monsterStunned = false;
@@ -582,22 +633,27 @@ function slasherAction(room, player, action) {
       if (!target || target.role !== "teen" || target.location !== player.location || target.status === "dead" || target.status === "escaped") {
         return { error: "That target isn't here." };
       }
-      const chance = killer.attackBase + player.stalkStreak * killer.stalkBonus + lateGameTier(room) * 10
-        - (target.hiding ? HIDING_DEFENSE : 0);
+      if (target.searching) return { error: "Already searching for them..." };
       room.thingRevealed = true;
+      player.stalkStreak = 0;
+
+      if (target.hiding) {
+        target.searching = true;
+        target.searchEndsAt = Date.now() + SEARCH_DURATION_MS;
+        log(room, `The ${killer.name} corners ${target.characterName}'s hiding spot and starts searching...`);
+        return { ok: true, searchStarted: { teenId: target.id, endsAt: target.searchEndsAt } };
+      }
+
+      const chance = killer.attackBase + player.stalkStreak * killer.stalkBonus + lateGameTier(room) * 10;
       if (roll(chance)) {
         const dmg = killer.id === "thing" ? 2 : 1;
-        target.hiding = false;
         log(room, killer.id === "thing"
           ? `Something wrong unfolds where ${target.characterName} was standing!`
           : `The Slasher strikes ${target.characterName}!`);
         applyWound(room, target, dmg);
-      } else if (target.hiding) {
-        log(room, `The Slasher creeps right past ${target.characterName} — they don't notice!`);
       } else {
         log(room, `The attack lunges at ${target.characterName} and misses!`);
       }
-      player.stalkStreak = 0;
       return { ok: true };
     }
     case "lurk": {
@@ -665,6 +721,8 @@ export function publicState(room, forPlayerId) {
       sanity: p.sanity,
       sanityMax: p.sanityMax,
       hiding: p.hiding,
+      searching: p.searching,
+      searchEndsAt: p.searchEndsAt,
       ready: p.ready,
       itemCount: p.items.length,
     };
@@ -725,10 +783,14 @@ function stepTowardNearestTeen(room, fromLocation) {
 
 export function decideBotAction(room, bot) {
   const teensHere = aliveTeens(room).filter((t) => t.location === bot.location);
-  if (teensHere.length > 0) {
-    const target = teensHere.find((t) => t.pickId === "rebel")
-      || teensHere.reduce((weakest, t) => (t.hp < weakest.hp ? t : weakest), teensHere[0]);
+  const attackable = teensHere.filter((t) => !t.searching);
+  if (attackable.length > 0) {
+    const target = attackable.find((t) => t.pickId === "rebel")
+      || attackable.reduce((weakest, t) => (t.hp < weakest.hp ? t : weakest), attackable[0]);
     return { type: "attack", targetId: target.id };
+  }
+  if (teensHere.length > 0) {
+    return { type: "lurk" };
   }
 
   if (room.board[bot.location]?.carSite && room.objectives.carRepaired) {

@@ -355,14 +355,13 @@
   gap: 1rem;
   grid-template-areas:
     "top top"
-    "board sidebar"
-    "actions sidebar";
+    "board sidebar";
 }
 
 @media (max-width: 900px) {
   .game-layout {
     grid-template-columns: 1fr;
-    grid-template-areas: "top" "board" "actions" "sidebar";
+    grid-template-areas: "top" "board" "sidebar";
   }
 }
 
@@ -581,7 +580,7 @@
 }
 
 .action-panel {
-  grid-area: actions;
+  flex-shrink: 0;
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
   border-radius: 10px;
@@ -1417,6 +1416,15 @@
 
 .hold-breath-overlay.critical {
   animation: shake 0.4s infinite;
+}
+
+.hold-breath-countdown {
+  font-size: 1.6rem;
+  font-weight: bold;
+  color: var(--neon-cyan);
+  letter-spacing: 0.1em;
+  margin-bottom: 0.5rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .breath-button {

@@ -19,7 +19,7 @@ while one player controls the Slasher stalking them.
 - 🚗 **Escape** — find the Car Keys, a Gas Can, and a Tool Kit; repair the car where it's parked; then drive away from the exit. The Slasher can sabotage a repaired car, so don't wait too long.
 - 🔪 **Fight it off** — find a weapon and confront the monster. A hit either stuns it (skips its next turn) or wounds it; enough wounds destroys it. Weapons wear out and break after a few uses.
 - 📼 **Banish it** — gather the Black Candle, Occult Book, and Cursed VHS Tape, then perform the ritual at the ritual site.
-- 🤫 **Hide** — toggle Hide on your turn to hold still, giving a big defense bonus if the Slasher finds you. While it's in your location you can mash SPACE (or tap the on-screen button) for the "hold your breath" tension moment.
+- 🤫 **Hide** — toggle Hide on your turn to hold still. If the Slasher finds your hiding spot it searches for a tense 10-second countdown: mash SPACE (or tap the on-screen button) to hold your breath and stay hidden. Fail — or ignore it — and you get one automatic chance to bolt to a nearby location before the Slasher catches you.
 
 **The Slasher** wins if every teen is killed, or if the 10-minute clock runs
 out before the teens finish the job.
