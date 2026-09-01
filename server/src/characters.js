@@ -46,6 +46,8 @@ export const KILLERS = {
     icon: "🔪",
     tagline: "Slow. Silent. Never stops.",
     ability: "Relentless — hits harder the longer it stalks a target, escape attempts against it are less likely to work, and it can shortcut straight to any teen it's tracking.",
+    attackBase: 45,
+    stalkBonus: 18,
   },
   thing: {
     id: "thing",
@@ -53,6 +55,8 @@ export const KILLERS = {
     icon: "🛸",
     tagline: "It could be anyone. It could be anything.",
     ability: "Mimicry — stays hidden in plain sight until it strikes, and a successful attack is devastating.",
+    attackBase: 35,
+    stalkBonus: 12,
   },
 };
 

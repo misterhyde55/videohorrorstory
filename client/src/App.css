@@ -408,13 +408,13 @@
   background: #150a24;
   border: 1px solid var(--panel-border);
   border-radius: 10px;
-  min-height: 640px;
+  min-height: 920px;
   overflow: hidden;
 }
 
 @media (max-width: 900px) {
   .board-map {
-    min-height: 480px;
+    min-height: 620px;
   }
 }
 
@@ -462,15 +462,22 @@
 .map-node {
   position: absolute;
   transform: translate(-50%, -50%);
-  background: rgba(20, 8, 30, 0.85);
+  background: rgba(20, 8, 30, 0.9);
   backdrop-filter: blur(1px);
   border: 1px solid var(--panel-border);
   border-radius: 8px;
-  padding: 0.55rem 0.8rem;
-  min-width: 128px;
+  padding: 0.5rem 0.6rem;
+  min-width: 100px;
+  max-width: 128px;
   text-align: center;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   transition: border-color 0.2s, box-shadow 0.2s;
+  z-index: 1;
+}
+
+.map-node.here,
+.map-node:hover {
+  z-index: 3;
 }
 
 .map-node.here {
@@ -484,6 +491,10 @@
 
 .map-node.exit {
   border-color: var(--neon-green);
+}
+
+.map-node.carsite {
+  border-color: #ffb347;
 }
 
 .map-node.sensed {
@@ -539,8 +550,20 @@
 }
 
 .token-slasher {
+  width: 2.3rem;
+  height: 2.3rem;
+  font-size: 1.15rem;
   background: var(--neon-pink);
   color: white;
+  box-shadow: 0 0 14px rgba(255, 46, 136, 0.9), 0 0 28px rgba(255, 46, 136, 0.5);
+  border: 2px solid #fff2f8;
+  z-index: 2;
+  animation: slasherPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes slasherPulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 14px rgba(255, 46, 136, 0.9), 0 0 28px rgba(255, 46, 136, 0.5); }
+  50% { transform: scale(1.15); box-shadow: 0 0 20px rgba(255, 46, 136, 1), 0 0 40px rgba(255, 46, 136, 0.7); }
 }
 
 .token.dead {
@@ -550,6 +573,11 @@
 
 .token-me {
   outline: 3px solid white;
+}
+
+.token.hiding {
+  opacity: 0.55;
+  border: 2px dashed #cbb8e8;
 }
 
 .action-panel {
@@ -813,6 +841,12 @@
   border-color: var(--neon-pink);
   color: #ffd4e6;
   animation: shake 0.8s infinite;
+}
+
+.sense-banner.hiding-banner {
+  background: rgba(203, 184, 232, 0.1);
+  border-color: #8a7aa0;
+  color: #cbb8e8;
 }
 
 .sanity-status {
@@ -1332,4 +1366,61 @@
   opacity: 1;
   border-color: var(--neon-green);
   box-shadow: 0 0 10px rgba(57, 255, 138, 0.5);
+}
+
+/* Hold Your Breath tension overlay */
+.hold-breath-overlay {
+  position: sticky;
+  top: 0.5rem;
+  z-index: 40;
+  background: rgba(10, 4, 15, 0.95);
+  border: 2px solid var(--neon-pink);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+  text-align: center;
+  box-shadow: 0 0 30px rgba(255, 46, 136, 0.5);
+}
+
+.hold-breath-title {
+  color: var(--neon-pink);
+  font-weight: bold;
+  font-size: 1.05rem;
+  margin-bottom: 0.2rem;
+}
+
+.hold-breath-sub {
+  color: #ffd4e6;
+  font-size: 0.8rem;
+  font-style: italic;
+  margin-bottom: 0.6rem;
+}
+
+.breath-meter-track {
+  height: 22px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--neon-pink);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+}
+
+.breath-meter-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2ee6ff, #ffffff);
+  transition: width 0.15s linear;
+}
+
+.hold-breath-overlay.critical .breath-meter-fill {
+  background: linear-gradient(90deg, #a3125b, var(--neon-pink));
+}
+
+.hold-breath-overlay.critical {
+  animation: shake 0.4s infinite;
+}
+
+.breath-button {
+  width: 100%;
+  user-select: none;
+  touch-action: manipulation;
 }

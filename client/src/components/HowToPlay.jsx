@@ -13,12 +13,15 @@ export default function HowToPlay({ onClose }) {
           <section>
             <h3>The Story</h3>
             <p>
-              A haunted VCR has released a killer into Crescent Lake Camp. One player
-              controls that killer; everyone else plays a teenager trying to survive
-              the night. Players take turns in order — each teen, then the killer,
-              on repeat — with a live 10-minute clock running the whole time. As the
-              clock runs low, the Monster hits harder and isolated teens lose their
-              nerve faster.
+              A haunted VCR has released a killer into camp. One player controls
+              that killer; everyone else plays a teenager trying to survive the
+              night. Every game generates a fresh, randomized map — different
+              locations, layout, and connections each time — so the Slasher's
+              starting spot is always far from where the teens begin. Players
+              take turns in order — each teen, then the killer, on repeat — with
+              a live 10-minute clock running the whole time. As the clock runs
+              low, the Monster hits harder and isolated teens lose their nerve
+              faster.
             </p>
           </section>
 
@@ -26,12 +29,18 @@ export default function HowToPlay({ onClose }) {
             <h3>Playing as a Teen</h3>
             <p>Win the game for your team by doing any <em>one</em> of these:</p>
             <ul>
-              <li>🚗 <strong>Escape</strong> — find the Car Keys, a Gas Can, and a Tool Kit; repair the car at the Parking Lot; then drive away from the Entrance Road.</li>
+              <li>🚗 <strong>Escape</strong> — find the Car Keys, a Gas Can, and a Tool Kit; repair the car where it's parked; then drive away from the exit.</li>
               <li>🔪 <strong>Fight it off</strong> — find a weapon and confront the killer. Hits can either stun it (skips its next turn) or wound it — land enough wounds and it's destroyed. Weapons wear out and break after a few uses.</li>
-              <li>📼 <strong>Banish it</strong> — gather the Black Candle, Occult Book, and Cursed VHS Tape, then perform the ritual at the Root Cellar.</li>
+              <li>📼 <strong>Banish it</strong> — gather the Black Candle, Occult Book, and Cursed VHS Tape, then perform the ritual at the ritual site.</li>
             </ul>
-            <p>If the 10-minute clock runs out before any of that happens, the killer wins. The Monster can also sabotage a repaired car, so don't dawdle at the Entrance Road.</p>
+            <p>If the 10-minute clock runs out before any of that happens, the killer wins. The Monster can also sabotage a repaired car, so don't dawdle.</p>
             <p>If a teammate is killed, another teen holding a First Aid Kit can revive them (at 1 HP) by using it on them where they fell.</p>
+            <p>
+              🤫 <strong>Hide</strong> — toggle Hide on your turn to hold still. It gives you a big
+              defense bonus if the Slasher finds you, and while it's searching your
+              spot you can mash SPACE (or tap the on-screen button) to hold your
+              breath for the tension of it.
+            </p>
           </section>
 
           <section>

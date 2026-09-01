@@ -74,6 +74,9 @@ function TeenActions({ state, me, loc, onError }) {
       {state.slasherPresent && (
         <div className="danger-banner">The Slasher is here with you!</div>
       )}
+      {me.hiding && !state.slasherPresent && (
+        <div className="sense-banner hiding-banner">You're hidden and holding still.</div>
+      )}
       {!state.slasherPresent && senseHere && (
         <div className="sense-banner">You sense something is close, in {state.board[state.slasherNearby].name}...</div>
       )}
@@ -98,7 +101,7 @@ function TeenActions({ state, me, loc, onError }) {
             Use {it.name}
           </button>
         ))}
-        {loc.id === "parking_lot" && !carRepaired && (
+        {loc.carSite && !carRepaired && (
           <button
             className="btn btn-secondary"
             disabled={!items.some((it) => it.id === "tool_kit")}
@@ -107,6 +110,12 @@ function TeenActions({ state, me, loc, onError }) {
             Repair Car
           </button>
         )}
+        <button
+          className={me.hiding ? "btn btn-accent" : "btn btn-secondary"}
+          onClick={() => act({ type: "hide" }, onError)}
+        >
+          {me.hiding ? "Stop Hiding" : "Hide"}
+        </button>
         {loc.ritualSite && (
           <button
             className="btn btn-accent"
@@ -185,7 +194,7 @@ function SlasherActions({ state, me, loc, onError }) {
   const killer = KILLERS[me.pickId];
   const specialLabel = killer?.id === "thing" ? "Mimic" : "Shortcut";
   const specialReady = !me.specialCooldown;
-  const canSabotage = loc.id === "parking_lot" && state.objectives?.carRepaired;
+  const canSabotage = loc.carSite && state.objectives?.carRepaired;
 
   return (
     <div className="action-panel">

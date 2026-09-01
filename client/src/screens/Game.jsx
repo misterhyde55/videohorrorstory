@@ -4,6 +4,7 @@ import ActionPanel from "../components/ActionPanel";
 import PartyStatus from "../components/PartyStatus";
 import PlayerCard from "../components/PlayerCard";
 import LogFeed from "../components/LogFeed";
+import HoldYourBreath from "../components/HoldYourBreath";
 
 export default function GameScreen({ state, playerId, onLeave }) {
   const [error, setError] = useState("");
@@ -24,6 +25,7 @@ export default function GameScreen({ state, playerId, onLeave }) {
   const seconds = totalSeconds % 60;
   const clockLabel = `${minutes}:${String(seconds).padStart(2, "0")}`;
   const clockTier = totalSeconds <= 90 ? "danger" : totalSeconds <= 198 ? "warn" : "";
+  const showHoldBreath = me.role === "teen" && me.hiding && state.slasherPresent && state.phase === "playing";
 
   return (
     <div className="game-layout">
@@ -37,6 +39,8 @@ export default function GameScreen({ state, playerId, onLeave }) {
 
       {error && <div className="banner banner-error" onAnimationEnd={() => setError("")}>{error}</div>}
 
+      {showHoldBreath && <HoldYourBreath key={state.turnPlayerId + String(state.round)} />}
+
       {state.phase === "ended" ? (
         <div className={`endgame ${state.winner}`}>
           <h2>{state.winner === "teens" ? "The Teens Survive" : "The Slasher Wins"}</h2>
@@ -47,6 +51,7 @@ export default function GameScreen({ state, playerId, onLeave }) {
         <>
           <Board
             board={state.board}
+            layout={state.layout}
             players={state.players}
             me={playerId}
             myLocation={me.location}

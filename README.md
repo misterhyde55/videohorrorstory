@@ -16,9 +16,10 @@ while one player controls the Slasher stalking them.
 ## How to win
 
 **Teens** win by doing any one of the following:
-- 🚗 **Escape** — find the Car Keys, a Gas Can, and a Tool Kit; repair the car at the Parking Lot; then drive away from the Entrance Road. The Slasher can sabotage a repaired car, so don't wait too long.
+- 🚗 **Escape** — find the Car Keys, a Gas Can, and a Tool Kit; repair the car where it's parked; then drive away from the exit. The Slasher can sabotage a repaired car, so don't wait too long.
 - 🔪 **Fight it off** — find a weapon and confront the monster. A hit either stuns it (skips its next turn) or wounds it; enough wounds destroys it. Weapons wear out and break after a few uses.
-- 📼 **Banish it** — gather the Black Candle, Occult Book, and Cursed VHS Tape, then perform the ritual at the Root Cellar.
+- 📼 **Banish it** — gather the Black Candle, Occult Book, and Cursed VHS Tape, then perform the ritual at the ritual site.
+- 🤫 **Hide** — toggle Hide on your turn to hold still, giving a big defense bonus if the Slasher finds you. While it's in your location you can mash SPACE (or tap the on-screen button) for the "hold your breath" tension moment.
 
 **The Slasher** wins if every teen is killed, or if the 10-minute clock runs
 out before the teens finish the job.
@@ -94,8 +95,12 @@ npm run dev:client   # Vite dev server on 5173
 
 ## Game design notes
 
-- The board (`server/src/board.js`) is a graph of 12 locations around the
-  camp; movement is only allowed between connected locations.
+- The board (`server/src/board.js`) is procedurally generated fresh every
+  game: a random 15-location subset (always including exactly one exit, one
+  ritual site, and one car site), laid out on a randomized grid and
+  connected by a nearest-neighbor graph so nodes that look close are
+  actually connected. Teen starting spots are chosen by BFS distance to be
+  as far from the Slasher's start as possible.
 - Items and their "kits" (escape/kill/banish) live in `server/src/cards.js`.
 - All game rules and win conditions are enforced server-side
   (`server/src/gameState.js`) — the client only renders state and sends

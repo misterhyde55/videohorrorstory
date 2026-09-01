@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { LAYOUT } from "../screens/board-layout";
 
 const TYPE_ICONS = {
   road: "🛣️",
@@ -12,6 +11,11 @@ const TYPE_ICONS = {
   barn: "🚜",
   tower: "🗼",
   cellar: "⚰️",
+  store: "🏪",
+  theater: "🎬",
+  school: "🏫",
+  graveyard: "🪦",
+  church: "⛪",
 };
 
 const STARS = [
@@ -19,7 +23,7 @@ const STARS = [
   [78, 14], [88, 7], [95, 17], [10, 20], [30, 22], [50, 20], [66, 22], [85, 24],
 ];
 
-export default function Board({ board, players, me, myLocation, slasherNearby }) {
+export default function Board({ board, layout, players, me, myLocation, slasherNearby }) {
   const prevLocationsRef = useRef({});
   const [flashLocations, setFlashLocations] = useState(new Set());
 
@@ -48,8 +52,8 @@ export default function Board({ board, players, me, myLocation, slasherNearby })
       const key = [loc.id, otherId].sort().join("-");
       if (drawnPairs.has(key)) return;
       drawnPairs.add(key);
-      const a = LAYOUT[loc.id];
-      const b = LAYOUT[otherId];
+      const a = layout[loc.id];
+      const b = layout[otherId];
       if (a && b) lines.push({ key, a, b });
     });
   });
@@ -84,7 +88,7 @@ export default function Board({ board, players, me, myLocation, slasherNearby })
         <circle cx="90" cy="10" r="14" fill="url(#moonGlow)" />
         <circle cx="90" cy="10" r="4.2" fill="#fdf6dd" />
 
-        {/* woods */}
+        {/* ambient woods */}
         {[[16, 12], [22, 18], [10, 22], [30, 8], [92, 30], [96, 40], [60, 4], [50, 12]].map(([x, y], i) => (
           <circle key={"t1" + i} cx={x} cy={y} r={4.5} fill="#0f2e1c" opacity="0.8" />
         ))}
@@ -92,9 +96,9 @@ export default function Board({ board, players, me, myLocation, slasherNearby })
           <circle key={"t2" + i} cx={x} cy={y} r={5} fill="#122f1d" opacity="0.8" />
         ))}
 
-        {/* lake near the boat house */}
-        <ellipse cx="90" cy="38" rx="13" ry="9" fill="url(#lakeGlow)" opacity="0.9" />
-        <ellipse cx="90" cy="38" rx="13" ry="9" fill="none" stroke="#2ee6ff" strokeOpacity="0.25" strokeWidth="0.4" />
+        {/* ambient lake */}
+        <ellipse cx="12" cy="88" rx="12" ry="8" fill="url(#lakeGlow)" opacity="0.85" />
+        <ellipse cx="12" cy="88" rx="12" ry="8" fill="none" stroke="#2ee6ff" strokeOpacity="0.25" strokeWidth="0.4" />
 
         {/* dirt paths */}
         {lines.map(({ key, a, b }) => (
@@ -117,7 +121,7 @@ export default function Board({ board, players, me, myLocation, slasherNearby })
       <div className="board-fog" />
 
       {Object.values(board).map((loc) => {
-        const pos = LAYOUT[loc.id];
+        const pos = layout[loc.id];
         if (!pos) return null;
         const tokens = tokensByLocation[loc.id] || [];
         const isMine = loc.id === myLocation;
@@ -126,7 +130,7 @@ export default function Board({ board, players, me, myLocation, slasherNearby })
         return (
           <div
             key={loc.id}
-            className={`map-node${isMine ? " here" : ""}${loc.ritualSite ? " ritual" : ""}${loc.exit ? " exit" : ""}${isSensed ? " sensed" : ""}${isFlashing ? " flash" : ""}`}
+            className={`map-node${isMine ? " here" : ""}${loc.ritualSite ? " ritual" : ""}${loc.exit ? " exit" : ""}${loc.carSite ? " carsite" : ""}${isSensed ? " sensed" : ""}${isFlashing ? " flash" : ""}`}
             style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
             title={loc.description}
           >
@@ -137,7 +141,7 @@ export default function Board({ board, players, me, myLocation, slasherNearby })
               {tokens.map((p) => (
                 <span
                   key={p.id}
-                  className={`token token-${p.role}${p.status === "dead" ? " dead" : ""}${p.id === me ? " token-me" : ""}`}
+                  className={`token token-${p.role}${p.status === "dead" ? " dead" : ""}${p.id === me ? " token-me" : ""}${p.hiding ? " hiding" : ""}`}
                   title={p.characterName || p.name}
                 >
                   {p.role === "slasher" ? "🔪" : (p.characterName || p.name)[0]}
