@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import {
   createRoom,
   addPlayer,
+  addBot,
   removePlayer,
   setRole,
   setReady,
@@ -18,7 +19,9 @@ import {
   startGame,
   applyAction,
   checkClockExpired,
+  decideBotAction,
   publicState,
+  KILLER_IDS,
 } from "./gameState.js";
 
 const PORT = process.env.PORT || 3001;
@@ -50,13 +53,40 @@ const roomSockets = new Map();
 // socket.id -> { code, playerId }
 const socketMeta = new Map();
 
+const botTimersPending = new Set();
+
 function broadcast(code) {
   const room = rooms.get(code);
   const sockets = roomSockets.get(code);
-  if (!room || !sockets) return;
-  for (const [playerId, socketId] of sockets.entries()) {
-    io.to(socketId).emit("state", publicState(room, playerId));
+  if (room && sockets) {
+    for (const [playerId, socketId] of sockets.entries()) {
+      io.to(socketId).emit("state", publicState(room, playerId));
+    }
   }
+  maybeRunBot(code);
+}
+
+// If it's currently a bot's turn, schedule it to act after a short "thinking"
+// delay. Guarded by botTimersPending so a burst of broadcasts never queues
+// more than one pending move per room.
+function maybeRunBot(code) {
+  const room = rooms.get(code);
+  if (!room || room.phase !== "playing" || room.winner || botTimersPending.has(code)) return;
+  const currentId = room.turnOrder[room.turnIndex];
+  const current = room.players.get(currentId);
+  if (!current?.isBot) return;
+
+  botTimersPending.add(code);
+  setTimeout(() => {
+    botTimersPending.delete(code);
+    const liveRoom = rooms.get(code);
+    if (!liveRoom || liveRoom.phase !== "playing" || liveRoom.winner) return;
+    const liveId = liveRoom.turnOrder[liveRoom.turnIndex];
+    const liveBot = liveRoom.players.get(liveId);
+    if (!liveBot?.isBot) return;
+    applyAction(liveRoom, liveId, decideBotAction(liveRoom, liveBot));
+    broadcast(code);
+  }, 1100 + Math.random() * 700);
 }
 
 function ensureRoomCode() {
@@ -102,6 +132,36 @@ io.on("connection", (socket) => {
     socket.join(normalizedCode);
     ack?.({ ok: true, code: normalizedCode });
     broadcast(normalizedCode);
+  });
+
+  socket.on("create_solo_room", ({ name, playerId, characterId, killerId }, ack) => {
+    try {
+      const code = ensureRoomCode();
+      const room = createRoom(code, playerId);
+      addPlayer(room, playerId, name, "teen");
+      const charResult = setCharacter(room, playerId, characterId);
+      if (charResult.error) return ack?.({ ok: false, error: charResult.error });
+
+      const resolvedKillerId = KILLER_IDS.includes(killerId)
+        ? killerId
+        : KILLER_IDS[Math.floor(Math.random() * KILLER_IDS.length)];
+      const botId = addBot(room, "slasher", "The Slasher");
+      setKiller(room, botId, resolvedKillerId);
+      setReady(room, playerId, true);
+
+      rooms.set(code, room);
+      roomSockets.set(code, new Map([[playerId, socket.id]]));
+      socketMeta.set(socket.id, { code, playerId });
+      socket.join(code);
+
+      const check = canStart(room);
+      if (!check.ok) return ack?.({ ok: false, error: check.reason });
+      startGame(room);
+      ack?.({ ok: true, code });
+      broadcast(code);
+    } catch (err) {
+      ack?.({ ok: false, error: "Could not start solo game." });
+    }
   });
 
   socket.on("set_role", ({ role }, ack) => {
@@ -186,9 +246,11 @@ function handleLeave(socket, { onlyLobby = false } = {}) {
   if (!onlyLobby || room.phase === "lobby") {
     removePlayer(room, meta.playerId);
   }
-  if (room.players.size === 0) {
+  const remaining = [...room.players.values()];
+  if (remaining.length === 0 || remaining.every((p) => p.isBot)) {
     rooms.delete(meta.code);
     roomSockets.delete(meta.code);
+    botTimersPending.delete(meta.code);
     return;
   }
   broadcast(meta.code);

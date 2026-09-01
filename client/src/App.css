@@ -138,6 +138,23 @@
   max-width: 360px;
 }
 
+.form-stack.solo-form {
+  max-width: none;
+}
+
+.solo-blurb {
+  color: #cbb8e8;
+  font-style: italic;
+  margin: 0;
+}
+
+.solo-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8a7aa0;
+}
+
 .form-stack label {
   display: flex;
   flex-direction: column;

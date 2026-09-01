@@ -8,6 +8,10 @@ while one player controls the Slasher stalking them.
 - **2–5 players**: 1 Slasher + up to 4 Teens (fewer teens works too).
 - Real-time multiplayer over WebSockets — one player hosts a room, others join
   with a 4-letter code.
+- **Solo mode** — no other players needed. Pick your teen and (optionally)
+  which killer to face from the "Play Solo" tab, and an AI plays the Slasher:
+  it hunts down the nearest teen, attacks on sight, and uses its special
+  ability, all on its own.
 
 ## How to win
 

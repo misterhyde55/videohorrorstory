@@ -59,6 +59,15 @@ export default function App() {
     });
   }, [playerId]);
 
+  const soloGame = useCallback((name, characterId, killerId) => {
+    setError("");
+    localStorage.setItem("vhs_name", name);
+    socket.emit("create_solo_room", { name, playerId, characterId, killerId }, (res) => {
+      if (res?.ok) localStorage.setItem(SAVED_ROOM_KEY, res.code);
+      else setError(res?.error || "Failed to start solo game.");
+    });
+  }, [playerId]);
+
   const leaveRoom = useCallback(() => {
     socket.emit("leave_room");
     localStorage.removeItem(SAVED_ROOM_KEY);
@@ -81,7 +90,7 @@ export default function App() {
 
       {error && <div className="banner banner-error">{error}</div>}
 
-      {!state && <Home onCreate={createRoom} onJoin={joinRoom} disabled={!connected} />}
+      {!state && <Home onCreate={createRoom} onJoin={joinRoom} onSolo={soloGame} disabled={!connected} />}
       {state && state.phase === "lobby" && (
         <Lobby state={state} playerId={playerId} onLeave={leaveRoom} onShowHelp={() => setShowHelp(true)} />
       )}

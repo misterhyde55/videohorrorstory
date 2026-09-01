@@ -32,9 +32,9 @@ export function createRoom(code, hostId) {
   };
 }
 
-export function addPlayer(room, id, name) {
+export function addPlayer(room, id, name, roleOverride) {
   if (room.players.has(id)) return;
-  const role = room.players.size === 0 ? "slasher" : "teen";
+  const role = roleOverride || (room.players.size === 0 ? "slasher" : "teen");
   room.players.set(id, {
     id,
     name: name?.slice(0, 20) || "Player",
@@ -47,7 +47,19 @@ export function addPlayer(room, id, name) {
     stalkStreak: 0,
     specialCooldown: 0,
     ready: false,
+    isBot: false,
   });
+}
+
+let botCounter = 0;
+
+export function addBot(room, role, name) {
+  const id = `bot-${role}-${++botCounter}-${Math.random().toString(36).slice(2, 6)}`;
+  addPlayer(room, id, name, role);
+  const bot = room.players.get(id);
+  bot.isBot = true;
+  bot.ready = true;
+  return id;
 }
 
 export function removePlayer(room, id) {
@@ -502,5 +514,49 @@ export function publicState(room, forPlayerId) {
     slasherNearby,
   };
 }
+
+// Finds the location the bot should step to next in order to shorten its
+// distance to the nearest living teen, via a breadth-first search over the
+// board graph starting from the bot's own location.
+function stepTowardNearestTeen(room, fromLocation) {
+  const teenLocations = new Set(aliveTeens(room).map((t) => t.location));
+  if (teenLocations.size === 0) return null;
+
+  const firstStep = new Map([[fromLocation, null]]);
+  const queue = [fromLocation];
+  while (queue.length) {
+    const current = queue.shift();
+    for (const next of neighbors(current)) {
+      if (firstStep.has(next)) continue;
+      const step = current === fromLocation ? next : firstStep.get(current);
+      firstStep.set(next, step);
+      if (teenLocations.has(next)) return step;
+      queue.push(next);
+    }
+  }
+  return null;
+}
+
+export function decideBotAction(room, bot) {
+  const teensHere = aliveTeens(room).filter((t) => t.location === bot.location);
+  if (teensHere.length > 0) {
+    const target = teensHere.reduce((weakest, t) => (t.hp < weakest.hp ? t : weakest), teensHere[0]);
+    return { type: "attack", targetId: target.id };
+  }
+
+  const teensAlive = aliveTeens(room);
+  if (teensAlive.length === 0) return { type: "lurk" };
+
+  if (bot.specialCooldown === 0 && Math.random() < 0.35) {
+    const target = teensAlive[Math.floor(Math.random() * teensAlive.length)];
+    return { type: "shortcut", targetId: target.id };
+  }
+
+  const step = stepTowardNearestTeen(room, bot.location);
+  if (step) return { type: "move", to: step };
+  return { type: "lurk" };
+}
+
+export const KILLER_IDS = Object.keys(KILLERS);
 
 export const constants = { MAX_TEENS, MONSTER_MAX_HP, GAME_DURATION_MS };
