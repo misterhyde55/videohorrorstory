@@ -1185,24 +1185,25 @@
 }
 
 .glitch-lg {
-  font-family: "Creepster", "Courier New", monospace;
+  font-family: "Monoton", "Courier New", monospace;
+  font-weight: normal;
   font-size: clamp(3.6rem, 8vw, 6.5rem);
   color: var(--neon-pink);
   text-shadow: 3px 0 var(--neon-cyan), -3px 0 var(--neon-purple), 0 0 30px rgba(255, 46, 136, 0.5);
-  letter-spacing: 0.03em;
+  letter-spacing: 0.05em;
   display: block;
 }
 
 .menu-subtitle {
-  font-family: "Creepster", "Courier New", monospace;
-  font-size: clamp(1.4rem, 3.2vw, 2.1rem);
+  font-family: "Bungee", "Courier New", monospace;
+  font-size: clamp(1.1rem, 2.6vw, 1.7rem);
   color: var(--neon-pink);
   border-bottom: 2px solid var(--neon-pink);
   display: inline-block;
   padding-bottom: 0.2rem;
   margin-top: 0.25rem;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
 }
 
 .menu-tagline {
