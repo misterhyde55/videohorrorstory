@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { socket } from "../socket";
 import { KILLERS, TEEN_CHARACTERS } from "../data/characters";
 
@@ -50,6 +51,7 @@ export default function ActionPanel({ state, me, onError }) {
 }
 
 function TeenActions({ state, me, loc, onError }) {
+  const [distractTarget, setDistractTarget] = useState("");
   const items = me.items || [];
   const usableItems = items.filter((it) => it.utility === "heal" || it.utility === "sanity");
   const hasKit = (ids, min) => ids.filter((id) => items.some((it) => it.id === id)).length >= min;
@@ -222,6 +224,33 @@ function TeenActions({ state, me, loc, onError }) {
           ))}
         </ActionGroup>
       )}
+
+      {!me.distractUsed && (
+        <ActionGroup title="Diversion (once per game)">
+          <select
+            className="distract-select"
+            value={distractTarget}
+            onChange={(e) => setDistractTarget(e.target.value)}
+          >
+            <option value="">Fake noise at…</option>
+            {Object.values(state.board)
+              .filter((l) => l.id !== me.location)
+              .map((l) => (
+                <option key={l.id} value={l.id}>{l.name}</option>
+              ))}
+          </select>
+          <button
+            className="btn btn-ghost"
+            disabled={!distractTarget}
+            onClick={() => {
+              act({ type: "distract", to: distractTarget }, onError);
+              setDistractTarget("");
+            }}
+          >
+            Create Diversion
+          </button>
+        </ActionGroup>
+      )}
     </div>
   );
 }
@@ -244,9 +273,25 @@ function SlasherActions({ state, me, loc, onError }) {
   const specialReady = !me.specialCooldown;
   const canSabotage = loc.carSite && state.objectives?.carRepaired;
 
+  const noiseAlerts = state.noiseAlerts || [];
+
   return (
     <div className="action-panel">
       <h4>Your Turn — {loc.name}</h4>
+      {state.killerSecretObjective && (
+        <div className="secret-objective-banner" title={state.killerSecretObjective.description}>
+          🎯 Secret: {state.killerSecretObjective.name}
+        </div>
+      )}
+      {noiseAlerts.length > 0 && (
+        <div className="noise-alert-list">
+          {noiseAlerts.map((a) => (
+            <div key={a.id} className={`noise-alert noise-${a.level}`}>
+              {a.level === "loud" ? "🚨 LOUD NOISE" : "🔊 NOISE DETECTED"} — {a.locationName}
+            </div>
+          ))}
+        </div>
+      )}
       {state.slasherFrozen ? (
         <div className="sense-banner">
           🩸 Still getting your bearings — you can't move for your first couple of turns. Attack, Lurk, or Sabotage still work if a teen wanders up.

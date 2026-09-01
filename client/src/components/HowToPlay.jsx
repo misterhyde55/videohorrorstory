@@ -49,6 +49,26 @@ export default function HowToPlay({ onClose }) {
               room, or search for a Canvas Bag, which permanently expands how much
               you can carry the moment you find it.
             </p>
+            <p>
+              🔊 <strong>Diversion</strong> — once per game, fake a Noise Alert at
+              any location on the map to send the Killer somewhere you're not. See
+              Noise below.
+            </p>
+          </section>
+
+          <section>
+            <h3>The Noise System</h3>
+            <p>
+              The Killer never sees where you are — it only learns your exact spot
+              by standing right there with you. Everything else it has to figure
+              out by listening. Most of what you do is silent: walking, searching,
+              resting, hiding, using items. A few things aren't, and generate a
+              Noise Alert that names the exact location (never who caused it),
+              fading after a couple of rounds: running from the Killer, repairing
+              the car, performing the ritual, stumbling while panicked, and
+              driving away. Use that — lead it somewhere loud, then go somewhere
+              quiet.
+            </p>
           </section>
 
           <section>
@@ -114,6 +134,13 @@ export default function HowToPlay({ onClose }) {
               back to normal by the time the clock's about 40% gone, then get more
               dangerous as it runs low, so the back half of the night is when you
               really come into your own.
+            </p>
+            <p>
+              You never see the teens' locations directly — only Noise Alerts
+              (🔊/🚨) telling you where something just happened, fading after a
+              couple of rounds, so you have to actually go investigate. You'll
+              also be handed one secret objective at the start of the game beyond
+              just killing everyone, revealed at the end.
             </p>
           </section>
 

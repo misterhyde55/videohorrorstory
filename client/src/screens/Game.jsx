@@ -66,6 +66,14 @@ export default function GameScreen({ state, playerId, onLeave }) {
         <div className={`endgame ${state.winner}`}>
           <h2>{state.winner === "teens" ? "The Teens Survive" : `${killerName} Wins`}</h2>
           <p>{state.winReason}</p>
+          {state.killerSecretObjective && (
+            <p className={`secret-objective-reveal${state.secretObjectiveAchieved ? " achieved" : ""}`}>
+              🎯 {killerName}'s secret objective — {state.killerSecretObjective.name}: {" "}
+              {state.secretObjectiveAchieved ? "ACHIEVED" : "FAILED"}
+              <br />
+              <span className="secret-objective-desc">{state.killerSecretObjective.description}</span>
+            </p>
+          )}
           <button className="btn btn-primary" onClick={onLeave} type="button">Back to Menu</button>
         </div>
       ) : (

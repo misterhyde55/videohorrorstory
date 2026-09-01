@@ -47,6 +47,42 @@ const BROKEN_ENTER_SANITY = 0;
 const BROKEN_RECOVER_SANITY = 3;
 const BROKEN_ROUND_CAP = 1; // max Sanity gain per round while Broken
 
+// ---- Noise System ----
+// The Killer never sees teen locations directly (see canSeeLocation in
+// publicState) — it hunts by listening. Most teen actions are silent; a
+// few generate a Noise Alert naming the exact location (but never which
+// teen), fading after a couple of rounds so it can never become a
+// permanent tracker.
+const NOISE_ALERT_LIFETIME = { noisy: 2, loud: 3 }; // rounds
+const MAX_NOISE_ALERTS = 6;
+
+const KILLER_SECRET_OBJECTIVES = [
+  {
+    id: "bloodbath",
+    name: "Bloodbath",
+    description: "Kill at least 3 of the 4 teens before the game ends.",
+    check: (room) => room.killCount >= 3,
+  },
+  {
+    id: "silence_the_engine",
+    name: "Silence the Engine",
+    description: "Never let the car be repaired.",
+    check: (room) => !room.carEverRepaired,
+  },
+  {
+    id: "shatter_their_minds",
+    name: "Shatter Their Minds",
+    description: "Break at least one teen's mind (0 Sanity) before the game ends.",
+    check: (room) => room.anyTeenBroken,
+  },
+  {
+    id: "the_lone_kill",
+    name: "The Lone Kill",
+    description: "Kill a teen while they were completely alone.",
+    check: (room) => room.soloKillHappened,
+  },
+];
+
 export function createRoom(code, hostId) {
   return {
     code,
@@ -71,6 +107,13 @@ export function createRoom(code, hostId) {
     comfortPairsThisRound: new Set(),
     horrorEvents: new Set(), // locationIds with an active Horror Event (blocks Rest there)
     practice: false, // a short, guided practice match — see index.js create_solo_room
+    noiseAlerts: [], // {id, level, locationId, locationName, round, expiresRound, fake}
+    noiseAlertCounter: 0,
+    killerSecretObjective: null,
+    killCount: 0,
+    carEverRepaired: false,
+    anyTeenBroken: false,
+    soloKillHappened: false,
   };
 }
 
@@ -108,6 +151,7 @@ export function addPlayer(room, id, name, roleOverride) {
     comfortReceivedRound: null,
     itemSanityGainTotal: 0,
     objectiveSanityGainTotal: 0,
+    distractUsed: false,
   });
 }
 
@@ -181,8 +225,14 @@ export function canStart(room) {
   return { ok: true };
 }
 
-function log(room, message) {
-  room.log.push({ t: Date.now(), message });
+// scope controls who sees this line in the Camp Log:
+//  "all"     — visible to everyone (default; world/shared events)
+//  "teens"   — visible to teens only, hidden from the Slasher (protects
+//              movement/search/hide info the Noise System doesn't grant it)
+//  "slasher" — visible to the Slasher only, hidden from teens (protects the
+//              Slasher's own movement/lurk/shortcut from free tracking)
+function log(room, message, scope = "all") {
+  room.log.push({ t: Date.now(), message, scope });
   if (room.log.length > 200) room.log.shift();
 }
 
@@ -220,6 +270,7 @@ export function startGame(room, { durationMs } = {}) {
     p.comfortReceivedRound = null;
     p.itemSanityGainTotal = 0;
     p.objectiveSanityGainTotal = 0;
+    p.distractUsed = false;
   });
   slasher.location = generated.startLocations.slasher;
   slasher.stalkStreak = 0;
@@ -241,6 +292,13 @@ export function startGame(room, { durationMs } = {}) {
   room.log = [];
   room.comfortPairsThisRound = new Set();
   room.horrorEvents = new Set();
+  room.noiseAlerts = [];
+  room.noiseAlertCounter = 0;
+  room.killerSecretObjective = KILLER_SECRET_OBJECTIVES[Math.floor(Math.random() * KILLER_SECRET_OBJECTIVES.length)];
+  room.killCount = 0;
+  room.carEverRepaired = false;
+  room.anyTeenBroken = false;
+  room.soloKillHappened = false;
   log(room, "The static clears. The night begins.");
   return room;
 }
@@ -312,17 +370,18 @@ function sanityPenalty(player) {
 
 function logSanityTierChange(room, player, before, after) {
   if (after === before) return;
-  if (after === "panicked") log(room, `${player.characterName} is panicking — their mind is unraveling.`);
-  else if (after === "shaken") log(room, `${player.characterName} is badly shaken.`);
-  else if (after === "steady") log(room, `${player.characterName} steadies their nerves.`);
+  if (after === "panicked") log(room, `${player.characterName} is panicking — their mind is unraveling.`, "teens");
+  else if (after === "shaken") log(room, `${player.characterName} is badly shaken.`, "teens");
+  else if (after === "steady") log(room, `${player.characterName} steadies their nerves.`, "teens");
 }
 
 function enterBroken(room, player) {
   player.broken = true;
   player.hasBeenBroken = true;
+  room.anyTeenBroken = true;
   const card = drawTraumaCard();
   player.traumaCard = card.text;
-  log(room, `${player.characterName} breaks down completely. [Trauma: ${card.text}]`);
+  log(room, `${player.characterName} breaks down completely. [Trauma: ${card.text}]`, "teens");
 }
 
 // Applies Sanity loss (isolation drain, jump-scares, etc). Reaching 0 for
@@ -361,7 +420,7 @@ function gainSanity(room, player, amount) {
   if (player.broken) player.brokenGainThisRound += actual;
   if (player.broken && player.sanity >= BROKEN_RECOVER_SANITY) {
     player.broken = false;
-    log(room, `${player.characterName} pulls themself back together.`);
+    log(room, `${player.characterName} pulls themself back together.`, "teens");
   }
   logSanityTierChange(room, player, before, sanityTier(player));
   return actual;
@@ -426,6 +485,34 @@ function scareTeensAt(room, locationId) {
   });
 }
 
+// Pushes a Noise Alert the Slasher can act on: names the exact location but
+// never who caused it. Fades after a couple of rounds so it can't become a
+// permanent tracker — the Slasher has to actually go investigate, promptly.
+function emitNoise(room, locationId, level, opts = {}) {
+  const loc = room.board[locationId];
+  if (!loc) return;
+  const alert = {
+    id: `noise-${++room.noiseAlertCounter}`,
+    level,
+    locationId,
+    locationName: loc.name,
+    round: room.round,
+    expiresRound: room.round + NOISE_ALERT_LIFETIME[level],
+    fake: !!opts.fake,
+  };
+  room.noiseAlerts.push(alert);
+  if (room.noiseAlerts.length > MAX_NOISE_ALERTS) room.noiseAlerts.shift();
+  log(
+    room,
+    level === "loud" ? `🚨 LOUD NOISE — activity detected at ${loc.name}.` : `🔊 Noise detected near ${loc.name}.`,
+    "slasher"
+  );
+}
+
+function pruneNoiseAlerts(room) {
+  room.noiseAlerts = room.noiseAlerts.filter((a) => room.round <= a.expiresRound);
+}
+
 function advanceTurn(room) {
   if (room.winner) return;
   const n = room.turnOrder.length;
@@ -435,6 +522,7 @@ function advanceTurn(room) {
     if (room.turnIndex === 0) {
       room.round += 1;
       room.comfortPairsThisRound = new Set();
+      pruneNoiseAlerts(room);
     }
     const pid = currentPlayerId(room);
     const player = room.players.get(pid);
@@ -546,7 +634,7 @@ function teenAction(room, player, action) {
   const tier = sanityTier(player);
 
   if (tier === "panicked" && roll(HALLUCINATION_CHANCE)) {
-    log(room, `${player.characterName}: "${randomHallucination()}"`);
+    log(room, `${player.characterName}: "${randomHallucination()}"`, "teens");
   }
 
   if (player.searching && action.type === "move") {
@@ -564,7 +652,7 @@ function teenAction(room, player, action) {
       if (!player.hiding) player.evadeCooldownLocation = null;
       log(room, player.hiding
         ? `${player.characterName} hides and holds still.`
-        : `${player.characterName} comes out of hiding.`);
+        : `${player.characterName} comes out of hiding.`, "teens");
       return { ok: true };
     }
     case "move": {
@@ -583,7 +671,8 @@ function teenAction(room, player, action) {
       player.location = destination;
       log(room, stumbled
         ? `${player.characterName} panics and stumbles into ${room.board[destination].name} instead!`
-        : `${player.characterName} moves to ${room.board[destination].name}.`);
+        : `${player.characterName} moves to ${room.board[destination].name}.`, "teens");
+      if (stumbled) emitNoise(room, destination, "noisy");
       return { ok: true };
     }
     case "search": {
@@ -600,19 +689,19 @@ function teenAction(room, player, action) {
       }
       if (item?.utility === "capacity") {
         player.itemCapacity += item.capacityBonus;
-        log(room, `${player.characterName} searches ${loc.name} and finds a ${item.name}! More room to carry gear now.`);
+        log(room, `${player.characterName} searches ${loc.name} and finds a ${item.name}! More room to carry gear now.`, "teens");
         return { ok: true };
       }
       if (item && player.items.length >= player.itemCapacity) {
-        log(room, `${player.characterName} searches ${loc.name} and finds ${item.name}, but there's no room left to carry it.`);
+        log(room, `${player.characterName} searches ${loc.name} and finds ${item.name}, but there's no room left to carry it.`, "teens");
         return { ok: true };
       }
       if (item) {
         player.items.push(item);
-        log(room, `${player.characterName} searches ${loc.name} and finds ${item.name}.`);
+        log(room, `${player.characterName} searches ${loc.name} and finds ${item.name}.`, "teens");
       } else {
         const ev = randomEvent();
-        log(room, `${player.characterName} searches ${loc.name} and finds nothing. ${ev.text}`);
+        log(room, `${player.characterName} searches ${loc.name} and finds nothing. ${ev.text}`, "teens");
       }
       return { ok: true };
     }
@@ -620,7 +709,7 @@ function teenAction(room, player, action) {
       const idx = player.items.findIndex((it) => it.id === action.itemId);
       if (idx < 0) return { error: "You don't have that item." };
       const [item] = player.items.splice(idx, 1);
-      log(room, `${player.characterName} drops the ${item.name}.`);
+      log(room, `${player.characterName} drops the ${item.name}.`, "teens");
       return { ok: true, consumeTurn: false };
     }
     case "use_item": {
@@ -631,7 +720,7 @@ function teenAction(room, player, action) {
         if (player.hp >= player.hpMax) return { error: "You're not hurt." };
         player.hp = player.hpMax;
         player.items.splice(idx, 1);
-        log(room, `${player.characterName} patches up with the ${item.name}.`);
+        log(room, `${player.characterName} patches up with the ${item.name}.`, "teens");
         return { ok: true };
       }
       if (item.utility === "sanity") {
@@ -643,7 +732,7 @@ function teenAction(room, player, action) {
         player.items.splice(idx, 1);
         log(room, grant > 0
           ? `${player.characterName} uses the ${item.name} and feels a little steadier.`
-          : `${player.characterName} uses the ${item.name}, but it doesn't seem to help anymore.`);
+          : `${player.characterName} uses the ${item.name}, but it doesn't seem to help anymore.`, "teens");
         return { ok: true, sanityActionTaken: true };
       }
       return { error: "That item can't be used directly." };
@@ -660,7 +749,7 @@ function teenAction(room, player, action) {
       target.hp = REVIVE_HP;
       target.sanity = Math.max(1, Math.floor(target.sanityMax / 2));
       if (target.broken && target.sanity >= BROKEN_RECOVER_SANITY) target.broken = false;
-      log(room, `${player.characterName} revives ${target.characterName}!`);
+      log(room, `${player.characterName} revives ${target.characterName}!`, "teens");
       return { ok: true };
     }
     case "give": {
@@ -673,7 +762,7 @@ function teenAction(room, player, action) {
       if (target.items.length >= target.itemCapacity) return { error: "Their inventory is full." };
       const [item] = player.items.splice(idx, 1);
       target.items.push(item);
-      log(room, `${player.characterName} hands the ${item.name} to ${target.characterName}.`);
+      log(room, `${player.characterName} hands the ${item.name} to ${target.characterName}.`, "teens");
       return { ok: true, consumeTurn: false };
     }
     case "repair": {
@@ -681,8 +770,10 @@ function teenAction(room, player, action) {
       if (room.objectives.carRepaired) return { error: "The car is already running." };
       if (!player.items.some((it) => it.id === "tool_kit")) return { error: "You need a tool kit to repair the car." };
       room.objectives.carRepaired = true;
+      room.carEverRepaired = true;
       grantObjectiveSanity(room, player, 1);
-      log(room, `${player.characterName} gets the engine running again.`);
+      log(room, `${player.characterName} gets the engine running again.`, "teens");
+      emitNoise(room, player.location, "noisy");
       return { ok: true, sanityActionTaken: true };
     }
     case "fight": {
@@ -730,7 +821,8 @@ function teenAction(room, player, action) {
       if (killer.id === "stalker") chance -= STALKER_FLEE_PENALTY;
       if (roll(chance)) {
         player.location = action.to;
-        log(room, `${player.characterName} flees to ${room.board[action.to].name}!`);
+        log(room, `${player.characterName} flees to ${room.board[action.to].name}!`, "teens");
+        emitNoise(room, action.to, "noisy");
       } else {
         log(room, `${player.characterName} tries to flee but stumbles!`);
         room.thingRevealed = true;
@@ -750,7 +842,8 @@ function teenAction(room, player, action) {
       removeItems(player, have);
       room.monsterHp = 0;
       grantObjectiveSanity(room, player, 2);
-      log(room, `${player.characterName} performs the ritual. The monster is dragged screaming back into the tape.`);
+      log(room, `${player.characterName} performs the ritual. The monster is dragged screaming back into the tape.`, "teens");
+      emitNoise(room, player.location, "noisy");
       return { ok: true, sanityActionTaken: true };
     }
     case "drive": {
@@ -760,13 +853,24 @@ function teenAction(room, player, action) {
       grantObjectiveSanity(room, player, 2);
       player.status = "escaped";
       log(room, `${player.characterName} peels out and escapes!`);
+      emitNoise(room, player.location, "loud");
       room.winner = "teens";
       room.winReason = `${player.characterName} escaped camp alive.`;
       room.phase = "ended";
       return { ok: true };
     }
+    case "distract": {
+      if (player.distractUsed) return { error: "You've already pulled that trick once this game." };
+      const target = room.board[action.to];
+      if (!target) return { error: "Unknown location." };
+      if (action.to === player.location) return { error: "Pick somewhere else to fake the noise." };
+      player.distractUsed = true;
+      log(room, `${player.characterName} creates a diversion.`, "teens");
+      emitNoise(room, action.to, "noisy", { fake: true });
+      return { ok: true };
+    }
     case "pass": {
-      log(room, player.hiding ? `${player.characterName} stays hidden, listening.` : `${player.characterName} waits, listening.`);
+      log(room, player.hiding ? `${player.characterName} stays hidden, listening.` : `${player.characterName} waits, listening.`, "teens");
       return { ok: true };
     }
     case "rest": {
@@ -780,7 +884,7 @@ function teenAction(room, player, action) {
       const grant = Math.min(REST_GAIN, REST_LOCATION_CAP - gained);
       player.restGainByLocation[player.location] = gained + grant;
       gainSanity(room, player, grant);
-      log(room, `${player.characterName} rests at ${loc.name} and steadies their nerves a little.`);
+      log(room, `${player.characterName} rests at ${loc.name} and steadies their nerves a little.`, "teens");
       return { ok: true, sanityActionTaken: true };
     }
     case "comfort": {
@@ -805,7 +909,7 @@ function teenAction(room, player, action) {
       target.comfortReceivedRound = room.round;
       room.comfortPairsThisRound.add(`${player.id}>${target.id}`);
       gainSanity(room, target, grant);
-      log(room, `${player.characterName} comforts ${target.characterName}.`);
+      log(room, `${player.characterName} comforts ${target.characterName}.`, "teens");
       return { ok: true };
     }
     default:
@@ -816,7 +920,10 @@ function teenAction(room, player, action) {
 function applyWound(room, player, amount) {
   player.hp = Math.max(0, player.hp - amount);
   if (player.hp <= 0) {
+    const wasAlone = !aliveTeens(room).some((t) => t.id !== player.id && t.location === player.location);
     player.status = "dead";
+    room.killCount += 1;
+    if (wasAlone) room.soloKillHappened = true;
     log(room, `${player.characterName} has been killed.`);
   } else {
     log(room, `${player.characterName} is injured.`);
@@ -851,7 +958,8 @@ export function resolveSearch(room, teenId, heldBreath) {
 
   if (dest && roll(chance)) {
     player.location = dest;
-    log(room, `${player.characterName} is found — but scrambles away to ${room.board[dest].name}!`);
+    log(room, `${player.characterName} is found — but scrambles away to ${room.board[dest].name}!`, "teens");
+    emitNoise(room, dest, "noisy");
   } else if (character.id === "athlete") {
     log(room, `${player.characterName} is found — but shrugs off the scare and holds their ground.`);
   } else {
@@ -887,7 +995,7 @@ function slasherAction(room, player, action) {
       player.location = action.to;
       player.stalkStreak = 0;
       clearEvadeCooldown(room, prevLocation);
-      log(room, `The Slasher moves to ${room.board[action.to].name}.`);
+      log(room, `The Slasher moves to ${room.board[action.to].name}.`, "slasher");
       scareTeensAt(room, action.to);
       return { ok: true };
     }
@@ -927,7 +1035,7 @@ function slasherAction(room, player, action) {
         (p) => p.role === "teen" && p.status !== "dead" && p.status !== "escaped" && p.location === player.location
       );
       player.stalkStreak = teenHere ? player.stalkStreak + 1 : 0;
-      log(room, `Something lurks in the shadows of ${room.board[player.location].name}...`);
+      log(room, `Something lurks in the shadows of ${room.board[player.location].name}...`, "slasher");
       return { ok: true };
     }
     case "sabotage": {
@@ -951,7 +1059,7 @@ function slasherAction(room, player, action) {
       clearEvadeCooldown(room, prevLocation);
       log(room, killer.id === "thing"
         ? `Something that looked exactly like ${target.characterName} was already waiting at ${room.board[target.location].name}...`
-        : `The Stalker appears out of nowhere at ${room.board[target.location].name}!`);
+        : `The Stalker appears out of nowhere at ${room.board[target.location].name}!`, "slasher");
       scareTeensAt(room, target.location);
       return { ok: true };
     }
@@ -998,15 +1106,36 @@ export function publicState(room, forPlayerId) {
       isBot: p.isBot,
       itemCount: p.items.length,
     };
-    const canSeeLocation = room.phase !== "playing" || p.role === "teen" || isSlasher || p.id === forPlayerId;
+    // The Slasher never sees a teen's exact location unless it's standing
+    // right there with them — everything else it has to learn by listening
+    // (see the Noise System / noiseAlerts below). Teens still always see
+    // each other, as before, to coordinate.
+    const canSeeLocation =
+      room.phase !== "playing" ||
+      p.id === forPlayerId ||
+      (!isSlasher && p.role === "teen") ||
+      (isSlasher && p.role === "teen" && slasher && p.location === slasher.location);
     if (canSeeLocation) base.location = p.location;
     if (p.id === forPlayerId) {
       base.items = p.items;
       base.itemCapacity = p.itemCapacity;
       base.specialCooldown = p.specialCooldown;
+      base.distractUsed = p.distractUsed;
     }
     return base;
   });
+
+  const visibleLog = room.log
+    .filter((e) => {
+      const scope = e.scope || "all";
+      if (scope === "all") return true;
+      if (scope === "teens") return !isSlasher;
+      if (scope === "slasher") return isSlasher;
+      return true;
+    })
+    .slice(-50);
+
+  const secretObjectiveRevealed = room.phase === "ended" && room.killerSecretObjective;
 
   return {
     code: room.code,
@@ -1021,7 +1150,7 @@ export function publicState(room, forPlayerId) {
     practice: room.practice,
     slasherFrozen: room.phase === "playing" && room.round <= SLASHER_FROZEN_ROUNDS,
     objectives: room.objectives,
-    log: room.log.slice(-50),
+    log: visibleLog,
     winner: room.winner,
     winReason: room.winReason,
     board: room.board ?? {},
@@ -1031,16 +1160,21 @@ export function publicState(room, forPlayerId) {
     you: forPlayerId,
     slasherPresent,
     slasherNearby,
+    noiseAlerts: isSlasher ? room.noiseAlerts : [],
+    killerSecretObjective: isSlasher
+      ? room.killerSecretObjective
+      : secretObjectiveRevealed
+        ? { name: room.killerSecretObjective.name, description: room.killerSecretObjective.description }
+        : null,
+    secretObjectiveAchieved: secretObjectiveRevealed ? room.killerSecretObjective.check(room) : null,
   };
 }
 
 // Finds the location the bot should step to next in order to shorten its
-// distance to the nearest living teen, via a breadth-first search over the
-// board graph starting from the bot's own location.
-function stepTowardNearestTeen(room, fromLocation) {
-  const teenLocations = new Set(aliveTeens(room).map((t) => t.location));
-  if (teenLocations.size === 0) return null;
-
+// distance to a specific target location, via a breadth-first search over
+// the board graph starting from the bot's own location.
+function stepTowardLocation(room, fromLocation, targetLocationId) {
+  if (!targetLocationId || targetLocationId === fromLocation) return null;
   const firstStep = new Map([[fromLocation, null]]);
   const queue = [fromLocation];
   while (queue.length) {
@@ -1049,11 +1183,23 @@ function stepTowardNearestTeen(room, fromLocation) {
       if (firstStep.has(next)) continue;
       const step = current === fromLocation ? next : firstStep.get(current);
       firstStep.set(next, step);
-      if (teenLocations.has(next)) return step;
+      if (next === targetLocationId) return step;
       queue.push(next);
     }
   }
   return null;
+}
+
+// The AI Slasher gets exactly the same information a human Slasher would —
+// no cheating with real teen positions. It heads toward the loudest/most
+// recent live Noise Alert; with no lead at all, it patrols a random
+// neighbor rather than standing still, so it isn't just camping.
+function latestNoiseTarget(room) {
+  const active = room.noiseAlerts.filter((a) => room.round <= a.expiresRound);
+  if (!active.length) return null;
+  const loud = active.filter((a) => a.level === "loud");
+  const pool = loud.length ? loud : active;
+  return pool[pool.length - 1].locationId;
 }
 
 export function decideBotAction(room, bot) {
@@ -1083,7 +1229,10 @@ export function decideBotAction(room, bot) {
     return { type: "shortcut", targetId: target.id };
   }
 
-  const step = stepTowardNearestTeen(room, bot.location);
+  const noiseTarget = latestNoiseTarget(room);
+  const step = noiseTarget
+    ? stepTowardLocation(room, bot.location, noiseTarget)
+    : neighborsOf(room, bot.location)[Math.floor(Math.random() * neighborsOf(room, bot.location).length)];
   if (step) return { type: "move", to: step };
   return { type: "lurk" };
 }
@@ -1200,8 +1349,11 @@ export function decideTeenBotAction(room, bot) {
   // occasionally toward a living teammate to regroup rather than scatter.
   if (roll(45) && bot.items.length < MAX_ITEMS) return { type: "search" };
   if (roll(30)) {
-    const step = stepTowardNearestTeen(room, bot.location);
-    if (step) return { type: "move", to: step };
+    const teenLocations = new Set(aliveTeens(room).filter((t) => t.id !== bot.id).map((t) => t.location));
+    if (teenLocations.size > 0) {
+      const step = stepToward(room, bot.location, (l) => teenLocations.has(l.id));
+      if (step) return { type: "move", to: step };
+    }
   }
   const dest = randomNeighbor();
   return dest ? { type: "move", to: dest } : { type: "pass" };

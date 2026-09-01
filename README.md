@@ -76,6 +76,24 @@ The Slasher player picks one killer type in the lobby:
 - 🔪 **The Stalker** — hits harder the longer it stalks a target, escapes against it are harder, can shortcut straight to a tracked teen.
 - 🛸 **The Thing** — stays undetected by teens until it strikes, and its attacks deal double damage.
 
+Every game the Slasher is also secretly assigned one objective beyond just
+killing everyone (e.g. *Bloodbath* — kill 3+ teens, *Silence the Engine* —
+never let the car get repaired, *Shatter Their Minds* — break someone's
+Sanity to 0, *The Lone Kill* — kill a teen who was completely alone). It's
+revealed, achieved or not, on the end-of-game screen.
+
+### The Noise System
+
+The Slasher never sees where the teens are — it only knows a teen's exact
+location while standing in the same spot with them. Everything else it has
+to learn by listening. Most teen actions are silent (walking, searching,
+resting, hiding, using items), but a few generate a **Noise Alert** that
+names the exact location (never who caused it) and fades after 2–3 rounds:
+running from the Slasher, repairing the car, performing the ritual,
+stumbling while panicked, and driving away all make noise. Teens get one
+**Diversion** per game — fake a Noise Alert at any location on the map to
+send the Slasher somewhere you're not.
+
 ## Project layout
 
 ```
@@ -124,6 +142,9 @@ npm run dev:client   # Vite dev server on 5173
 - All game rules and win conditions are enforced server-side
   (`server/src/gameState.js`) — the client only renders state and sends
   action requests, so the game can't be cheated by editing client code.
-- The Slasher's location is hidden from teens unless they share a location
-  with it, to preserve tension; teens can see each other's locations to
-  coordinate.
+- Player locations are hidden by role: the Slasher's location is hidden
+  from teens unless they share a location with it, and teen locations are
+  hidden from the Slasher the same way — teens can still always see each
+  other to coordinate. The camp log itself is filtered the same way (a
+  teen's own moves/searches/etc. never appear in the Slasher's log, and
+  vice versa), so there's no way to read around the Noise System.
