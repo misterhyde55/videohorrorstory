@@ -1173,6 +1173,11 @@
   flex-direction: column;
   gap: 1.25rem;
   min-width: 0;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 1.5rem;
+  box-shadow: 0 0 30px rgba(155, 48, 255, 0.15);
 }
 
 .menu-logo {
