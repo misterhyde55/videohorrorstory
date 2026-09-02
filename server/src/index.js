@@ -88,8 +88,11 @@ function scheduleSearchSettlement(code, result) {
 }
 
 // If it's currently a bot's turn, schedule it to act after a short "thinking"
-// delay. Guarded by botTimersPending so a burst of broadcasts never queues
-// more than one pending move per room.
+// beat — just enough to read as a deliberate move rather than an instant
+// flicker, never long enough to feel like the game is making anyone wait.
+// A round with 3 AI teens and an AI Slasher used to cost 4.4-7.2s of dead
+// air between a human's turns; this keeps every individual bot turn under
+// a second so tension comes from uncertainty, not from watching AI think.
 function maybeRunBot(code) {
   const room = rooms.get(code);
   if (!room || room.phase !== "playing" || room.winner || botTimersPending.has(code)) return;
@@ -109,7 +112,7 @@ function maybeRunBot(code) {
     const result = applyAction(liveRoom, liveId, decide(liveRoom, liveBot));
     scheduleSearchSettlement(code, result);
     broadcast(code);
-  }, 1100 + Math.random() * 700);
+  }, 350 + Math.random() * 350);
 }
 
 function ensureRoomCode() {
