@@ -818,6 +818,7 @@ function teenAction(room, player, action) {
       // non-kit find for nothing.
       let item = drawFromPool(loc.searchPool);
       if (!item && character.id === "nerd") item = drawFromPool(loc.searchPool);
+      if (!item && player.items.some((it) => it.utility === "search_bonus")) item = drawFromPool(loc.searchPool);
       if (character.id === "leader" && !item?.kit) {
         const bonus = drawFromPool(loc.searchPool);
         if (bonus?.kit) item = bonus;

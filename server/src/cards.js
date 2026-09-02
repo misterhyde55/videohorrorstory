@@ -5,22 +5,22 @@
 //   banish -> ritual_candle + occult_book + cursed_tape, used at Twisted Castle
 
 export const ITEMS = {
-  car_keys: { id: "car_keys", name: "Car Keys", flavor: "Still on the park manager's keyring.", kit: "escape" },
-  gas_can: { id: "gas_can", name: "Gas Can", flavor: "Just enough to get down the road.", kit: "escape" },
-  tool_kit: { id: "tool_kit", name: "Tool Kit", flavor: "Enough to get that engine running again.", kit: "escape" },
-  machete: { id: "machete", name: "Rusty Machete", flavor: "Park maintenance never returned this.", kit: "kill", weapon: true, bonus: 25, durability: 3 },
-  shotgun: { id: "shotgun", name: "Shotgun", flavor: "One shell left. Make it count.", kit: "kill", weapon: true, bonus: 35, durability: 1 },
-  fireaxe: { id: "fireaxe", name: "Fire Axe", flavor: "Behind glass marked EMERGENCY ONLY.", kit: "kill", weapon: true, bonus: 20, durability: 2 },
-  ritual_candle: { id: "ritual_candle", name: "Black Candle", flavor: "Wax the color of a bruise.", kit: "banish" },
-  occult_book: { id: "occult_book", name: "Occult Book", flavor: "The pages describe how it got out — and how to send it back.", kit: "banish" },
-  cursed_tape: { id: "cursed_tape", name: "Cursed VHS Tape", flavor: "Static crawls across the label.", kit: "banish" },
-  flashlight: { id: "flashlight", name: "Flashlight", flavor: "Cuts through the dark. Improves your searching.", utility: "search_bonus" },
-  first_aid: { id: "first_aid", name: "First Aid Kit", flavor: "Patches you up — or brings someone back.", utility: "heal" },
-  energy_drink: { id: "energy_drink", name: "Energy Drink", flavor: "Warm, flat, and definitely past its date. Drink it anyway.", utility: "sanity", sanityAmount: 1 },
-  cassette_player: { id: "cassette_player", name: "Cassette Player", flavor: "Warped tape, but the mixtape still plays.", utility: "sanity", sanityAmount: 1 },
-  family_photo: { id: "family_photo", name: "Family Photo", flavor: "Creased at the corners from being carried everywhere.", utility: "sanity", sanityAmount: 1, noMonsterHere: true },
-  favorite_vhs: { id: "favorite_vhs", name: "Favorite VHS", flavor: "You've watched this a hundred times. It still helps.", utility: "sanity", sanityAmount: 2, noMonsterHere: true },
-  canvas_bag: { id: "canvas_bag", name: "Canvas Bag", flavor: "More room to carry what you find.", utility: "capacity", capacityBonus: 2 },
+  car_keys: { id: "car_keys", name: "Car Keys", icon: "🔑", flavor: "Still on the park manager's keyring.", effect: "Escape kit — carry this and a Gas Can, then Drive Away once the car's repaired.", kit: "escape" },
+  gas_can: { id: "gas_can", name: "Gas Can", icon: "⛽", flavor: "Just enough to get down the road.", effect: "Escape kit — carry this and the Car Keys, then Drive Away once the car's repaired.", kit: "escape" },
+  tool_kit: { id: "tool_kit", name: "Tool Kit", icon: "🧰", flavor: "Enough to get that engine running again.", effect: "Lets you Repair the car at the exit.", kit: "escape" },
+  machete: { id: "machete", name: "Rusty Machete", icon: "🔪", flavor: "Park maintenance never returned this.", effect: "+25% Fight chance. Wears out and breaks after a few hits.", kit: "kill", weapon: true, bonus: 25, durability: 3 },
+  shotgun: { id: "shotgun", name: "Shotgun", icon: "🔫", flavor: "One shell left. Make it count.", effect: "+35% Fight chance. Breaks after one hit — make it count.", kit: "kill", weapon: true, bonus: 35, durability: 1 },
+  fireaxe: { id: "fireaxe", name: "Fire Axe", icon: "🪓", flavor: "Behind glass marked EMERGENCY ONLY.", effect: "+20% Fight chance. Wears out and breaks after a couple hits.", kit: "kill", weapon: true, bonus: 20, durability: 2 },
+  ritual_candle: { id: "ritual_candle", name: "Black Candle", icon: "🕯️", flavor: "Wax the color of a bruise.", effect: "Banish kit — gather all three (or two, as the Nerd), then perform the ritual at the ritual site. Consumed when you do.", kit: "banish" },
+  occult_book: { id: "occult_book", name: "Occult Book", icon: "📖", flavor: "The pages describe how it got out — and how to send it back.", effect: "Banish kit — gather all three (or two, as the Nerd), then perform the ritual at the ritual site. Consumed when you do.", kit: "banish" },
+  cursed_tape: { id: "cursed_tape", name: "Cursed VHS Tape", icon: "📼", flavor: "Static crawls across the label.", effect: "Banish kit — gather all three (or two, as the Nerd), then perform the ritual at the ritual site. Consumed when you do.", kit: "banish" },
+  flashlight: { id: "flashlight", name: "Flashlight", icon: "🔦", flavor: "Cuts through the dark. Improves your searching.", effect: "While carried, a Search that would come up empty gets one automatic reroll.", utility: "search_bonus" },
+  first_aid: { id: "first_aid", name: "First Aid Kit", icon: "🩹", flavor: "Patches you up — or brings someone back.", effect: "Restores you to full Health, or revives a fallen teammate at 1 HP. Single use.", utility: "heal" },
+  energy_drink: { id: "energy_drink", name: "Energy Drink", icon: "🥤", flavor: "Warm, flat, and definitely past its date. Drink it anyway.", effect: "Restores 1 Sanity. Safe to drink even with the Slasher right there. Single use.", utility: "sanity", sanityAmount: 1 },
+  cassette_player: { id: "cassette_player", name: "Cassette Player", icon: "📻", flavor: "Warped tape, but the mixtape still plays.", effect: "Restores 1 Sanity. Single use.", utility: "sanity", sanityAmount: 1 },
+  family_photo: { id: "family_photo", name: "Family Photo", icon: "🖼️", flavor: "Creased at the corners from being carried everywhere.", effect: "Restores 1 Sanity. Can't use with the Slasher right there. Single use.", utility: "sanity", sanityAmount: 1, noMonsterHere: true },
+  favorite_vhs: { id: "favorite_vhs", name: "Favorite VHS", icon: "📼", flavor: "You've watched this a hundred times. It still helps.", effect: "Restores 2 Sanity. Can't use with the Slasher right there. Single use.", utility: "sanity", sanityAmount: 2, noMonsterHere: true },
+  canvas_bag: { id: "canvas_bag", name: "Canvas Bag", icon: "🎒", flavor: "More room to carry what you find.", effect: "Permanently expands your inventory by 2, the moment you find it.", utility: "capacity", capacityBonus: 2 },
 };
 
 // Search pools: weighted lists of item ids (or null for "nothing").

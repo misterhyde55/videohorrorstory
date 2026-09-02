@@ -15,9 +15,13 @@ export default function Inventory({ items, capacity }) {
       <ul className="inventory-list">
         {items.map((it, i) => (
           <li key={it.id + i} title={it.flavor}>
-            <span className="item-name">{it.name}</span>
-            {it.weapon && <span className="item-tag">weapon +{it.bonus}</span>}
-            {it.kit && <span className={`item-tag kit-${it.kit}`}>{it.kit}</span>}
+            <div className="item-row">
+              <span className="item-icon">{it.icon || "❔"}</span>
+              <span className="item-name">{it.name}</span>
+              {it.weapon && <span className="item-tag">+{it.bonus}%, {it.durability} use{it.durability === 1 ? "" : "s"} left</span>}
+              {it.kit && <span className={`item-tag kit-${it.kit}`}>{it.kit}</span>}
+            </div>
+            {it.effect && <div className="item-effect">{it.effect}</div>}
           </li>
         ))}
       </ul>

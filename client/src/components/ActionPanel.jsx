@@ -119,7 +119,12 @@ function TeenActions({ state, me, loc, onError, onSearchResult }) {
           Search Area
         </button>
         {usableItems.map((it) => (
-          <button key={it.id} className="btn btn-secondary" onClick={() => act({ type: "use_item", itemId: it.id }, onError)}>
+          <button
+            key={it.id}
+            className="btn btn-secondary"
+            title={it.effect}
+            onClick={() => act({ type: "use_item", itemId: it.id }, onError)}
+          >
             Use {it.name}
           </button>
         ))}
@@ -249,6 +254,7 @@ function TeenActions({ state, me, loc, onError, onSearchResult }) {
                 <button
                   key={it.id + i}
                   className="btn btn-ghost"
+                  title={it.effect}
                   onClick={() => act({ type: "discard", itemId: it.id }, onError)}
                 >
                   Drop {it.name}

@@ -1,19 +1,7 @@
-// Icon + kit-tracker metadata for items. Mirrors the item ids defined in
-// server/src/cards.js.
-export const ITEM_ICONS = {
-  car_keys: "🔑",
-  gas_can: "⛽",
-  tool_kit: "🧰",
-  machete: "🔪",
-  shotgun: "🔫",
-  fireaxe: "🪓",
-  ritual_candle: "🕯️",
-  occult_book: "📖",
-  cursed_tape: "📼",
-  flashlight: "🔦",
-  first_aid: "🩹",
-};
-
+// Kit-tracker reference lists — the objective tracker needs to show these
+// even for items the player hasn't found yet, so it keeps its own static
+// copy rather than reading icons off a live inventory item. Live items
+// carry their own `icon`/`effect` straight from server/src/cards.js.
 export const ESCAPE_ITEMS = [
   { id: "car_keys", name: "Car Keys", icon: "🔑" },
   { id: "gas_can", name: "Gas Can", icon: "⛽" },

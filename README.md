@@ -173,7 +173,7 @@ npm run dev:client   # Vite dev server on 5173
   looks a little different each time without changing which places exist.
   Teen starting spots are chosen by BFS distance to be as far from the
   Slasher's start (the hub) as possible.
-- Items and their "kits" (escape/kill/banish) live in `server/src/cards.js`. Teens start with room for 6 items; drop anything unwanted with Discard, or search for a Canvas Bag, which expands your carrying capacity the moment you find it.
+- Items and their "kits" (escape/kill/banish) live in `server/src/cards.js`. Every item carries its own icon and a plain-English effect line (shown right in the Gear panel, and on hover over its action buttons) so it's always clear why you'd want it — no guessing what a Flashlight or a Fire Axe actually does. Teens start with room for 6 items; drop anything unwanted with Discard, or search for a Canvas Bag, which expands your carrying capacity the moment you find it.
 - All game rules and win conditions are enforced server-side
   (`server/src/gameState.js`) — the client only renders state and sends
   action requests, so the game can't be cheated by editing client code.
