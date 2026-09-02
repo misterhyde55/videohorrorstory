@@ -12,7 +12,19 @@ export default function GameScreen({ state, playerId, onLeave }) {
   const [error, setError] = useState("");
   const [now, setNow] = useState(Date.now());
   const [breathOverlay, setBreathOverlay] = useState(null);
+  const [searchToast, setSearchToast] = useState(null);
   const me = state.players.find((p) => p.id === playerId);
+
+  const handleSearchResult = (result) => {
+    if (!result) return;
+    setSearchToast({ ...result, key: Date.now() });
+  };
+
+  useEffect(() => {
+    if (!searchToast) return undefined;
+    const id = setTimeout(() => setSearchToast(null), 3200);
+    return () => clearTimeout(id);
+  }, [searchToast]);
 
   useEffect(() => {
     if (state.phase !== "playing") return undefined;
@@ -60,6 +72,14 @@ export default function GameScreen({ state, playerId, onLeave }) {
 
         {state.recentHorrorEvent && (
           <div className="banner banner-horror-event">👻 {state.recentHorrorEvent.summary}</div>
+        )}
+
+        {searchToast && (
+          <div key={searchToast.key} className={`banner banner-search-result search-${searchToast.type}`}>
+            {searchToast.type === "item" && `🔦 FOUND — ${searchToast.itemName}${searchToast.note ? ` (${searchToast.note})` : ""}`}
+            {searchToast.type === "full" && `🎒 FOUND ${searchToast.itemName} — but your bag's full. Drop something first.`}
+            {searchToast.type === "nothing" && `🔍 NOTHING FOUND — ${searchToast.note}`}
+          </div>
         )}
 
         {error && <div className="banner banner-error" onAnimationEnd={() => setError("")}>{error}</div>}
@@ -112,7 +132,9 @@ export default function GameScreen({ state, playerId, onLeave }) {
 
       <div className="game-sidebar">
         <PlayerCard me={me} carRepaired={state.objectives?.carRepaired} monsterHp={state.monsterHp} monsterMaxHp={state.monsterMaxHp} />
-        {state.phase !== "ended" && <ActionPanel state={state} me={me} onError={setError} />}
+        {state.phase !== "ended" && (
+          <ActionPanel state={state} me={me} onError={setError} onSearchResult={handleSearchResult} />
+        )}
       </div>
     </div>
   );

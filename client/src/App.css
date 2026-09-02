@@ -227,6 +227,36 @@
   font-style: italic;
 }
 
+.banner-search-result {
+  font-weight: bold;
+  animation: searchToastIn 0.2s ease-out;
+}
+
+.banner-search-result.search-item {
+  background: rgba(57, 255, 138, 0.14);
+  border: 1px solid var(--neon-green);
+  color: #baffd8;
+}
+
+.banner-search-result.search-full {
+  background: rgba(255, 179, 71, 0.14);
+  border: 1px solid #ffb347;
+  color: #ffe2b8;
+}
+
+.banner-search-result.search-nothing {
+  background: rgba(203, 184, 232, 0.1);
+  border: 1px solid #8a7aa0;
+  color: #cbb8e8;
+  font-weight: normal;
+  font-style: italic;
+}
+
+@keyframes searchToastIn {
+  0% { opacity: 0; transform: translateY(-4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
 .practice-banner {
   display: flex;
   align-items: center;

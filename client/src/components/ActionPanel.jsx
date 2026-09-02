@@ -2,9 +2,10 @@ import { useState } from "react";
 import { socket } from "../socket";
 import { KILLERS, TEEN_CHARACTERS } from "../data/characters";
 
-function act(action, onError) {
+function act(action, onError, onResult) {
   socket.emit("action", action, (res) => {
     if (!res?.ok) onError?.(res?.error || "Action failed.");
+    else onResult?.(res);
   });
 }
 
@@ -33,7 +34,7 @@ function sanityTier(sanity) {
   return "steady";
 }
 
-export default function ActionPanel({ state, me, onError }) {
+export default function ActionPanel({ state, me, onError, onSearchResult }) {
   const myTurn = state.turnPlayerId === me.id;
   const loc = state.board[me.location];
 
@@ -47,10 +48,10 @@ export default function ActionPanel({ state, me, onError }) {
   }
 
   if (me.role === "slasher") return <SlasherActions state={state} me={me} loc={loc} onError={onError} />;
-  return <TeenActions state={state} me={me} loc={loc} onError={onError} />;
+  return <TeenActions state={state} me={me} loc={loc} onError={onError} onSearchResult={onSearchResult} />;
 }
 
-function TeenActions({ state, me, loc, onError }) {
+function TeenActions({ state, me, loc, onError, onSearchResult }) {
   const [distractTarget, setDistractTarget] = useState("");
   const [giveItem, setGiveItem] = useState("");
   const [giveTo, setGiveTo] = useState("");
@@ -111,7 +112,12 @@ function TeenActions({ state, me, loc, onError }) {
       </ActionGroup>
 
       <ActionGroup title="Actions">
-        <button className="btn btn-secondary" onClick={() => act({ type: "search" }, onError)}>Search Area</button>
+        <button
+          className="btn btn-secondary"
+          onClick={() => act({ type: "search" }, onError, (res) => onSearchResult?.(res.searchResult))}
+        >
+          Search Area
+        </button>
         {usableItems.map((it) => (
           <button key={it.id} className="btn btn-secondary" onClick={() => act({ type: "use_item", itemId: it.id }, onError)}>
             Use {it.name}

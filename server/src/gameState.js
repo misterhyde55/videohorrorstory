@@ -755,7 +755,11 @@ export function applyAction(room, playerId, action) {
 
   checkWin(room);
   if (!room.winner && result?.consumeTurn !== false) advanceTurn(room);
-  return result?.searchStarted ? { ok: true, searchStarted: result.searchStarted } : { ok: true };
+  return {
+    ok: true,
+    ...(result?.searchStarted ? { searchStarted: result.searchStarted } : {}),
+    ...(result?.searchResult ? { searchResult: result.searchResult } : {}),
+  };
 }
 
 function teenAction(room, player, action) {
@@ -821,20 +825,20 @@ function teenAction(room, player, action) {
       if (item?.utility === "capacity") {
         player.itemCapacity += item.capacityBonus;
         log(room, `${player.characterName} searches ${loc.name} and finds a ${item.name}! More room to carry gear now.`, "teens");
-        return { ok: true };
+        return { ok: true, searchResult: { type: "item", itemName: item.name, note: "More room to carry gear now." } };
       }
       if (item && player.items.length >= player.itemCapacity) {
         log(room, `${player.characterName} searches ${loc.name} and finds ${item.name}, but there's no room left to carry it.`, "teens");
-        return { ok: true };
+        return { ok: true, searchResult: { type: "full", itemName: item.name } };
       }
       if (item) {
         player.items.push(item);
         log(room, `${player.characterName} searches ${loc.name} and finds ${item.name}.`, "teens");
-      } else {
-        const ev = randomEvent();
-        log(room, `${player.characterName} searches ${loc.name} and finds nothing. ${ev.text}`, "teens");
+        return { ok: true, searchResult: { type: "item", itemName: item.name } };
       }
-      return { ok: true };
+      const ev = randomEvent();
+      log(room, `${player.characterName} searches ${loc.name} and finds nothing. ${ev.text}`, "teens");
+      return { ok: true, searchResult: { type: "nothing", note: ev.text } };
     }
     case "discard": {
       const idx = player.items.findIndex((it) => it.id === action.itemId);
