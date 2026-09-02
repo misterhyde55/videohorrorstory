@@ -13,17 +13,20 @@ export default function HowToPlay({ onClose }) {
           <section>
             <h3>The Story</h3>
             <p>
-              A haunted VCR has released a killer into the Abandoned Wonderland
-              — a long-shuttered amusement park at the edge of Pinehaven. One
-              player controls that killer; everyone else plays a teenager
-              trying to survive the night. Every game reshuffles the park's
-              layout and connections around the same twelve landmarks — Twisted
-              Castle at the dead center, Main Street as the only way out — so
-              the Slasher's starting spot at the Castle is always far from
-              where the teens begin. Players take turns in order — each teen,
-              then the killer, on repeat — with a live 10-minute clock running
-              the whole time. As the clock runs low, the Monster hits harder
-              and isolated teens lose their nerve faster.
+              A haunted VCR has released a killer somewhere around Pinehaven —
+              either the Abandoned Wonderland, a long-shuttered amusement
+              park, or the Pinehaven Campground, picked at random each game.
+              One player controls that killer; everyone else plays a
+              teenager trying to survive the night. Every game reshuffles
+              the map's layout and connections around the same twelve
+              landmarks — a hub at the dead center (Twisted Castle, or the
+              campfire circle) and a single way out (Main Street, or the
+              Camp Entrance) — so the Slasher's starting spot at the hub is
+              always far from where the teens begin. Players take turns in
+              order — each teen, then the killer, on repeat — with a live
+              10-minute clock running the whole time. As the clock runs low,
+              the Monster hits harder and isolated teens lose their nerve
+              faster.
             </p>
           </section>
 
@@ -124,11 +127,11 @@ export default function HowToPlay({ onClose }) {
           <section>
             <h3>Playing as the Killer</h3>
             <p>
-              Stalk the park and catch teens alone. You win if every teen is dead, or
+              Stalk the grounds and catch teens alone. You win if every teen is dead, or
               if the 10-minute clock runs out before they escape, kill you, or banish
               you. On your turn: move, attack a teen who shares your location, lurk
               in place to build up a stalking bonus, sabotage a repaired car at
-              Main Street, or use your special ability once it's off cooldown.
+              the exit, or use your special ability once it's off cooldown.
             </p>
             <p>
               You can't move (or use your special ability) for your first 2 turns —

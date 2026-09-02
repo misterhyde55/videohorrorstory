@@ -19,7 +19,8 @@ function computeTip(state, me) {
       return "⚡ Your special ability is ready — try it on a teen elsewhere on the map.";
     }
     if (state.objectives?.carRepaired) {
-      return "🔧 The car's fixed — Sabotage it at Main Street to set them back.";
+      const exitLoc = Object.values(state.board || {}).find((l) => l.carSite);
+      return `🔧 The car's fixed — Sabotage it at ${exitLoc?.name || "the exit"} to set them back.`;
     }
     return "🚶 Move toward the nearest teen, or Lurk here to build a stalking bonus.";
   }

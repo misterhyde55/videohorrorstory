@@ -1,40 +1,75 @@
-// Procedural map for VHS: Video Horror Story — the Abandoned Wonderland, a
-// cursed amusement park version of Pinehaven. Every match reshuffles the
-// layout and connections, but the location set itself is fixed to match the
-// game's actual board: Twisted Castle at the hub, Main Street as the single
-// way out (and where the getaway vehicle sits), and the park's attractions
-// ringed around the center. Teen starting spots are chosen by BFS distance
-// to be as far from the Slasher's start (Twisted Castle) as possible.
+// Procedural maps for VHS: Video Horror Story. Every match randomly picks
+// one of a fixed set of themed boards (currently the Abandoned Wonderland
+// amusement park and the Pinehaven Campground) and reshuffles its layout
+// and connections, but each theme's location set itself stays fixed so the
+// board is always recognizable. Every theme has the same shape: a ritual
+// site at the hub (also the Slasher's start), a marquee location pinned to
+// the top of the ring, an exit that doubles as the car site at the south
+// entrance, and the rest of its locations ringed around the hub. Teen
+// starting spots are chosen by BFS distance to be as far from the Slasher's
+// start as possible.
 
-const EXIT_TEMPLATE = {
-  name: "Main Street",
-  description: "The park's entrance strip, ticket booths dark and silent. A getaway car waits near the gate — freedom, if it'll start.",
-  type: "mainstreet",
-  searchPool: "light",
-};
-
-const RITUAL_TEMPLATE = {
-  name: "Twisted Castle",
-  description: "The Hall of Mirrors distorts everything in here — including whatever's hunting you. This is where the ritual has to happen.",
-  type: "castle",
-};
-
-// safe: true marks a Safe Location — teens can Rest there (see gameState.js)
-// as long as the Monster isn't in the room with them.
-const GENERAL_TEMPLATES = [
-  { name: "Killer's Carnival", description: "The park's main stage, ringed by dead carnival lights and a grinning marquee face.", type: "carnival", searchPool: "heavy" },
-  { name: "Rusted Rails", description: "The Old Mine Coaster, seized up mid-climb. The cars haven't moved in years.", type: "coaster", searchPool: "medium", safe: true },
-  { name: "Blackridge Pass", description: "The Mountain of Screams looms over a switchback trail cut into the rock.", type: "mountain", searchPool: "medium" },
-  { name: "Lost Coaster", description: "Deadman's Loop, rusted upside down against the sky.", type: "coaster", searchPool: "heavy" },
-  { name: "Skull Cove", description: "A pirate-wreck ride flooded and abandoned at the waterline.", type: "pirate", searchPool: "medium" },
-  { name: "Spooky Shores", description: "The Haunted Boats dock sits still on black water.", type: "boats", searchPool: "light" },
-  { name: "Midway Mayhem", description: "Carnival Ruins — collapsed game stalls and prize stuffing scattered in the dirt.", type: "carnival", searchPool: "light", safe: true },
-  { name: "Swamp Run", description: "The Log Flume cuts through a stagnant, overgrown swamp.", type: "swamp", searchPool: "medium" },
-  { name: "Deadland Arcade", description: "Broken Games — rows of dead cabinets, one screen still flickering static.", type: "arcade", searchPool: "light", safe: true },
-  { name: "Funhouse of Fear", description: "Clown's Revenge. The mirrors move even when you don't.", type: "funhouse", searchPool: "heavy" },
+const THEMES = [
+  {
+    id: "wonderland",
+    name: "Abandoned Wonderland",
+    exit: {
+      name: "Main Street",
+      description: "The park's entrance strip, ticket booths dark and silent. A getaway car waits near the gate — freedom, if it'll start.",
+      type: "mainstreet",
+      searchPool: "light",
+    },
+    ritual: {
+      name: "Twisted Castle",
+      description: "The Hall of Mirrors distorts everything in here — including whatever's hunting you. This is where the ritual has to happen.",
+      type: "castle",
+    },
+    marqueeName: "Killer's Carnival",
+    // safe: true marks a Safe Location — teens can Rest there (see
+    // gameState.js) as long as the Monster isn't in the room with them.
+    general: [
+      { name: "Killer's Carnival", description: "The park's main stage, ringed by dead carnival lights and a grinning marquee face.", type: "carnival", searchPool: "heavy" },
+      { name: "Rusted Rails", description: "The Old Mine Coaster, seized up mid-climb. The cars haven't moved in years.", type: "coaster", searchPool: "medium", safe: true },
+      { name: "Blackridge Pass", description: "The Mountain of Screams looms over a switchback trail cut into the rock.", type: "mountain", searchPool: "medium" },
+      { name: "Lost Coaster", description: "Deadman's Loop, rusted upside down against the sky.", type: "coaster", searchPool: "heavy" },
+      { name: "Skull Cove", description: "A pirate-wreck ride flooded and abandoned at the waterline.", type: "pirate", searchPool: "medium" },
+      { name: "Spooky Shores", description: "The Haunted Boats dock sits still on black water.", type: "boats", searchPool: "light" },
+      { name: "Midway Mayhem", description: "Carnival Ruins — collapsed game stalls and prize stuffing scattered in the dirt.", type: "carnival", searchPool: "light", safe: true },
+      { name: "Swamp Run", description: "The Log Flume cuts through a stagnant, overgrown swamp.", type: "swamp", searchPool: "medium" },
+      { name: "Deadland Arcade", description: "Broken Games — rows of dead cabinets, one screen still flickering static.", type: "arcade", searchPool: "light", safe: true },
+      { name: "Funhouse of Fear", description: "Clown's Revenge. The mirrors move even when you don't.", type: "funhouse", searchPool: "heavy" },
+    ],
+  },
+  {
+    id: "campground",
+    name: "Pinehaven Campground",
+    exit: {
+      name: "Camp Entrance",
+      description: "The dirt road out of camp. A battered station wagon sits here, out of gas — freedom, if it'll start.",
+      type: "road",
+      searchPool: "light",
+    },
+    ritual: {
+      name: "Pinehaven Campgrounds",
+      description: "A ring of stumps around a dead campfire, right at the heart of camp. This is where the ritual has to happen.",
+      type: "campfire",
+    },
+    marqueeName: "Old Water Tower",
+    general: [
+      { name: "Old Water Tower", description: "A rusted tower looming over the treeline. Someone's scratched marks into the ladder.", type: "tower", searchPool: "heavy" },
+      { name: "Cabin 1", description: "Bunks and graffiti from summers past.", type: "cabin", searchPool: "light", safe: true },
+      { name: "Cabin 2", description: "The last cabin's door hangs off its hinges.", type: "cabin", searchPool: "light" },
+      { name: "General Store", description: "Shelves half-stocked and dust on everything.", type: "store", searchPool: "medium" },
+      { name: "Gas Station", description: "A single rusted pump out front. The bell over the door doesn't ring anymore.", type: "lot", searchPool: "medium" },
+      { name: "Pinehaven Diner", description: "Cold coffee still sits on the counter.", type: "store", searchPool: "light", safe: true },
+      { name: "Abandoned Police Station", description: "The holding cell door is open. It shouldn't be.", type: "police", searchPool: "heavy" },
+      { name: "Boat Dock", description: "The lake laps against rotted planks.", type: "water", searchPool: "medium" },
+      { name: "Camp Counselor Cabin", description: "Someone left the lights on. Nobody's been back to turn them off.", type: "cabin", searchPool: "medium", safe: true },
+      { name: "Forest Trail", description: "Trees close in on both sides. Something is watching.", type: "trail", searchPool: "light" },
+    ],
+  },
 ];
 
-const GENERAL_COUNT = GENERAL_TEMPLATES.length;
 const MAP_MARGIN = 10;
 const CENTER = { x: 50, y: 42 };
 const RING_RADIUS_X = 34;
@@ -85,36 +120,37 @@ function connectedComponents(ids, adjacency) {
 }
 
 export function generateBoard(rng = Math.random) {
+  const theme = THEMES[Math.floor(rng() * THEMES.length)];
   const usedIds = new Set();
-  const chosenGeneral = shuffle(GENERAL_TEMPLATES, rng).slice(0, GENERAL_COUNT);
+  const chosenGeneral = shuffle(theme.general, rng).slice(0, theme.general.length);
 
-  const exitId = slugify(EXIT_TEMPLATE.name, usedIds);
-  const ritualId = slugify(RITUAL_TEMPLATE.name, usedIds);
+  const exitId = slugify(theme.exit.name, usedIds);
+  const ritualId = slugify(theme.ritual.name, usedIds);
   const nodeDefs = [
-    { ...EXIT_TEMPLATE, id: exitId, exit: true, carSite: true },
-    { ...RITUAL_TEMPLATE, id: ritualId, ritualSite: true },
+    { ...theme.exit, id: exitId, exit: true, carSite: true },
+    { ...theme.ritual, id: ritualId, ritualSite: true },
     ...chosenGeneral.map((t) => ({ ...t, id: slugify(t.name, usedIds) })),
   ];
   const ids = nodeDefs.map((n) => n.id);
   const ringIds = ids.filter((id) => id !== exitId && id !== ritualId);
 
-  // --- Layout: Twisted Castle at the hub, Main Street at the entrance
-  // (south), the rest of the park ringed around the castle like the actual
-  // board — jittered each game so the wheel never looks quite the same. ---
+  // --- Layout: the ritual site sits at the hub, the exit at the entrance
+  // (south), and the rest of the map is ringed around the hub — jittered
+  // each game so the wheel never looks quite the same. ---
   const layout = {};
   layout[ritualId] = { x: CENTER.x, y: CENTER.y };
   layout[exitId] = { x: CENTER.x, y: 90 };
 
-  // Killer's Carnival is the park's marquee attraction and always sits at
-  // the top of the wheel, just like the reference board — everything else
-  // in the ring reshuffles around it each game.
-  const carnivalId = nodeDefs.find((n) => n.name === "Killer's Carnival")?.id;
-  const restRing = shuffle(ringIds.filter((id) => id !== carnivalId), rng);
-  const orderedRing = carnivalId ? [carnivalId, ...restRing] : restRing;
+  // The theme's marquee location is always at the top of the wheel, just
+  // like the reference boards — everything else in the ring reshuffles
+  // around it each game.
+  const marqueeId = nodeDefs.find((n) => n.name === theme.marqueeName)?.id;
+  const restRing = shuffle(ringIds.filter((id) => id !== marqueeId), rng);
+  const orderedRing = marqueeId ? [marqueeId, ...restRing] : restRing;
   const angleStep = (2 * Math.PI) / orderedRing.length;
   orderedRing.forEach((id, i) => {
     // Start at the top and sweep around, leaving the south arc clearer for
-    // Main Street's approach.
+    // the exit's approach.
     const angle = -Math.PI / 2 + i * angleStep + (rng() - 0.5) * angleStep * 0.3;
     const radiusJitter = 0.85 + rng() * 0.3;
     layout[id] = {
@@ -153,10 +189,10 @@ export function generateBoard(rng = Math.random) {
     layout[id].y = Math.round(Math.min(100 - MAP_MARGIN * 0.4, Math.max(MAP_MARGIN * 0.4, layout[id].y)) * 10) / 10;
   });
 
-  // --- Connections: the outer ring links neighbor-to-neighbor (the park's
-  // perimeter path), a few ring nodes spoke straight in to Twisted Castle,
-  // and Main Street connects to its nearest ring neighbors — then a couple
-  // of extra shortcuts get layered in for variety. ---
+  // --- Connections: the outer ring links neighbor-to-neighbor (the
+  // perimeter path), a few ring nodes spoke straight in to the hub, and the
+  // exit connects directly to the hub plus its nearest ring neighbors —
+  // then a couple of extra shortcuts get layered in for variety. ---
   function dist(a, b) {
     const dx = layout[a].x - layout[b].x;
     const dy = layout[a].y - layout[b].y;
@@ -175,8 +211,8 @@ export function generateBoard(rng = Math.random) {
 
   shuffle(orderedRing, rng).slice(0, HUB_SPOKES).forEach((id) => connect(ritualId, id));
 
-  // A direct central path from Twisted Castle down to Main Street — the
-  // main promenade running straight through the park, like the reference.
+  // A direct central path from the hub down to the exit — the main road
+  // running straight through the map, like the reference boards.
   connect(ritualId, exitId);
 
   const nearestToExit = [...orderedRing].sort((a, b) => dist(exitId, a) - dist(exitId, b)).slice(0, 2);
@@ -219,7 +255,7 @@ export function generateBoard(rng = Math.random) {
     };
   });
 
-  // --- Starting spots: Slasher at Twisted Castle; teens as far away as possible ---
+  // --- Starting spots: Slasher at the ritual site; teens as far away as possible ---
   const slasherStart = ritualId;
   const bfsDist = new Map([[slasherStart, 0]]);
   const queue = [slasherStart];
@@ -239,6 +275,8 @@ export function generateBoard(rng = Math.random) {
   while (teenStarts.length < 4) teenStarts.push(byDistanceDesc[0] ?? slasherStart);
 
   return {
+    mapId: theme.id,
+    mapName: theme.name,
     locations,
     layout,
     startLocations: { teens: teenStarts, slasher: slasherStart },

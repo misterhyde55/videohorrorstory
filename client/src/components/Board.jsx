@@ -3,6 +3,7 @@ import SurvivorHud from "./SurvivorHud";
 import MonsterHealthBar from "./MonsterHealthBar";
 
 const TYPE_ICONS = {
+  // Abandoned Wonderland
   mainstreet: "🎫",
   castle: "🏰",
   carnival: "🎪",
@@ -13,6 +14,16 @@ const TYPE_ICONS = {
   swamp: "🐊",
   arcade: "🕹️",
   funhouse: "🤡",
+  // Pinehaven Campground
+  road: "🛣️",
+  campfire: "🔥",
+  tower: "🗼",
+  cabin: "🏕️",
+  store: "🏪",
+  lot: "🚗",
+  police: "🚓",
+  water: "🌊",
+  trail: "🌲",
 };
 
 const STARS = [

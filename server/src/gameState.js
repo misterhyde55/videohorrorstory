@@ -91,6 +91,7 @@ export function createRoom(code, hostId) {
     players: new Map(), // id -> player
     board: null, // set at startGame — a fresh procedurally generated map
     layout: null,
+    mapName: null,
     turnOrder: [],
     turnIndex: 0,
     round: 1,
@@ -244,6 +245,7 @@ export function startGame(room, { durationMs } = {}) {
   const generated = generateBoard();
   room.board = generated.locations;
   room.layout = generated.layout;
+  room.mapName = generated.mapName;
 
   teens.forEach((p, i) => {
     const character = TEEN_CHARACTERS[p.pickId];
@@ -1155,6 +1157,7 @@ export function publicState(room, forPlayerId) {
     winReason: room.winReason,
     board: room.board ?? {},
     layout: room.layout ?? {},
+    mapName: room.mapName,
     characters: TEEN_CHARACTERS,
     killers: KILLERS,
     you: forPlayerId,

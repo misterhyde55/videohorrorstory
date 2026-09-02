@@ -40,6 +40,7 @@ export default function GameScreen({ state, playerId, onLeave }) {
     <div className="game-layout">
       <div className="game-top-stack">
         <div className="game-top">
+          {state.mapName && <div className="stat-chip map-chip">📍 {state.mapName}</div>}
           <div className="stat-chip">Round {state.round}</div>
           <div className={`stat-chip clock${clockTier ? ` clock-${clockTier}` : ""}`}>⏱ {clockLabel}</div>
           <div className="stat-chip">Room {state.code}</div>

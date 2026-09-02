@@ -556,6 +556,11 @@
   font-variant-numeric: tabular-nums;
 }
 
+.stat-chip.map-chip {
+  color: var(--neon-cyan);
+  border-color: var(--neon-cyan);
+}
+
 .stat-chip.clock-warn {
   color: #ffb347;
 }
