@@ -52,6 +52,9 @@ export default function ActionPanel({ state, me, onError }) {
 
 function TeenActions({ state, me, loc, onError }) {
   const [distractTarget, setDistractTarget] = useState("");
+  const [giveItem, setGiveItem] = useState("");
+  const [giveTo, setGiveTo] = useState("");
+  const [moreOpen, setMoreOpen] = useState(false);
   const items = me.items || [];
   const usableItems = items.filter((it) => it.utility === "heal" || it.utility === "sanity");
   const hasKit = (ids, min) => ids.filter((id) => items.some((it) => it.id === id)).length >= min;
@@ -178,77 +181,103 @@ function TeenActions({ state, me, loc, onError }) {
         </ActionGroup>
       )}
 
-      {teammatesHere.length > 0 && (
-        <ActionGroup title="Comfort">
-          {teammatesHere.map((mate) => (
-            <button
-              key={mate.id}
-              className="btn btn-secondary"
-              disabled={mate.sanity >= mate.sanityMax || hazardHere}
-              title={hazardHere ? "Something's wrong here — you can't settle down enough to comfort anyone." : ""}
-              onClick={() => act({ type: "comfort", targetId: mate.id }, onError)}
-            >
-              Comfort {mate.characterName}
-            </button>
-          ))}
-        </ActionGroup>
-      )}
+      <button
+        type="button"
+        className="more-actions-toggle"
+        onClick={() => setMoreOpen((v) => !v)}
+        aria-expanded={moreOpen}
+      >
+        <span>More Actions</span>
+        <span className={`player-card-toggle-arrow${moreOpen ? " open" : ""}`} aria-hidden="true">▾</span>
+      </button>
 
-      {teammatesHere.length > 0 && items.length > 0 && (
-        <ActionGroup title="Give Item">
-          {teammatesHere.map((mate) =>
-            items.map((it) => (
-              <button
-                key={mate.id + it.id}
-                className="btn btn-ghost"
-                onClick={() => act({ type: "give", itemId: it.id, toPlayerId: mate.id }, onError)}
-              >
-                Give {it.name} to {mate.characterName}
-              </button>
-            ))
-          )}
-        </ActionGroup>
-      )}
-
-      {items.length > 0 && (
-        <ActionGroup title="Discard">
-          {items.map((it, i) => (
-            <button
-              key={it.id + i}
-              className="btn btn-ghost"
-              onClick={() => act({ type: "discard", itemId: it.id }, onError)}
-            >
-              Drop {it.name}
-            </button>
-          ))}
-        </ActionGroup>
-      )}
-
-      {!me.distractUsed && (
-        <ActionGroup title="Diversion (once per game)">
-          <select
-            className="distract-select"
-            value={distractTarget}
-            onChange={(e) => setDistractTarget(e.target.value)}
-          >
-            <option value="">Fake noise at…</option>
-            {Object.values(state.board)
-              .filter((l) => l.id !== me.location)
-              .map((l) => (
-                <option key={l.id} value={l.id}>{l.name}</option>
+      {moreOpen && (
+        <>
+          {teammatesHere.length > 0 && (
+            <ActionGroup title="Comfort">
+              {teammatesHere.map((mate) => (
+                <button
+                  key={mate.id}
+                  className="btn btn-secondary"
+                  disabled={mate.sanity >= mate.sanityMax || hazardHere}
+                  title={hazardHere ? "Something's wrong here — you can't settle down enough to comfort anyone." : ""}
+                  onClick={() => act({ type: "comfort", targetId: mate.id }, onError)}
+                >
+                  Comfort {mate.characterName}
+                </button>
               ))}
-          </select>
-          <button
-            className="btn btn-ghost"
-            disabled={!distractTarget}
-            onClick={() => {
-              act({ type: "distract", to: distractTarget }, onError);
-              setDistractTarget("");
-            }}
-          >
-            Create Diversion
-          </button>
-        </ActionGroup>
+            </ActionGroup>
+          )}
+
+          {teammatesHere.length > 0 && items.length > 0 && (
+            <ActionGroup title="Give Item">
+              <select className="compact-select" value={giveItem} onChange={(e) => setGiveItem(e.target.value)}>
+                <option value="">Item…</option>
+                {items.map((it, i) => (
+                  <option key={it.id + i} value={i}>{it.name}</option>
+                ))}
+              </select>
+              <select className="compact-select" value={giveTo} onChange={(e) => setGiveTo(e.target.value)}>
+                <option value="">To…</option>
+                {teammatesHere.map((mate) => (
+                  <option key={mate.id} value={mate.id}>{mate.characterName}</option>
+                ))}
+              </select>
+              <button
+                className="btn btn-ghost"
+                disabled={giveItem === "" || !giveTo}
+                onClick={() => {
+                  act({ type: "give", itemId: items[Number(giveItem)].id, toPlayerId: giveTo }, onError);
+                  setGiveItem("");
+                  setGiveTo("");
+                }}
+              >
+                Give
+              </button>
+            </ActionGroup>
+          )}
+
+          {items.length > 0 && (
+            <ActionGroup title="Discard">
+              {items.map((it, i) => (
+                <button
+                  key={it.id + i}
+                  className="btn btn-ghost"
+                  onClick={() => act({ type: "discard", itemId: it.id }, onError)}
+                >
+                  Drop {it.name}
+                </button>
+              ))}
+            </ActionGroup>
+          )}
+
+          {!me.distractUsed && (
+            <ActionGroup title="Diversion (once per game)">
+              <select
+                className="distract-select"
+                value={distractTarget}
+                onChange={(e) => setDistractTarget(e.target.value)}
+              >
+                <option value="">Fake noise at…</option>
+                {Object.values(state.board)
+                  .filter((l) => l.id !== me.location)
+                  .map((l) => (
+                    <option key={l.id} value={l.id}>{l.name}</option>
+                  ))}
+              </select>
+              <button
+                className="btn btn-ghost"
+                disabled={!distractTarget}
+                onClick={() => {
+                  act({ type: "distract", to: distractTarget }, onError);
+                  setDistractTarget("");
+                }}
+              >
+                Create Diversion
+              </button>
+            </ActionGroup>
+          )}
+        </>
       )}
     </div>
   );

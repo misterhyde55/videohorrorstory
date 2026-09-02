@@ -349,6 +349,11 @@
   transition: transform 0.1s, box-shadow 0.2s;
 }
 
+.action-panel .btn {
+  padding: 0.4rem 0.7rem;
+  font-size: 0.8rem;
+}
+
 .btn:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 0 12px rgba(155, 48, 255, 0.5);
@@ -966,7 +971,7 @@
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
   border-radius: 10px;
-  padding: 1rem 1.25rem;
+  padding: 0.75rem 0.9rem;
 }
 
 .action-panel.waiting {
@@ -987,22 +992,40 @@
 }
 
 .action-group {
-  margin-bottom: 0.9rem;
+  margin-bottom: 0.55rem;
 }
 
 .action-group-title {
   display: block;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: #8a7aa0;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.3rem;
 }
 
 .action-group-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 0.35rem;
+}
+
+.more-actions-toggle {
   display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+  padding: 0.4rem 0 0.15rem;
+  margin-top: 0.2rem;
+  color: var(--neon-cyan);
+  font-family: inherit;
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  cursor: pointer;
 }
 
 .game-roster {
@@ -1242,7 +1265,8 @@
   animation: shake 0.8s infinite;
 }
 
-.distract-select {
+.distract-select,
+.compact-select {
   background: rgba(0, 0, 0, 0.35);
   border: 1px solid var(--panel-border);
   color: #f2ecff;
