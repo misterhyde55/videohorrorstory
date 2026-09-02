@@ -21,7 +21,7 @@ const STEPS = [
     icon: "🎲",
     title: "Taking Your Turn",
     body: ["Everyone takes turns — teens first, then the monster.", "Pick ONE action on your turn:"],
-    list: ["🚶 Move to a new room", "🔦 Search for supplies", "🤫 Hide, 🛏️ Rest, or 🤝 help a teammate"],
+    list: ["🚶 Move to a new room", "🔦 Search for supplies", "🤫 Hide, 🥤 use an item, or 🤝 help a teammate"],
   },
   {
     icon: "🧠",
@@ -29,7 +29,7 @@ const STEPS = [
     body: ["Sanity is your fear meter. It drops when you're alone or scared.", "Low Sanity = shaky, unreliable actions."],
     list: [
       "👥 Stick together — stops it from dropping further.",
-      "🛏️ Rest, 🤝 get Comforted, or use an item to heal it.",
+      "🥤 Drink an Energy Drink, 🤝 get Comforted, or use another item to steady it.",
       "💀 Hit 0 and you break down.",
     ],
   },

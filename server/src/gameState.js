@@ -37,8 +37,6 @@ const EARLY_GAME_TIER2_ELAPSED = 0.4;
 // ---- Sanity Recovery Rules (exact spec) ----
 const SANITY_MAX = 10;
 const SANITY_START = 8;
-const REST_GAIN = 1;
-const REST_LOCATION_CAP = 3; // per Safe Location, per player, per game
 const COMFORT_GAIN = 1;
 const COMFORT_LIMIT = 3; // per player, per game (as the receiver)
 const ITEM_SANITY_LIMIT = 4; // per player, per game
@@ -244,7 +242,6 @@ export function addPlayer(room, id, name, roleOverride) {
     traumaCard: null,
     brokenGainRound: null,
     brokenGainThisRound: 0,
-    restGainByLocation: {},
     comfortGainTotal: 0,
     comfortReceivedRound: null,
     itemSanityGainTotal: 0,
@@ -254,6 +251,7 @@ export function addPlayer(room, id, name, roleOverride) {
     deathLocation: null,
   });
 }
+
 
 let botCounter = 0;
 
@@ -366,7 +364,6 @@ export function startGame(room, { durationMs } = {}) {
     p.traumaCard = null;
     p.brokenGainRound = null;
     p.brokenGainThisRound = 0;
-    p.restGainByLocation = {};
     p.comfortGainTotal = 0;
     p.comfortReceivedRound = null;
     p.itemSanityGainTotal = 0;
@@ -1007,26 +1004,13 @@ function teenAction(room, player, action) {
       log(room, player.hiding ? `${player.characterName} stays hidden, listening.` : `${player.characterName} waits, listening.`, "teens");
       return { ok: true };
     }
-    case "rest": {
-      if (!loc.safe) return { error: "This isn't a safe place to rest." };
-      const slasher = slasherOf(room);
-      if (slasher && slasher.location === player.location) return { error: "You can't rest with the Slasher right here!" };
-      if (hasActiveHorrorEvent(room, player.location)) return { error: "Something's still wrong here — you can't settle down." };
-      if (player.sanity >= player.sanityMax) return { error: "You're already at ease." };
-      const gained = player.restGainByLocation[player.location] || 0;
-      if (gained >= REST_LOCATION_CAP) return { error: "You've calmed down as much as you can here. Try somewhere else." };
-      const grant = Math.min(REST_GAIN, REST_LOCATION_CAP - gained);
-      player.restGainByLocation[player.location] = gained + grant;
-      gainSanity(room, player, grant);
-      log(room, `${player.characterName} rests at ${loc.name} and steadies their nerves a little.`, "teens");
-      return { ok: true, sanityActionTaken: true };
-    }
     case "comfort": {
       const target = room.players.get(action.targetId);
       if (!target || target.role !== "teen" || target.location !== player.location || target.status !== "alive") {
         return { error: "That teammate isn't here." };
       }
       if (target.id === player.id) return { error: "You can't comfort yourself." };
+      if (hasActiveHorrorEvent(room, player.location)) return { error: "Something's still wrong here — you can't settle down." };
       if (target.comfortReceivedRound === room.round) {
         return { error: `${target.characterName} already had someone comfort them this round.` };
       }
@@ -1510,9 +1494,11 @@ export function decideTeenBotAction(room, bot) {
     return { type: "revive", targetId: deadHere[0].id };
   }
 
-  // Tend to Sanity: rest if it's safe to, or comfort a struggling teammate.
+  // Tend to Sanity: drink an Energy Drink if carrying one, or comfort a
+  // struggling teammate.
   if (bot.sanity <= 3) {
-    if (loc.safe && bot.sanity < bot.sanityMax) return { type: "rest" };
+    const sanityIdx = bot.items.findIndex((it) => it.utility === "sanity");
+    if (sanityIdx >= 0) return { type: "use_item", itemId: bot.items[sanityIdx].id };
     const teammateHere = aliveTeens(room).find(
       (t) => t.id !== bot.id && t.location === bot.location && t.sanity < t.sanityMax
     );

@@ -16,6 +16,7 @@ export const ITEMS = {
   cursed_tape: { id: "cursed_tape", name: "Cursed VHS Tape", flavor: "Static crawls across the label.", kit: "banish" },
   flashlight: { id: "flashlight", name: "Flashlight", flavor: "Cuts through the dark. Improves your searching.", utility: "search_bonus" },
   first_aid: { id: "first_aid", name: "First Aid Kit", flavor: "Patches you up — or brings someone back.", utility: "heal" },
+  energy_drink: { id: "energy_drink", name: "Energy Drink", flavor: "Warm, flat, and definitely past its date. Drink it anyway.", utility: "sanity", sanityAmount: 1 },
   cassette_player: { id: "cassette_player", name: "Cassette Player", flavor: "Warped tape, but the mixtape still plays.", utility: "sanity", sanityAmount: 1 },
   family_photo: { id: "family_photo", name: "Family Photo", flavor: "Creased at the corners from being carried everywhere.", utility: "sanity", sanityAmount: 1, noMonsterHere: true },
   favorite_vhs: { id: "favorite_vhs", name: "Favorite VHS", flavor: "You've watched this a hundred times. It still helps.", utility: "sanity", sanityAmount: 2, noMonsterHere: true },
@@ -24,8 +25,8 @@ export const ITEMS = {
 
 // Search pools: weighted lists of item ids (or null for "nothing").
 const POOLS = {
-  light: ["flashlight", null, null, "first_aid", "cassette_player", "family_photo", "canvas_bag", null],
-  medium: ["car_keys", "gas_can", "tool_kit", "ritual_candle", null, "first_aid", "favorite_vhs", "canvas_bag", null],
+  light: ["flashlight", null, null, "first_aid", "energy_drink", "cassette_player", "family_photo", "canvas_bag", null],
+  medium: ["car_keys", "gas_can", "tool_kit", "ritual_candle", null, "first_aid", "energy_drink", "favorite_vhs", "canvas_bag", null],
   heavy: ["machete", "shotgun", "fireaxe", "occult_book", "cursed_tape", "canvas_bag", null],
 };
 

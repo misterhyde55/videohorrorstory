@@ -84,7 +84,7 @@ export default function HowToPlay({ onClose }) {
               swallows all sound for a round, static screams from every radio
               at once, a false report crackles over the airwaves, lightning
               throws the Slasher's silhouette against a wall for one instant,
-              somewhere on the map turns hostile and unsafe to rest at, or
+              somewhere on the map turns hostile and unsafe to settle down at, or
               someone stumbles on an old home movie that helps steady their
               nerves. No two matches roll the same mix.
             </p>
@@ -113,13 +113,12 @@ export default function HowToPlay({ onClose }) {
               into the wrong room while trying to move.
             </p>
             <p>
-              Recovering Sanity takes deliberate effort, through five channels,
+              Recovering Sanity takes deliberate effort, through three channels,
               each capped so it can't be farmed:
             </p>
             <ul>
-              <li>🛏️ <strong>Rest</strong> — spend your whole turn at a Safe Location (and the Slasher not there) to recover 1 Sanity. Each Safe Location only has 3 points of comfort to give you, all game.</li>
               <li>🤝 <strong>Comfort</strong> — spend your whole turn to steady a teammate in your location for +1 Sanity (+2 from The Leader). Each teen can only be comforted once per round, and up to 3 times total per game.</li>
-              <li>📼 <strong>Sanity items</strong> — a Cassette Player or Family Photo restores 1, a Favorite VHS restores 2 (and takes a whole turn to watch). Capped at 4 total from items per game.</li>
+              <li>🥤 <strong>Sanity items</strong> — an Energy Drink, Cassette Player, or Family Photo restores 1, a Favorite VHS restores 2 (and takes a whole turn to watch). Capped at 4 total from items per game.</li>
               <li>🎯 <strong>Objectives</strong> — repairing the car restores 1; banishing or destroying the Monster, or escaping, restores 2. Capped at 4 total from objectives per game.</li>
             </ul>
             <p>

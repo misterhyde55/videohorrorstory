@@ -48,13 +48,12 @@ Sanity too. Low Sanity makes every action less reliable, and a fully
 panicked teen can hallucinate or stumble into the wrong room while trying
 to move.
 
-Recovering it takes a deliberate turn and one of five capped channels:
-**Rest** (+1, at a Safe Location, max 3 per location per game), **Comfort**
-(+1 to a teammate in your location, +2 from The Leader; max 3 received per
-game, once per round), **Sanity items** (Cassette Player/Family Photo +1,
-Favorite VHS +2; max 4 from items per game), and **Objectives** (repairing
-the car +1, banishing/destroying the Monster or escaping +2; max 4 from
-objectives per game). Hitting 0 makes a teen **Broken** — they draw a
+Recovering it takes a deliberate turn and one of three capped channels:
+**Comfort** (+1 to a teammate in your location, +2 from The Leader; max 3
+received per game, once per round), **Sanity items** (Energy Drink/Cassette
+Player/Family Photo +1, Favorite VHS +2; max 4 from items per game), and
+**Objectives** (repairing the car +1, banishing/destroying the Monster or
+escaping +2; max 4 from objectives per game). Hitting 0 makes a teen **Broken** — they draw a
 Trauma Card and can only recover 1 Sanity per round until they reach 3
 again; it can only happen once per game, after which a bad scare bottoms
 them out at 1 Sanity instead.
@@ -91,8 +90,8 @@ random Horror Event fires and throws in an unscripted wrinkle: a **Power
 Flicker** blacks out all noise for a round, **Dead Air** static rattles
 every teen's nerves, a **False Report** sends a fake sighting out over the
 airwaves, a **Lightning Flash** briefly shows the teens exactly where the
-Slasher is standing, somewhere on the map turns hostile and unsafe to rest
-at (**Something's Wrong Here**), or someone finds an uncapped moment of
+Slasher is standing, somewhere on the map turns hostile and unsafe to settle
+down at (**Something's Wrong Here**), or someone finds an uncapped moment of
 comfort in **Forgotten Footage**. They're capped and spaced out so they
 punctuate a match rather than flooding it.
 

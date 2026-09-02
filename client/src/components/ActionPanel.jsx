@@ -91,7 +91,7 @@ function TeenActions({ state, me, loc, onError }) {
         <div key={s.id} className="sense-banner">⚡ Lightning flash — you catch a glimpse of it at {s.locationName}!</div>
       ))}
       {hazardHere && (
-        <div className="sense-banner panicked">Something's deeply wrong here — you can't settle down enough to rest.</div>
+        <div className="sense-banner panicked">Something's deeply wrong here — you can't settle down enough to comfort anyone.</div>
       )}
       {tier !== "steady" && (
         <div className={`sense-banner ${tier}`}>
@@ -114,16 +114,6 @@ function TeenActions({ state, me, loc, onError }) {
             Use {it.name}
           </button>
         ))}
-        {loc.safe && (
-          <button
-            className="btn btn-secondary"
-            disabled={me.sanity >= me.sanityMax || state.slasherPresent || hazardHere}
-            title={loc.safe ? "Rest here to recover 1 Sanity (once per Safe Location, up to 3 times each)" : ""}
-            onClick={() => act({ type: "rest" }, onError)}
-          >
-            Rest
-          </button>
-        )}
         {loc.carSite && !carRepaired && (
           <button
             className="btn btn-secondary"
@@ -194,7 +184,8 @@ function TeenActions({ state, me, loc, onError }) {
             <button
               key={mate.id}
               className="btn btn-secondary"
-              disabled={mate.sanity >= mate.sanityMax}
+              disabled={mate.sanity >= mate.sanityMax || hazardHere}
+              title={hazardHere ? "Something's wrong here — you can't settle down enough to comfort anyone." : ""}
               onClick={() => act({ type: "comfort", targetId: mate.id }, onError)}
             >
               Comfort {mate.characterName}
