@@ -511,12 +511,12 @@
 /* Game screen */
 .game-layout {
   display: grid;
-  grid-template-columns: 1fr 340px;
+  grid-template-columns: 200px 1fr 340px;
   grid-template-rows: auto 1fr;
   gap: 0.75rem;
   grid-template-areas:
-    "top top"
-    "board sidebar";
+    "top top top"
+    "roster board sidebar";
   height: 100%;
   min-height: 0;
 }
@@ -528,8 +528,8 @@
   }
   .game-layout {
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
-    grid-template-areas: "top" "board" "sidebar";
+    grid-template-rows: auto auto auto auto;
+    grid-template-areas: "top" "roster" "board" "sidebar";
     height: auto;
   }
 }
@@ -791,28 +791,24 @@
   border: 2px dashed #cbb8e8;
 }
 
-/* Survivor status HUD — overlaid on the board, top-left, DBD-style:
-   portrait + name + Health/Sanity bars stacked per teen. */
+/* Survivor status HUD — its own left-hand column, DBD-style: portrait +
+   name + Health/Sanity bars stacked per teen. Used to float over the
+   board itself, but that let a randomly-placed location land underneath
+   it and become invisible, so it now lives in a real grid column instead. */
 .survivor-hud {
-  position: absolute;
-  top: 0.6rem;
-  left: 0.6rem;
-  z-index: 10;
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
-  pointer-events: none;
 }
 
 .survivor-card {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: rgba(10, 6, 16, 0.72);
+  background: var(--panel-bg);
   border: 1px solid var(--panel-border);
   border-radius: 8px;
   padding: 0.3rem 0.6rem 0.3rem 0.3rem;
-  backdrop-filter: blur(2px);
 }
 
 .survivor-card.is-me {
@@ -1007,6 +1003,12 @@
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+}
+
+.game-roster {
+  grid-area: roster;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .game-sidebar {

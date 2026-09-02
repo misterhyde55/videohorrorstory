@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Board from "../components/Board";
 import ActionPanel from "../components/ActionPanel";
 import PlayerCard from "../components/PlayerCard";
+import SurvivorHud from "../components/SurvivorHud";
 import HoldYourBreath from "../components/HoldYourBreath";
 import PracticeTip from "../components/PracticeTip";
 import PostGameRecap from "../components/PostGameRecap";
@@ -56,6 +57,10 @@ export default function GameScreen({ state, playerId, onLeave }) {
         )}
 
         {error && <div className="banner banner-error" onAnimationEnd={() => setError("")}>{error}</div>}
+      </div>
+
+      <div className="game-roster">
+        <SurvivorHud players={state.players} me={playerId} />
       </div>
 
       {breathOverlay && (

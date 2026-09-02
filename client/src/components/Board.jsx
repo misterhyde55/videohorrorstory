@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import SurvivorHud from "./SurvivorHud";
 import MonsterHealthBar from "./MonsterHealthBar";
 
 const TYPE_ICONS = {
@@ -140,7 +139,6 @@ export default function Board({
 
       <div className="board-fog" />
 
-      <SurvivorHud players={players} me={me} />
       <MonsterHealthBar show={!!slasherPresent} name={killerName} hp={monsterHp} max={monsterMaxHp} />
 
       {Object.values(board).map((loc) => {
