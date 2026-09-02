@@ -83,6 +83,97 @@ const KILLER_SECRET_OBJECTIVES = [
   },
 ];
 
+// Horror Events: random mid-match happenings that fire a handful of times
+// per game once things get going, each simple on its own but unscripted in
+// combination — no two matches roll the same sequence. `apply` returns a
+// short player-facing summary (shown to everyone as a banner) on success,
+// or null if it had nothing valid to act on this round (e.g. no locations
+// left to target), in which case the roll doesn't count as used.
+const HORROR_EVENT_MIN_ROUND = 3;
+const HORROR_EVENT_COOLDOWN_ROUNDS = 3;
+const MAX_HORROR_EVENTS_PER_GAME = 5;
+const HORROR_EVENT_CHANCE = 0.35; // rolled once per round, once eligible
+
+const HORROR_EVENTS = [
+  {
+    id: "unsettling_presence",
+    name: "Something's Wrong Here",
+    apply(room) {
+      const candidates = Object.values(room.board).filter((l) => !l.exit && !l.ritualSite);
+      if (candidates.length === 0) return null;
+      const loc = candidates[Math.floor(Math.random() * candidates.length)];
+      room.horrorEvents.set(loc.id, { name: "Something's Wrong Here", expiresRound: room.round + 2 });
+      aliveTeens(room)
+        .filter((t) => t.location === loc.id)
+        .forEach((t) => loseSanity(room, t, 1));
+      log(room, `Something is deeply wrong at ${loc.name} — no one will be able to settle down there for a while.`, "all");
+      return "Something turns hostile somewhere on the map.";
+    },
+  },
+  {
+    id: "power_flicker",
+    name: "Power Flicker",
+    apply(room) {
+      room.noiseSuppressedUntilRound = room.round + 1;
+      log(room, "The power flickers and dies. For a moment, everything goes real quiet.", "all");
+      return "The power flickers and dies — no sound will carry this round.";
+    },
+  },
+  {
+    id: "radio_static",
+    name: "Dead Air",
+    apply(room) {
+      const teens = aliveTeens(room);
+      if (teens.length === 0) return null;
+      teens.forEach((t) => loseSanity(room, t, 1));
+      log(room, "Every dead radio in the place screams static at once.", "teens");
+      return "Every radio in the place screams static at once.";
+    },
+  },
+  {
+    id: "false_report",
+    name: "False Report",
+    apply(room) {
+      const ids = Object.keys(room.board);
+      if (ids.length === 0) return null;
+      const locId = ids[Math.floor(Math.random() * ids.length)];
+      emitNoise(room, locId, "noisy", { fake: true });
+      log(room, "A garbled voice on the radio reports a sighting that turns out to be nothing.", "teens");
+      return "A false report crackles over the radio.";
+    },
+  },
+  {
+    id: "lightning_flash",
+    name: "Lightning Flash",
+    apply(room) {
+      const slasher = slasherOf(room);
+      if (!slasher) return null;
+      const locName = room.board[slasher.location]?.name || "somewhere";
+      room.sightings.push({
+        id: `sighting-${++room.sightingCounter}`,
+        locationId: slasher.location,
+        locationName: locName,
+        round: room.round,
+        expiresRound: room.round,
+      });
+      log(room, `Lightning cracks overhead — for one instant, you see exactly where it is: ${locName}.`, "teens");
+      return "Lightning cracks overhead.";
+    },
+  },
+  {
+    id: "forgotten_footage",
+    name: "Forgotten Footage",
+    apply(room) {
+      const teens = aliveTeens(room);
+      if (teens.length === 0) return null;
+      const teen = teens[Math.floor(Math.random() * teens.length)];
+      gainSanity(room, teen, 1);
+      log(room, `${teen.characterName} finds an old home movie of happier times, tucked away at ${room.board[teen.location]?.name}. It helps, a little.`, "teens");
+      return "Someone finds an old home movie of happier times.";
+    },
+  },
+];
+
 export function createRoom(code, hostId) {
   return {
     code,
@@ -106,15 +197,21 @@ export function createRoom(code, hostId) {
     winReason: null,
     createdAt: Date.now(),
     comfortPairsThisRound: new Set(),
-    horrorEvents: new Set(), // locationIds with an active Horror Event (blocks Rest there)
+    horrorEvents: new Map(), // locationId -> { name, expiresRound } — an active Horror Event there (blocks Rest)
     practice: false, // a short, guided practice match — see index.js create_solo_room
     noiseAlerts: [], // {id, level, locationId, locationName, round, expiresRound, fake}
     noiseAlertCounter: 0,
+    noiseSuppressedUntilRound: 0, // Horror Event: no noise carries through this round
+    sightings: [], // {id, locationId, locationName, round, expiresRound} — teen-visible Slasher glimpses
+    sightingCounter: 0,
     killerSecretObjective: null,
     killCount: 0,
     carEverRepaired: false,
     anyTeenBroken: false,
     soloKillHappened: false,
+    horrorEventsFired: [], // {id, name, round} — history for this match
+    lastHorrorEventRound: 0,
+    recentHorrorEvent: null, // {id, name, summary, round} — most recent, for the shared banner
   };
 }
 
@@ -293,14 +390,20 @@ export function startGame(room, { durationMs } = {}) {
   room.winReason = null;
   room.log = [];
   room.comfortPairsThisRound = new Set();
-  room.horrorEvents = new Set();
+  room.horrorEvents = new Map();
   room.noiseAlerts = [];
   room.noiseAlertCounter = 0;
+  room.noiseSuppressedUntilRound = 0;
+  room.sightings = [];
+  room.sightingCounter = 0;
   room.killerSecretObjective = KILLER_SECRET_OBJECTIVES[Math.floor(Math.random() * KILLER_SECRET_OBJECTIVES.length)];
   room.killCount = 0;
   room.carEverRepaired = false;
   room.anyTeenBroken = false;
   room.soloKillHappened = false;
+  room.horrorEventsFired = [];
+  room.lastHorrorEventRound = 0;
+  room.recentHorrorEvent = null;
   log(room, "The static clears. The night begins.");
   return room;
 }
@@ -447,8 +550,6 @@ function grantItemSanity(room, player, amount) {
   return gainSanity(room, player, grant);
 }
 
-// Hook for a future location-scoped Horror Event system; nothing currently
-// populates room.horrorEvents, so this is inert until one does.
 function hasActiveHorrorEvent(room, locationId) {
   return room.horrorEvents.has(locationId);
 }
@@ -493,6 +594,7 @@ function scareTeensAt(room, locationId) {
 function emitNoise(room, locationId, level, opts = {}) {
   const loc = room.board[locationId];
   if (!loc) return;
+  if (room.noiseSuppressedUntilRound && room.round <= room.noiseSuppressedUntilRound) return;
   const alert = {
     id: `noise-${++room.noiseAlertCounter}`,
     level,
@@ -515,6 +617,30 @@ function pruneNoiseAlerts(room) {
   room.noiseAlerts = room.noiseAlerts.filter((a) => room.round <= a.expiresRound);
 }
 
+function pruneHorrorEvents(room) {
+  for (const [locId, ev] of room.horrorEvents) {
+    if (room.round > ev.expiresRound) room.horrorEvents.delete(locId);
+  }
+  room.sightings = room.sightings.filter((s) => room.round <= s.expiresRound);
+}
+
+// Rolls for a random Horror Event once per round, after an early grace
+// period and with a cooldown/cap so they punctuate a match rather than
+// flooding it. An event whose apply() finds nothing valid to do (e.g. no
+// eligible location) doesn't consume the roll or start the cooldown.
+function maybeTriggerHorrorEvent(room) {
+  if (room.round < HORROR_EVENT_MIN_ROUND) return;
+  if (room.round - room.lastHorrorEventRound < HORROR_EVENT_COOLDOWN_ROUNDS) return;
+  if (room.horrorEventsFired.length >= MAX_HORROR_EVENTS_PER_GAME) return;
+  if (Math.random() >= HORROR_EVENT_CHANCE) return;
+  const event = HORROR_EVENTS[Math.floor(Math.random() * HORROR_EVENTS.length)];
+  const summary = event.apply(room);
+  if (summary == null) return;
+  room.lastHorrorEventRound = room.round;
+  room.horrorEventsFired.push({ id: event.id, name: event.name, round: room.round });
+  room.recentHorrorEvent = { id: event.id, name: event.name, summary, round: room.round };
+}
+
 function advanceTurn(room) {
   if (room.winner) return;
   const n = room.turnOrder.length;
@@ -525,6 +651,8 @@ function advanceTurn(room) {
       room.round += 1;
       room.comfortPairsThisRound = new Set();
       pruneNoiseAlerts(room);
+      pruneHorrorEvents(room);
+      maybeTriggerHorrorEvent(room);
     }
     const pid = currentPlayerId(room);
     const player = room.players.get(pid);
@@ -1164,6 +1292,10 @@ export function publicState(room, forPlayerId) {
     slasherPresent,
     slasherNearby,
     noiseAlerts: isSlasher ? room.noiseAlerts : [],
+    sightings: isSlasher ? [] : room.sightings,
+    activeHorrorEventLocations: [...room.horrorEvents.keys()],
+    recentHorrorEvent:
+      room.recentHorrorEvent && room.round - room.recentHorrorEvent.round <= 1 ? room.recentHorrorEvent : null,
     killerSecretObjective: isSlasher
       ? room.killerSecretObjective
       : secretObjectiveRevealed

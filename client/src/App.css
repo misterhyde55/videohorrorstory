@@ -220,6 +220,13 @@
   75% { transform: translateX(4px); }
 }
 
+.banner-horror-event {
+  background: rgba(255, 179, 71, 0.14);
+  border: 1px solid #ffb347;
+  color: #ffe2b8;
+  font-style: italic;
+}
+
 .practice-banner {
   display: flex;
   align-items: center;
@@ -694,6 +701,20 @@
 
 .map-node.flash {
   animation: moveFlash 1s ease-out;
+}
+
+.map-node.haunted {
+  border-color: #ffb347;
+  box-shadow: 0 0 14px rgba(255, 179, 71, 0.5);
+}
+
+.haunted-icon {
+  animation: hauntedPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes hauntedPulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
 }
 
 @keyframes moveFlash {

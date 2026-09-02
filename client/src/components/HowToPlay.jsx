@@ -77,6 +77,20 @@ export default function HowToPlay({ onClose }) {
           </section>
 
           <section>
+            <h3>Horror Events</h3>
+            <p>
+              A handful of times each match, in no fixed order, a random Horror
+              Event fires for everyone to deal with: the power flickers out and
+              swallows all sound for a round, static screams from every radio
+              at once, a false report crackles over the airwaves, lightning
+              throws the Slasher's silhouette against a wall for one instant,
+              somewhere on the map turns hostile and unsafe to rest at, or
+              someone stumbles on an old home movie that helps steady their
+              nerves. No two matches roll the same mix.
+            </p>
+          </section>
+
+          <section>
             <h3>Sanity</h3>
             <p>
               Every teen has a Sanity meter (0–10, starting at 8) alongside their

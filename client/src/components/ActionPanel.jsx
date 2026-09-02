@@ -68,6 +68,8 @@ function TeenActions({ state, me, loc, onError }) {
   const moveTargets = speed > 1 ? reachableFrom(state.board, me.location, speed) : loc.connections;
   const senseHere = state.slasherNearby && loc.connections.includes(state.slasherNearby);
   const carRepaired = state.objectives?.carRepaired;
+  const sightings = state.sightings || [];
+  const hazardHere = (state.activeHorrorEventLocations || []).includes(me.location);
 
   return (
     <div className="action-panel">
@@ -84,6 +86,12 @@ function TeenActions({ state, me, loc, onError }) {
       )}
       {!state.slasherPresent && senseHere && (
         <div className="sense-banner">You sense something is close, in {state.board[state.slasherNearby].name}...</div>
+      )}
+      {sightings.map((s) => (
+        <div key={s.id} className="sense-banner">⚡ Lightning flash — you catch a glimpse of it at {s.locationName}!</div>
+      ))}
+      {hazardHere && (
+        <div className="sense-banner panicked">Something's deeply wrong here — you can't settle down enough to rest.</div>
       )}
       {tier !== "steady" && (
         <div className={`sense-banner ${tier}`}>
@@ -109,7 +117,7 @@ function TeenActions({ state, me, loc, onError }) {
         {loc.safe && (
           <button
             className="btn btn-secondary"
-            disabled={me.sanity >= me.sanityMax || state.slasherPresent}
+            disabled={me.sanity >= me.sanityMax || state.slasherPresent || hazardHere}
             title={loc.safe ? "Rest here to recover 1 Sanity (once per Safe Location, up to 3 times each)" : ""}
             onClick={() => act({ type: "rest" }, onError)}
           >

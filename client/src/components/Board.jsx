@@ -42,6 +42,7 @@ export default function Board({
   killerName,
   monsterHp,
   monsterMaxHp,
+  hazardLocations,
 }) {
   const prevLocationsRef = useRef({});
   const [flashLocations, setFlashLocations] = useState(new Set());
@@ -149,15 +150,17 @@ export default function Board({
         const isMine = loc.id === myLocation;
         const isSensed = slasherNearby === loc.id;
         const isFlashing = flashLocations.has(loc.id);
+        const isHaunted = hazardLocations?.includes(loc.id);
         return (
           <div
             key={loc.id}
-            className={`map-node${isMine ? " here" : ""}${loc.ritualSite ? " ritual" : ""}${loc.exit ? " exit" : ""}${loc.carSite ? " carsite" : ""}${isSensed ? " sensed" : ""}${isFlashing ? " flash" : ""}`}
+            className={`map-node${isMine ? " here" : ""}${loc.ritualSite ? " ritual" : ""}${loc.exit ? " exit" : ""}${loc.carSite ? " carsite" : ""}${isSensed ? " sensed" : ""}${isFlashing ? " flash" : ""}${isHaunted ? " haunted" : ""}`}
             style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
-            title={loc.description}
+            title={isHaunted ? `${loc.description} Something's wrong here right now.` : loc.description}
           >
             <div className="map-node-label">
               <span className="map-node-icon">{TYPE_ICONS[loc.type] || "📍"}</span> {loc.name}
+              {isHaunted && <span className="map-node-icon haunted-icon">👻</span>}
             </div>
             <div className="map-node-tokens">
               {tokens.map((p) => (

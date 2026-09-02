@@ -50,6 +50,10 @@ export default function GameScreen({ state, playerId, onLeave }) {
 
         {state.phase === "playing" && <PracticeTip state={state} me={me} />}
 
+        {state.recentHorrorEvent && (
+          <div className="banner banner-horror-event">👻 {state.recentHorrorEvent.summary}</div>
+        )}
+
         {error && <div className="banner banner-error" onAnimationEnd={() => setError("")}>{error}</div>}
       </div>
 
@@ -89,6 +93,7 @@ export default function GameScreen({ state, playerId, onLeave }) {
           killerName={killerName}
           monsterHp={state.monsterHp}
           monsterMaxHp={state.monsterMaxHp}
+          hazardLocations={state.activeHorrorEventLocations}
         />
       )}
 

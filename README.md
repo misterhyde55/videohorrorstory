@@ -84,6 +84,18 @@ never let the car get repaired, *Shatter Their Minds* — break someone's
 Sanity to 0, *The Lone Kill* — kill a teen who was completely alone). It's
 revealed, achieved or not, on the end-of-game screen.
 
+### Horror Events
+
+A handful of times each match — never the same mix or timing twice — a
+random Horror Event fires and throws in an unscripted wrinkle: a **Power
+Flicker** blacks out all noise for a round, **Dead Air** static rattles
+every teen's nerves, a **False Report** sends a fake sighting out over the
+airwaves, a **Lightning Flash** briefly shows the teens exactly where the
+Slasher is standing, somewhere on the map turns hostile and unsafe to rest
+at (**Something's Wrong Here**), or someone finds an uncapped moment of
+comfort in **Forgotten Footage**. They're capped and spaced out so they
+punctuate a match rather than flooding it.
+
 ### The Noise System
 
 The Slasher never sees where the teens are — it only knows a teen's exact
