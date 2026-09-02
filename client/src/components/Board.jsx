@@ -3,21 +3,16 @@ import SurvivorHud from "./SurvivorHud";
 import MonsterHealthBar from "./MonsterHealthBar";
 
 const TYPE_ICONS = {
-  road: "🛣️",
-  lot: "🚗",
-  lodge: "🏠",
-  hall: "🍽️",
-  cabin: "🏕️",
-  water: "🌊",
-  trail: "🌲",
-  barn: "🚜",
-  tower: "🗼",
-  cellar: "⚰️",
-  store: "🏪",
-  theater: "🎬",
-  school: "🏫",
-  graveyard: "🪦",
-  church: "⛪",
+  mainstreet: "🎫",
+  castle: "🏰",
+  carnival: "🎪",
+  coaster: "🎢",
+  mountain: "⛰️",
+  pirate: "☠️",
+  boats: "🚤",
+  swamp: "🐊",
+  arcade: "🕹️",
+  funhouse: "🤡",
 };
 
 const STARS = [

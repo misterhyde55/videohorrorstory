@@ -14,7 +14,7 @@ export const TEEN_CHARACTERS = {
     id: "athlete",
     name: "The Athlete",
     icon: "🏈",
-    tagline: "Faster and stronger than anyone else at camp.",
+    tagline: "Faster and stronger than anyone else at the park.",
     stats: { health: 3, speed: 2, stealth: 1, strength: 3 },
     ability: "Built Different — hits harder in a fight, moves two locations at once, and shrugs off failed escape attempts without getting hurt.",
   },

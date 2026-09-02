@@ -1,9 +1,10 @@
 # VHS: Video Horror Story
 
 An online multiplayer party game inspired by 1980s slasher movies. A monster
-has been unleashed from a haunted VHS tape into Crescent Lake Camp. Four
-teenagers must search the camp for the gear they need to survive the night,
-while one player controls the Slasher stalking them.
+has been unleashed from a haunted VHS tape into the Abandoned Wonderland — a
+long-shuttered amusement park at the edge of Pinehaven. Four teenagers must
+search the park for the gear they need to survive the night, while one
+player controls the Slasher stalking them.
 
 - **2–5 players**: 1 Slasher + up to 4 Teens (fewer teens works too).
 - Real-time multiplayer over WebSockets — one player hosts a room, others join
@@ -132,12 +133,15 @@ npm run dev:client   # Vite dev server on 5173
 
 ## Game design notes
 
-- The board (`server/src/board.js`) is procedurally generated fresh every
-  game: a random 15-location subset (always including exactly one exit, one
-  ritual site, and one car site), laid out on a randomized grid and
-  connected by a nearest-neighbor graph so nodes that look close are
-  actually connected. Teen starting spots are chosen by BFS distance to be
-  as far from the Slasher's start as possible.
+- The board (`server/src/board.js`) is the Abandoned Wonderland: 12 fixed
+  named locations (Twisted Castle at the hub, Main Street as the only way
+  out and where the getaway car sits, and ten park attractions ringed
+  around the castle). The layout and connections reshuffle every game — a
+  randomized wheel with the ring wired neighbor-to-neighbor, a few spokes
+  into the castle, and a couple of extra shortcuts — so the map looks a
+  little different each time without changing which places exist. Teen
+  starting spots are chosen by BFS distance to be as far from the Slasher's
+  start (the castle) as possible.
 - Items and their "kits" (escape/kill/banish) live in `server/src/cards.js`. Teens start with room for 6 items; drop anything unwanted with Discard, or search for a Canvas Bag, which expands your carrying capacity the moment you find it.
 - All game rules and win conditions are enforced server-side
   (`server/src/gameState.js`) — the client only renders state and sends

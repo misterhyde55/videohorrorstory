@@ -556,7 +556,7 @@ function checkWin(room) {
     room.winner = "slasher";
     room.winReason = `Every teen has fallen. ${killer.name} wins.`;
     room.phase = "ended";
-    log(room, `Silence falls over the camp. ${killer.name} wins.`);
+    log(room, `Silence falls over the park. ${killer.name} wins.`);
     return;
   }
 }
@@ -855,7 +855,7 @@ function teenAction(room, player, action) {
       log(room, `${player.characterName} peels out and escapes!`);
       emitNoise(room, player.location, "loud");
       room.winner = "teens";
-      room.winReason = `${player.characterName} escaped camp alive.`;
+      room.winReason = `${player.characterName} escaped the park alive.`;
       room.phase = "ended";
       return { ok: true };
     }

@@ -4,7 +4,7 @@ const STEPS = [
   {
     icon: "📼",
     title: "Welcome to VHS",
-    body: ["A monster escaped a cursed tape into camp.", "You're one of 4 teens. One player (or the AI) plays the monster."],
+    body: ["A monster escaped a cursed tape into the Abandoned Wonderland.", "You're one of 4 teens. One player (or the AI) plays the monster."],
   },
   {
     icon: "🎯",

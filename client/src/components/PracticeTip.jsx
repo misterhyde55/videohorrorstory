@@ -19,7 +19,7 @@ function computeTip(state, me) {
       return "⚡ Your special ability is ready — try it on a teen elsewhere on the map.";
     }
     if (state.objectives?.carRepaired) {
-      return "🔧 The car's fixed — Sabotage it at the Parking Lot to set them back.";
+      return "🔧 The car's fixed — Sabotage it at Main Street to set them back.";
     }
     return "🚶 Move toward the nearest teen, or Lurk here to build a stalking bonus.";
   }
@@ -33,7 +33,7 @@ function computeTip(state, me) {
   if (me.hp < me.hpMax) return "❤️ You're hurt — a First Aid Kit can patch you up.";
   if (!me.items || me.items.length === 0) return "🔦 Try Search Area to find useful supplies.";
   if (state.objectives?.carRepaired) return "🚗 The car's fixed — grab the keys & gas, then Drive Away!";
-  return "🚶 Explore the camp — move to a new room or search where you are.";
+  return "🚶 Explore the park — move to a new location or search where you are.";
 }
 
 export default function PracticeTip({ state, me }) {

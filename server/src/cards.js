@@ -1,14 +1,14 @@
 // Item & event decks for VHS: Video Horror Story.
 // Every item belongs to at least one "kit" needed to end the game:
-//   escape -> car_keys + gas_can + tool_kit (repair the car), driven from the Parking Lot / Entrance Road
+//   escape -> car_keys + gas_can + tool_kit (repair the car), driven from Main Street
 //   kill   -> a weapon item, used while sharing a location with the Slasher
-//   banish -> ritual_candle + occult_book + cursed_tape, used at the Root Cellar
+//   banish -> ritual_candle + occult_book + cursed_tape, used at Twisted Castle
 
 export const ITEMS = {
-  car_keys: { id: "car_keys", name: "Car Keys", flavor: "Still on the counselor's keyring.", kit: "escape" },
+  car_keys: { id: "car_keys", name: "Car Keys", flavor: "Still on the park manager's keyring.", kit: "escape" },
   gas_can: { id: "gas_can", name: "Gas Can", flavor: "Just enough to get down the road.", kit: "escape" },
   tool_kit: { id: "tool_kit", name: "Tool Kit", flavor: "Enough to get that engine running again.", kit: "escape" },
-  machete: { id: "machete", name: "Rusty Machete", flavor: "Camp maintenance never returned this.", kit: "kill", weapon: true, bonus: 25, durability: 3 },
+  machete: { id: "machete", name: "Rusty Machete", flavor: "Park maintenance never returned this.", kit: "kill", weapon: true, bonus: 25, durability: 3 },
   shotgun: { id: "shotgun", name: "Shotgun", flavor: "One shell left. Make it count.", kit: "kill", weapon: true, bonus: 35, durability: 1 },
   fireaxe: { id: "fireaxe", name: "Fire Axe", flavor: "Behind glass marked EMERGENCY ONLY.", kit: "kill", weapon: true, bonus: 20, durability: 2 },
   ritual_candle: { id: "ritual_candle", name: "Black Candle", flavor: "Wax the color of a bruise.", kit: "banish" },
@@ -39,7 +39,7 @@ export function drawFromPool(poolName, rng = Math.random) {
 
 export const EVENTS = [
   { id: "creaking_floor", text: "A floorboard creaks somewhere behind you." },
-  { id: "distant_scream", text: "You hear a scream from across camp." },
+  { id: "distant_scream", text: "You hear a scream from across the park." },
   { id: "power_flicker", text: "The lights flicker and die for a moment." },
   { id: "static", text: "Static hisses from a nearby TV, though it isn't plugged in." },
 ];
