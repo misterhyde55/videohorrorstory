@@ -105,7 +105,12 @@ export function generateBoard(rng = Math.random) {
   layout[ritualId] = { x: CENTER.x, y: CENTER.y };
   layout[exitId] = { x: CENTER.x, y: 90 };
 
-  const orderedRing = shuffle(ringIds, rng);
+  // Killer's Carnival is the park's marquee attraction and always sits at
+  // the top of the wheel, just like the reference board — everything else
+  // in the ring reshuffles around it each game.
+  const carnivalId = nodeDefs.find((n) => n.name === "Killer's Carnival")?.id;
+  const restRing = shuffle(ringIds.filter((id) => id !== carnivalId), rng);
+  const orderedRing = carnivalId ? [carnivalId, ...restRing] : restRing;
   const angleStep = (2 * Math.PI) / orderedRing.length;
   orderedRing.forEach((id, i) => {
     // Start at the top and sweep around, leaving the south arc clearer for
@@ -169,6 +174,10 @@ export function generateBoard(rng = Math.random) {
   });
 
   shuffle(orderedRing, rng).slice(0, HUB_SPOKES).forEach((id) => connect(ritualId, id));
+
+  // A direct central path from Twisted Castle down to Main Street — the
+  // main promenade running straight through the park, like the reference.
+  connect(ritualId, exitId);
 
   const nearestToExit = [...orderedRing].sort((a, b) => dist(exitId, a) - dist(exitId, b)).slice(0, 2);
   nearestToExit.forEach((id) => connect(exitId, id));
