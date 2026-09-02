@@ -250,6 +250,8 @@ export function addPlayer(room, id, name, roleOverride) {
     itemSanityGainTotal: 0,
     objectiveSanityGainTotal: 0,
     distractUsed: false,
+    deathRound: null,
+    deathLocation: null,
   });
 }
 
@@ -370,6 +372,8 @@ export function startGame(room, { durationMs } = {}) {
     p.itemSanityGainTotal = 0;
     p.objectiveSanityGainTotal = 0;
     p.distractUsed = false;
+    p.deathRound = null;
+    p.deathLocation = null;
   });
   slasher.location = generated.startLocations.slasher;
   slasher.stalkStreak = 0;
@@ -1052,6 +1056,8 @@ function applyWound(room, player, amount) {
   if (player.hp <= 0) {
     const wasAlone = !aliveTeens(room).some((t) => t.id !== player.id && t.location === player.location);
     player.status = "dead";
+    player.deathRound = room.round;
+    player.deathLocation = player.location;
     room.killCount += 1;
     if (wasAlone) room.soloKillHappened = true;
     log(room, `${player.characterName} has been killed.`);
@@ -1198,6 +1204,59 @@ function slasherAction(room, player, action) {
   }
 }
 
+// Substrings of existing log lines that make a good "key scene" in the
+// post-game recap — deaths, sanity swings, monster hits, objective beats,
+// and hide/catch outcomes. Reusing the log this way means the recap needs
+// no separate instrumentation of its own to stay in sync with the rules.
+const RECAP_KEYWORDS = [
+  "has been killed",
+  "breaks down completely",
+  "pulls themself back together",
+  "collapses, still at last",
+  "Silence falls over the park",
+  "REEL END",
+  "escaped the park alive",
+  "peels out and escapes",
+  "performs the ritual",
+  "gets the engine running again",
+  "tears into the engine",
+  "revives",
+  "monster reels, stunned",
+  "wounds the monster",
+  "is found and caught",
+  "scrambles away",
+];
+
+// Built once the match is over: the full log's secrecy no longer matters
+// (nobody has anything left to protect), so this pulls straight from
+// room.log — unfiltered by role — rather than the round-by-round scoped
+// view everyone got while playing.
+function buildRecap(room) {
+  const killer = killerInfo(room);
+  const cast = [...room.players.values()].map((p) => ({
+    id: p.id,
+    name: p.name,
+    characterName: p.characterName,
+    role: p.role,
+    pickId: p.pickId,
+    status: p.status,
+    deathRound: p.deathRound,
+    deathLocation: p.deathLocation ? room.board[p.deathLocation]?.name || null : null,
+  }));
+  const keyScenes = room.log
+    .filter((e) => RECAP_KEYWORDS.some((k) => e.message.includes(k)))
+    .map((e) => e.message);
+  return {
+    mapName: room.mapName,
+    killerName: killer?.name || "The Slasher",
+    winner: room.winner,
+    winReason: room.winReason,
+    cast,
+    keyScenes,
+    horrorEventsFired: room.horrorEventsFired,
+  };
+}
+
 export function publicState(room, forPlayerId) {
   const requester = room.players.get(forPlayerId);
   const isSlasher = requester?.role === "slasher";
@@ -1302,6 +1361,7 @@ export function publicState(room, forPlayerId) {
         ? { name: room.killerSecretObjective.name, description: room.killerSecretObjective.description }
         : null,
     secretObjectiveAchieved: secretObjectiveRevealed ? room.killerSecretObjective.check(room) : null,
+    recap: room.phase === "ended" ? buildRecap(room) : null,
   };
 }
 

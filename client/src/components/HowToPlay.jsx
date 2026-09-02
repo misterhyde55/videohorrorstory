@@ -91,6 +91,18 @@ export default function HowToPlay({ onClose }) {
           </section>
 
           <section>
+            <h3>The Post-Game Recap</h3>
+            <p>
+              Once the match ends, the secrecy drops — the end screen recaps
+              the whole story: who really played the Slasher, how each teen's
+              night went and where and when it ended, a chronological rundown
+              of the match's key scenes, and every Horror Event that fired.
+              It's built fresh from that match's own log, so it's always the
+              real story, and never the same one twice.
+            </p>
+          </section>
+
+          <section>
             <h3>Sanity</h3>
             <p>
               Every teen has a Sanity meter (0–10, starting at 8) alongside their

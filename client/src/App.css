@@ -1266,6 +1266,76 @@
   font-style: italic;
 }
 
+.recap {
+  text-align: left;
+  max-width: 640px;
+  margin: 1.5rem auto 0;
+  max-height: 50vh;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+}
+
+.recap-title {
+  text-align: center;
+  color: var(--neon-cyan);
+  font-size: 0.95rem;
+  letter-spacing: 0.05em;
+  margin-top: 0;
+}
+
+.recap-cast {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.recap-cast-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.82rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.recap-cast-name {
+  color: #f2ecff;
+}
+
+.recap-cast-status {
+  color: #8a7aa0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.recap-cast-row.status-dead .recap-cast-status {
+  color: var(--neon-pink);
+}
+
+.recap-cast-row.status-escaped .recap-cast-status,
+.recap-cast-row.status-alive .recap-cast-status {
+  color: var(--neon-green);
+}
+
+.recap-section h4 {
+  color: var(--neon-purple);
+  font-size: 0.8rem;
+  margin-bottom: 0.4rem;
+}
+
+.recap-section ul {
+  margin: 0 0 1rem;
+  padding-left: 1.1rem;
+  font-size: 0.78rem;
+  color: #cbb8e8;
+  line-height: 1.5;
+}
+
 .sanity-status {
   font-size: 0.72rem;
   padding: 0.3rem 0.5rem;

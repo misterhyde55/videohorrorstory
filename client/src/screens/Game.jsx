@@ -4,6 +4,7 @@ import ActionPanel from "../components/ActionPanel";
 import PlayerCard from "../components/PlayerCard";
 import HoldYourBreath from "../components/HoldYourBreath";
 import PracticeTip from "../components/PracticeTip";
+import PostGameRecap from "../components/PostGameRecap";
 
 export default function GameScreen({ state, playerId, onLeave }) {
   const [error, setError] = useState("");
@@ -79,6 +80,7 @@ export default function GameScreen({ state, playerId, onLeave }) {
               <span className="secret-objective-desc">{state.killerSecretObjective.description}</span>
             </p>
           )}
+          <PostGameRecap recap={state.recap} characters={state.characters} killers={state.killers} />
           <button className="btn btn-primary" onClick={onLeave} type="button">Back to Menu</button>
         </div>
       ) : (

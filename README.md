@@ -108,6 +108,17 @@ stumbling while panicked, and driving away all make noise. Teens get one
 **Diversion** per game — fake a Noise Alert at any location on the map to
 send the Slasher somewhere you're not.
 
+### The Post-Game Recap
+
+Once a match ends, secrecy no longer matters — the end screen shows the
+full story, unfiltered by role: a cast list naming who played whom, how
+each teen's night ended and where and when, the Slasher's real identity,
+a chronological list of the match's key scenes (deaths, breakdowns,
+monster hits, objective beats), and every Horror Event that fired. Built
+straight from that match's own game log and tracked stats, so it's always
+a true account of what actually happened, and no two matches produce the
+same one.
+
 ## Project layout
 
 ```
