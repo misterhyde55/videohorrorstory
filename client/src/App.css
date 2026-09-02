@@ -588,6 +588,66 @@
   animation: shake 0.8s infinite;
 }
 
+.final-act-chip {
+  color: var(--neon-pink);
+  border-color: var(--neon-pink);
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  animation: shake 0.8s infinite;
+}
+
+.turn-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.turn-strip-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8a7aa0;
+  flex-shrink: 0;
+}
+
+.turn-strip-icons {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.turn-strip-icon {
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--panel-border);
+  opacity: 0.55;
+}
+
+.turn-strip-icon.slasher {
+  border-color: var(--neon-pink);
+}
+
+.turn-strip-icon.current {
+  opacity: 1;
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 8px rgba(46, 230, 255, 0.6);
+}
+
+.turn-strip-icon.current.slasher {
+  border-color: var(--neon-pink);
+  box-shadow: 0 0 8px rgba(255, 46, 136, 0.6);
+}
+
+.turn-strip-icon.out {
+  opacity: 0.25;
+  filter: grayscale(1);
+}
+
 .board-map {
   grid-area: board;
   position: relative;

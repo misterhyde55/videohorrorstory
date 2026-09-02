@@ -30,14 +30,17 @@ them.
 out before the teens finish the job.
 
 Play proceeds in turn order (each teen, then the Slasher, repeating), with a
-live 10-minute countdown running the whole game. The Slasher can't move (or
-use its special ability) for its first 2 turns — a head start for the teens
-to scatter and gear up before the hunt begins. Its attacks also start out
-weak, ease up to normal by the time the clock's about 40% gone, and then get
-more dangerous as the clock runs low, alongside isolated teens losing Sanity
-faster. On your turn you
-can move, search, fight or flee the Slasher, repair the car, revive a fallen
-teammate, share items, or attempt to escape/banish the monster.
+live 10-minute countdown running the whole game and a Turn Order strip in
+the header showing exactly who's up now and who's next. The Slasher can't
+move (or use its special ability) for its first 2 turns — a head start for
+the teens to scatter and gear up before the hunt begins. Its attacks also
+start out weak, ease up to normal by the time the clock's about 40% gone,
+then get more dangerous through the final third of the clock and downright
+brutal in the final 15% — a **FINAL ACT** chip appears in the header the
+moment that countdown begins — alongside isolated teens losing Sanity
+faster. On your turn you can move, search, fight or flee the Slasher,
+repair the car, revive a fallen teammate, share items, or attempt to
+escape/banish the monster.
 
 ### Sanity
 

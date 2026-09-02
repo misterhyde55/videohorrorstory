@@ -6,6 +6,7 @@ import SurvivorHud from "../components/SurvivorHud";
 import HoldYourBreath from "../components/HoldYourBreath";
 import PracticeTip from "../components/PracticeTip";
 import PostGameRecap from "../components/PostGameRecap";
+import TurnOrderStrip from "../components/TurnOrderStrip";
 
 export default function GameScreen({ state, playerId, onLeave }) {
   const [error, setError] = useState("");
@@ -46,9 +47,14 @@ export default function GameScreen({ state, playerId, onLeave }) {
           <div className="stat-chip">Round {state.round}</div>
           <div className={`stat-chip clock${clockTier ? ` clock-${clockTier}` : ""}`}>⏱ {clockLabel}</div>
           <div className="stat-chip">Room {state.code}</div>
+          {state.clockPhase === "final" && <div className="stat-chip final-act-chip">⚠ FINAL ACT</div>}
           {state.monsterStunned && <div className="stat-chip stunned-chip">Monster Stunned!</div>}
           <button className="btn btn-ghost" onClick={onLeave} type="button">Leave</button>
         </div>
+
+        {state.phase === "playing" && (
+          <TurnOrderStrip players={state.players} turnOrder={state.turnOrder} turnPlayerId={state.turnPlayerId} />
+        )}
 
         {state.phase === "playing" && <PracticeTip state={state} me={me} />}
 
