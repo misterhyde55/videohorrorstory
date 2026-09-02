@@ -904,12 +904,13 @@ function teenAction(room, player, action) {
     case "repair": {
       if (!loc.carSite) return { error: "The car is somewhere else." };
       if (room.objectives.carRepaired) return { error: "The car is already running." };
-      if (!player.items.some((it) => it.id === "tool_kit")) return { error: "You need a tool kit to repair the car." };
+      const hasToolKit = player.items.some((it) => it.id === "tool_kit");
       room.objectives.carRepaired = true;
       room.carEverRepaired = true;
       grantObjectiveSanity(room, player, 1);
       log(room, `${player.characterName} gets the engine running again.`, "teens");
-      emitNoise(room, player.location, "noisy");
+      if (hasToolKit) log(room, `The Tool Kit makes quick, quiet work of it — no one heard a thing.`, "teens");
+      else emitNoise(room, player.location, "noisy");
       return { ok: true, sanityActionTaken: true };
     }
     case "fight": {
@@ -984,11 +985,14 @@ function teenAction(room, player, action) {
     }
     case "drive": {
       if (!loc.exit) return { error: "You need to find the way out first." };
-      if (hasItems(player, ["car_keys", "gas_can"]).length < 2) return { error: "You need the car keys and a gas can." };
+      if (!hasItems(player, ["car_keys"]).length) return { error: "You need the car keys." };
       if (!room.objectives.carRepaired) return { error: "The car still needs to be repaired first." };
-      grantObjectiveSanity(room, player, 2);
+      const hasGasCan = hasItems(player, ["gas_can"]).length > 0;
+      grantObjectiveSanity(room, player, hasGasCan ? 3 : 2);
       player.status = "escaped";
-      log(room, `${player.characterName} peels out and escapes!`);
+      log(room, hasGasCan
+        ? `${player.characterName} tops off the tank and peels out — no chance of running dry now!`
+        : `${player.characterName} peels out and escapes!`);
       emitNoise(room, player.location, "loud");
       room.winner = "teens";
       room.winReason = `${player.characterName} escaped the park alive.`;
@@ -1513,19 +1517,18 @@ export function decideTeenBotAction(room, bot) {
   }
 
   // Chase the current objective.
-  const hasToolKit = bot.items.some((it) => it.id === "tool_kit");
-  const hasKeysGas = bot.items.filter((it) => it.id === "car_keys" || it.id === "gas_can").length;
+  const hasCarKeys = bot.items.some((it) => it.id === "car_keys");
   const ritualHave = bot.items.filter((it) => ["ritual_candle", "occult_book", "cursed_tape"].includes(it.id)).length;
   const ritualNeed = character?.id === "nerd" ? 2 : 3;
 
-  if (loc.carSite && !room.objectives.carRepaired && hasToolKit) return { type: "repair" };
+  if (loc.carSite && !room.objectives.carRepaired) return { type: "repair" };
   if (loc.ritualSite && ritualHave >= ritualNeed) return { type: "ritual" };
-  if (loc.exit && room.objectives.carRepaired && hasKeysGas >= 2) return { type: "drive" };
+  if (loc.exit && room.objectives.carRepaired && hasCarKeys) return { type: "drive" };
 
   // Head toward whatever's most useful right now.
   let target = null;
-  if (!room.objectives.carRepaired && !hasToolKit) target = (l) => l.carSite;
-  else if (room.objectives.carRepaired && hasKeysGas < 2) target = (l) => l.exit;
+  if (!room.objectives.carRepaired) target = (l) => l.carSite;
+  else if (hasCarKeys) target = (l) => l.exit;
   else if (ritualHave < ritualNeed) target = (l) => l.ritualSite;
 
   if (target && !target(loc)) {

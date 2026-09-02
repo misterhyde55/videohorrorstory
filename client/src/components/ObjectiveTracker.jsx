@@ -8,7 +8,11 @@ function ItemRow({ title, items, owned }) {
         {items.map((it) => {
           const has = owned.has(it.id);
           return (
-            <span key={it.id} className={`objective-icon${has ? " lit" : ""}`} title={it.name}>
+            <span
+              key={it.id}
+              className={`objective-icon${has ? " lit" : ""}${it.required ? " required" : ""}`}
+              title={`${it.name}${it.required ? " (required)" : " (optional)"}`}
+            >
               {it.icon}
             </span>
           );
@@ -23,6 +27,7 @@ export default function ObjectiveTracker({ items, carRepaired }) {
   return (
     <div className="objective-tracker">
       <ItemRow title="Escape Items" items={ESCAPE_ITEMS} owned={owned} />
+      <p className="objective-legend">* required — everything else just helps</p>
       <div className="objective-row">
         <span className="objective-title">Car Status</span>
         <span className={`car-status-badge${carRepaired ? " repaired" : ""}`}>

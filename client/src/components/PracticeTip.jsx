@@ -33,7 +33,7 @@ function computeTip(state, me) {
   if (me.sanity <= 5) return "🧠 Sanity's dropping. Find an Energy Drink or stick with teammates.";
   if (me.hp < me.hpMax) return "❤️ You're hurt — a First Aid Kit can patch you up.";
   if (!me.items || me.items.length === 0) return "🔦 Try Search Area to find useful supplies.";
-  if (state.objectives?.carRepaired) return "🚗 The car's fixed — grab the keys & gas, then Drive Away!";
+  if (state.objectives?.carRepaired) return "🚗 The car's fixed — grab the Car Keys, then Drive Away!";
   return "🚶 Explore the park — move to a new location or search where you are.";
 }
 

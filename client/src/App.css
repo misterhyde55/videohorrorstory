@@ -2123,6 +2123,28 @@
   box-shadow: 0 0 10px rgba(57, 255, 138, 0.5);
 }
 
+.objective-icon.required {
+  position: relative;
+  border-width: 2px;
+}
+
+.objective-legend {
+  margin: -0.15rem 0 0.3rem;
+  font-size: 0.62rem;
+  color: #6b5a80;
+  font-style: italic;
+}
+
+.objective-icon.required::after {
+  content: "*";
+  position: absolute;
+  top: -0.5rem;
+  right: -0.3rem;
+  color: var(--neon-pink);
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
 /* Hold Your Breath — full-screen cinematic overlay. The board stays dimly
    visible underneath; a heartbeat pulse (speed driven by --heartbeat-speed,
    set inline based on remaining breath) intensifies as the moment gets more

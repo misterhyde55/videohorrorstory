@@ -34,7 +34,7 @@ export default function HowToPlay({ onClose }) {
             <h3>Playing as a Teen</h3>
             <p>Win the game for your team by doing any <em>one</em> of these:</p>
             <ul>
-              <li>🚗 <strong>Escape</strong> — find the Car Keys, a Gas Can, and a Tool Kit; repair the car where it's parked; then drive away from the exit.</li>
+              <li>🚗 <strong>Escape</strong> — find the Car Keys, repair the car where it's parked (free, but noisy without a Tool Kit), then drive away. A Gas Can isn't required, but brings bonus Sanity when you go.</li>
               <li>🔪 <strong>Fight it off</strong> — find a weapon and confront the killer. Hits can either stun it (skips its next turn) or wound it — land enough wounds and it's destroyed. Weapons wear out and break after a few uses.</li>
               <li>📼 <strong>Banish it</strong> — gather the Black Candle, Occult Book, and Cursed VHS Tape, then perform the ritual at the ritual site.</li>
             </ul>

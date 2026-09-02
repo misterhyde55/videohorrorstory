@@ -1,13 +1,15 @@
 // Item & event decks for VHS: Video Horror Story.
 // Every item belongs to at least one "kit" needed to end the game:
-//   escape -> car_keys + gas_can + tool_kit (repair the car), driven from Main Street
+//   escape -> car_keys (the only required one) + repair the car (free, but
+//             quieter with a tool_kit) + drive away from the exit; gas_can
+//             is optional, just worth a small bonus
 //   kill   -> a weapon item, used while sharing a location with the Slasher
-//   banish -> ritual_candle + occult_book + cursed_tape, used at Twisted Castle
+//   banish -> ritual_candle + occult_book + cursed_tape, used at the ritual site
 
 export const ITEMS = {
-  car_keys: { id: "car_keys", name: "Car Keys", icon: "🔑", flavor: "Still on the park manager's keyring.", effect: "Escape kit — carry this and a Gas Can, then Drive Away once the car's repaired.", kit: "escape" },
-  gas_can: { id: "gas_can", name: "Gas Can", icon: "⛽", flavor: "Just enough to get down the road.", effect: "Escape kit — carry this and the Car Keys, then Drive Away once the car's repaired.", kit: "escape" },
-  tool_kit: { id: "tool_kit", name: "Tool Kit", icon: "🧰", flavor: "Enough to get that engine running again.", effect: "Lets you Repair the car at the exit.", kit: "escape" },
+  car_keys: { id: "car_keys", name: "Car Keys", icon: "🔑", flavor: "Still on the park manager's keyring.", effect: "Required to Drive Away once the car's repaired. The only item escape actually needs.", kit: "escape" },
+  gas_can: { id: "gas_can", name: "Gas Can", icon: "⛽", flavor: "Just enough to get down the road.", effect: "Optional — carry one when you drive away for extra peace of mind (+1 bonus Sanity on escape).", kit: "escape" },
+  tool_kit: { id: "tool_kit", name: "Tool Kit", icon: "🧰", flavor: "Enough to get that engine running again.", effect: "Optional — repairing the car works without one, but a Tool Kit does it silently (no Noise).", kit: "escape" },
   machete: { id: "machete", name: "Rusty Machete", icon: "🔪", flavor: "Park maintenance never returned this.", effect: "+25% Fight chance. Wears out and breaks after a few hits.", kit: "kill", weapon: true, bonus: 25, durability: 3 },
   shotgun: { id: "shotgun", name: "Shotgun", icon: "🔫", flavor: "One shell left. Make it count.", effect: "+35% Fight chance. Breaks after one hit — make it count.", kit: "kill", weapon: true, bonus: 35, durability: 1 },
   fireaxe: { id: "fireaxe", name: "Fire Axe", icon: "🪓", flavor: "Behind glass marked EMERGENCY ONLY.", effect: "+20% Fight chance. Wears out and breaks after a couple hits.", kit: "kill", weapon: true, bonus: 20, durability: 2 },
@@ -23,10 +25,13 @@ export const ITEMS = {
   canvas_bag: { id: "canvas_bag", name: "Canvas Bag", icon: "🎒", flavor: "More room to carry what you find.", effect: "Permanently expands your inventory by 2, the moment you find it.", utility: "capacity", capacityBonus: 2 },
 };
 
-// Search pools: weighted lists of item ids (or null for "nothing").
+// Search pools: weighted lists of item ids (or null for "nothing"). Car
+// Keys gets extra weight in both pools — it's the one item Escape actually
+// requires, so it needs to turn up often enough that "find the keys" is a
+// realistic couple of searches, not a long scavenger hunt.
 const POOLS = {
-  light: ["flashlight", null, null, "first_aid", "energy_drink", "cassette_player", "family_photo", "canvas_bag", null],
-  medium: ["car_keys", "gas_can", "tool_kit", "ritual_candle", null, "first_aid", "energy_drink", "favorite_vhs", "canvas_bag", null],
+  light: ["flashlight", "car_keys", null, "first_aid", "energy_drink", "cassette_player", "family_photo", "canvas_bag", null],
+  medium: ["car_keys", "car_keys", "gas_can", "tool_kit", "ritual_candle", null, "first_aid", "energy_drink", "favorite_vhs", "canvas_bag", null],
   heavy: ["machete", "shotgun", "fireaxe", "occult_book", "cursed_tape", "canvas_bag", null],
 };
 

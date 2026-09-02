@@ -3,7 +3,7 @@
 // copy rather than reading icons off a live inventory item. Live items
 // carry their own `icon`/`effect` straight from server/src/cards.js.
 export const ESCAPE_ITEMS = [
-  { id: "car_keys", name: "Car Keys", icon: "🔑" },
+  { id: "car_keys", name: "Car Keys", icon: "🔑", required: true },
   { id: "gas_can", name: "Gas Can", icon: "⛽" },
   { id: "tool_kit", name: "Tool Kit", icon: "🧰" },
 ];

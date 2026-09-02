@@ -21,7 +21,7 @@ them.
 ## How to win
 
 **Teens** win by doing any one of the following:
-- 🚗 **Escape** — find the Car Keys, a Gas Can, and a Tool Kit; repair the car where it's parked; then drive away from the exit. The Slasher can sabotage a repaired car, so don't wait too long.
+- 🚗 **Escape** — find the Car Keys (the only item that's actually required), repair the car where it's parked — free, but it makes Noise unless you're carrying a Tool Kit — then drive away from the exit. A Gas Can isn't required either, but nets bonus Sanity when you go. The Slasher can sabotage a repaired car, so don't wait too long.
 - 🔪 **Fight it off** — find a weapon and confront the monster. A hit either stuns it (skips its next turn) or wounds it; enough wounds destroys it. Weapons wear out and break after a few uses.
 - 📼 **Banish it** — gather the Black Candle, Occult Book, and Cursed VHS Tape, then perform the ritual at the ritual site.
 - 🤫 **Hide** — toggle Hide on your turn to hold still. If the Slasher finds your hiding spot it searches for a tense 10-second countdown: mash SPACE (or tap the on-screen button) as fast as you can to hold your breath and stay hidden — it drains quickly, so this is meant to be a real struggle. Fail — or ignore it — and you get one automatic chance to bolt to a nearby location before the Slasher catches you. Hold your breath successfully and the Slasher can't search that spot again until it actually leaves the location.

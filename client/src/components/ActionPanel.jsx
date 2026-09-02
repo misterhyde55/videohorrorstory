@@ -131,7 +131,7 @@ function TeenActions({ state, me, loc, onError, onSearchResult }) {
         {loc.carSite && !carRepaired && (
           <button
             className="btn btn-secondary"
-            disabled={!items.some((it) => it.id === "tool_kit")}
+            title={items.some((it) => it.id === "tool_kit") ? "Silent repair — no Noise." : "Repairing without a Tool Kit makes Noise."}
             onClick={() => act({ type: "repair" }, onError)}
           >
             Repair Car
@@ -155,7 +155,8 @@ function TeenActions({ state, me, loc, onError, onSearchResult }) {
         {loc.exit && (
           <button
             className="btn btn-accent"
-            disabled={!hasKit(["car_keys", "gas_can"], 2) || !carRepaired}
+            disabled={!hasKit(["car_keys"], 1) || !carRepaired}
+            title={hasKit(["gas_can"], 1) ? "Gas Can on hand — bonus Sanity when you go." : "Car Keys required. A Gas Can adds bonus Sanity, but isn't required."}
             onClick={() => act({ type: "drive" }, onError)}
           >
             Drive Away
