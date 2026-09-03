@@ -971,17 +971,55 @@ function pruneHorrorEvents(room) {
   room.sightings = room.sightings.filter((s) => room.round <= s.expiresRound);
 }
 
+// ---- Horror Director (Phase 6) ----
+// A thin, provably-fair pacing layer over systems that already exist. It
+// only ever nudges WHEN an already-fair event becomes eligible to fire —
+// the Horror Event roll's chance and cooldown — never a roll's outcome,
+// never the Killer's position or attack odds, and never a single player:
+// its one input is a coarse, team-wide "how's the match going" read, not
+// anyone's individual state, so it can never single out or rubber-band
+// whoever happens to be ahead. Turning the knob toward more tension when
+// the team is coasting and a little breathing room when they're already
+// struggling is exactly what it does and all it does.
+function matchPressure(room) {
+  const teens = aliveTeens(room);
+  if (teens.length === 0) return 0.5;
+  const avgSanityFraction = teens.reduce((sum, t) => sum + t.sanity / (t.sanityMax || SANITY_MAX), 0) / teens.length;
+  const deathFraction = (room.killCount || 0) / MAX_TEENS;
+  // 0 = the team is coasting, 1 = the team is in real trouble.
+  return Math.min(1, Math.max(0, (1 - avgSanityFraction) * 0.6 + deathFraction * 0.4));
+}
+
+const DIRECTOR_MAX_CHANCE_NUDGE = 0.08; // +/-, applied only to the Horror Event roll's chance
+const DIRECTOR_COOLDOWN_ADJUST = 1; // +/- one round, applied only to the Horror Event cooldown
+
+function directorChanceNudge(room) {
+  const pressure = matchPressure(room);
+  return (0.5 - pressure) * 2 * DIRECTOR_MAX_CHANCE_NUDGE;
+}
+
+function directorCooldownRounds(room) {
+  const pressure = matchPressure(room);
+  if (pressure >= 0.7) return HORROR_EVENT_COOLDOWN_ROUNDS + DIRECTOR_COOLDOWN_ADJUST;
+  if (pressure <= 0.3) return Math.max(1, HORROR_EVENT_COOLDOWN_ROUNDS - DIRECTOR_COOLDOWN_ADJUST);
+  return HORROR_EVENT_COOLDOWN_ROUNDS;
+}
+
 // Rolls for a random Horror Event once per round, after an early grace
 // period and with a cooldown/cap so they punctuate a match rather than
 // flooding it. An event whose apply() finds nothing valid to do (e.g. no
 // eligible location) doesn't consume the roll or start the cooldown.
 function maybeTriggerHorrorEvent(room) {
   if (room.round < HORROR_EVENT_MIN_ROUND) return;
-  if (room.round - room.lastHorrorEventRound < HORROR_EVENT_COOLDOWN_ROUNDS) return;
+  if (room.round - room.lastHorrorEventRound < directorCooldownRounds(room)) return;
   if (room.horrorEventsFired.length >= MAX_HORROR_EVENTS_PER_GAME) return;
-  // The world gets louder as the Nightmare Level rises — capped well short
-  // of certainty so a late-match round can still pass quietly.
-  const chance = Math.min(0.6, HORROR_EVENT_CHANCE + (room.nightmareLevel || 0) * 0.03);
+  // The world gets louder as the Nightmare Level rises, then the Director
+  // nudges it a little further toward or away from tension depending on
+  // how the team's actually doing — capped well short of certainty either
+  // way so a late-match round can still pass quietly, or a coasting one
+  // still occasionally get interrupted.
+  const baseChance = Math.min(0.6, HORROR_EVENT_CHANCE + (room.nightmareLevel || 0) * 0.03);
+  const chance = Math.min(0.6, Math.max(0.1, baseChance + directorChanceNudge(room)));
   if (Math.random() >= chance) return;
   const pool = eligibleHorrorEvents(room);
   const event = pool[Math.floor(Math.random() * pool.length)];
