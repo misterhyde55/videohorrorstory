@@ -224,7 +224,81 @@ const HORROR_EVENTS = [
       return "Someone finds an old home movie of happier times.";
     },
   },
+  {
+    id: "creeping_dread",
+    name: "Creeping Dread",
+    minNightmareLevel: 3, // only eligible once the world has already turned — see Nightmare Level below
+    apply(room) {
+      const teens = aliveTeens(room);
+      if (teens.length === 0) return null;
+      teens.forEach((t) => loseSanity(room, t, SANITY_LOSS_HORROR_EVENT));
+      room.nightmareAttackBoostUntilRound = room.round + 2;
+      log(room, "A wrongness settles over everything — it feels bolder now.", "all");
+      return "A wrongness settles over everything — it's bolder now.";
+    },
+  },
 ];
+
+// Only events whose minNightmareLevel (default 0) has actually been
+// reached are ever rolled — see maybeTriggerHorrorEvent — so the later,
+// harsher beats stay locked out of an early match rather than being
+// possible (if unlikely) from round 1.
+function eligibleHorrorEvents(room) {
+  return HORROR_EVENTS.filter((e) => (e.minNightmareLevel || 0) <= (room.nightmareLevel || 0));
+}
+
+// ---- Nightmare Level (Phase 4) ----
+// A global 0-6 escalation track, separate from any individual teen's
+// Sanity, driven by how far the clock has run and how many teens have
+// already died. Unlike Sanity it never goes back down, and its job is to
+// visibly change the world rather than hand out numeric buffs: it raises
+// how often Horror Events fire (see maybeTriggerHorrorEvent), unlocks
+// harsher Horror Events outright (creeping_dread above), and permanently
+// claims a couple of locations as Nightmare Zones the first time the team
+// crosses tiers 3 and 5 — reusing the existing horrorEvents Map (with an
+// Infinity expiry) so every place that already reads it — Comfort, Rest,
+// arrival Sanity loss, the board's hazard highlighting — treats a claimed
+// zone exactly like a normal Horror Event location, permanently.
+const NIGHTMARE_LEVEL_NAMES = [
+  "Uneasy Calm",
+  "Something's Off",
+  "It's Hunting",
+  "The Night Turns",
+  "No Safe Place",
+  "Everything Is Wrong",
+  "The Reel Breaks",
+];
+const NIGHTMARE_ZONE_TIERS = [3, 5]; // claim one permanent Nightmare Zone the first time each tier is reached
+
+function computeNightmareLevel(room) {
+  if (!room.endsAt) return 0;
+  const total = room.gameDurationMs ?? GAME_DURATION_MS;
+  const elapsedFraction = Math.min(1, Math.max(0, 1 - (room.endsAt - Date.now()) / total));
+  const clockLevel = Math.floor(elapsedFraction * 4); // 0..4, paced with the game clock
+  const deathLevel = Math.min(2, room.killCount || 0); // +0..2, a death makes the night worse for everyone
+  return Math.min(6, clockLevel + deathLevel);
+}
+
+function claimNightmareZone(room) {
+  const candidates = Object.values(room.board).filter((l) => !l.exit && !l.ritualSite && !room.horrorEvents.has(l.id));
+  if (!candidates.length) return;
+  const loc = candidates[Math.floor(Math.random() * candidates.length)];
+  room.horrorEvents.set(loc.id, { name: "Nightmare Zone", expiresRound: Infinity });
+  log(room, `${loc.name} has gone wrong for good — something's taken root there, and it isn't leaving.`, "all");
+}
+
+function updateNightmareLevel(room) {
+  const next = computeNightmareLevel(room);
+  if (next > room.nightmareLevel) {
+    room.nightmareLevel = next;
+    log(room, `Nightmare Level rises: ${NIGHTMARE_LEVEL_NAMES[next]}.`, "all");
+  }
+  const dueZones = NIGHTMARE_ZONE_TIERS.filter((t) => room.nightmareLevel >= t).length;
+  while ((room.nightmareZoneClaims || 0) < dueZones) {
+    claimNightmareZone(room);
+    room.nightmareZoneClaims = (room.nightmareZoneClaims || 0) + 1;
+  }
+}
 
 export function createRoom(code, hostId) {
   return {
@@ -267,6 +341,9 @@ export function createRoom(code, hostId) {
     killerCluesFound: 0, // evidence entries found (Access Evidence / Investigate) — see KILLER_WEAKNESS
     killerWeaknessExposed: false,
     recentWeaknessReveal: null, // {text, round} — most recent, for the shared banner
+    nightmareLevel: 0, // 0-6, see updateNightmareLevel — never decreases
+    nightmareZoneClaims: 0,
+    nightmareAttackBoostUntilRound: 0, // Creeping Dread — temporary Killer attack bonus
   };
 }
 
@@ -505,6 +582,9 @@ export function startGame(room, { durationMs } = {}) {
   room.recentWeaknessReveal = null;
   room.stalkBonusOverride = null;
   room.thingHeavyDamageDisabled = false;
+  room.nightmareLevel = 0;
+  room.nightmareZoneClaims = 0;
+  room.nightmareAttackBoostUntilRound = 0;
   room.killerSecretObjective = KILLER_SECRET_OBJECTIVES[Math.floor(Math.random() * KILLER_SECRET_OBJECTIVES.length)];
   room.killCount = 0;
   room.carEverRepaired = false;
@@ -810,8 +890,12 @@ function maybeTriggerHorrorEvent(room) {
   if (room.round < HORROR_EVENT_MIN_ROUND) return;
   if (room.round - room.lastHorrorEventRound < HORROR_EVENT_COOLDOWN_ROUNDS) return;
   if (room.horrorEventsFired.length >= MAX_HORROR_EVENTS_PER_GAME) return;
-  if (Math.random() >= HORROR_EVENT_CHANCE) return;
-  const event = HORROR_EVENTS[Math.floor(Math.random() * HORROR_EVENTS.length)];
+  // The world gets louder as the Nightmare Level rises — capped well short
+  // of certainty so a late-match round can still pass quietly.
+  const chance = Math.min(0.6, HORROR_EVENT_CHANCE + (room.nightmareLevel || 0) * 0.03);
+  if (Math.random() >= chance) return;
+  const pool = eligibleHorrorEvents(room);
+  const event = pool[Math.floor(Math.random() * pool.length)];
   const summary = event.apply(room);
   if (summary == null) return;
   room.lastHorrorEventRound = room.round;
@@ -830,6 +914,7 @@ function advanceTurn(room) {
       room.comfortPairsThisRound = new Set();
       pruneNoiseAlerts(room);
       pruneHorrorEvents(room);
+      updateNightmareLevel(room);
       maybeTriggerHorrorEvent(room);
     }
     const pid = currentPlayerId(room);
@@ -1814,7 +1899,8 @@ function slasherAction(room, player, action) {
         return { ok: true, searchStarted: { teenId: target.id, endsAt: target.searchEndsAt } };
       }
 
-      const chance = killer.attackBase + player.stalkStreak * killerStalkBonus(room, killer) + killerDifficultyModifier(room);
+      const nightmareBoost = room.round <= (room.nightmareAttackBoostUntilRound || 0) ? 10 : 0;
+      const chance = killer.attackBase + player.stalkStreak * killerStalkBonus(room, killer) + killerDifficultyModifier(room) + nightmareBoost;
       if (roll(chance)) {
         const dmg = killerStrikeDamage(room, killer);
         log(room, killer.id === "thing"
@@ -2031,6 +2117,8 @@ export function publicState(room, forPlayerId) {
     killerWeaknessExposed: room.killerWeaknessExposed,
     recentWeaknessReveal:
       room.recentWeaknessReveal && room.round - room.recentWeaknessReveal.round <= 1 ? room.recentWeaknessReveal : null,
+    nightmareLevel: room.nightmareLevel || 0,
+    nightmareLevelName: NIGHTMARE_LEVEL_NAMES[room.nightmareLevel || 0],
     killerSecretObjective: isSlasher
       ? room.killerSecretObjective
       : secretObjectiveRevealed

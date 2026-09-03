@@ -189,6 +189,14 @@ export default function GameScreen({ state, playerId, onLeave }) {
         <div className="game-top">
           {state.mapName && <div className="stat-chip map-chip">📍 {state.mapName}</div>}
           <div className="stat-chip">Round {state.round}</div>
+          {state.nightmareLevel > 0 && (
+            <div
+              className={`stat-chip${state.nightmareLevel >= 4 ? " final-act-chip" : ""}`}
+              title="Nightmare Level — the whole night gets worse, and it never gets better."
+            >
+              🌑 {state.nightmareLevelName}
+            </div>
+          )}
           <div className={`stat-chip clock${clockTier ? ` clock-${clockTier}` : ""}`}>⏱ {clockLabel}</div>
           <div className="stat-chip">Room {state.code}</div>
           {state.clockPhase === "final" && <div className="stat-chip final-act-chip">⚠ FINAL ACT</div>}

@@ -138,6 +138,19 @@ export default function HowToPlay({ onClose }) {
           </section>
 
           <section>
+            <h3>Nightmare Level</h3>
+            <p>
+              A separate, global escalation track (0-6) rises as the clock
+              runs down and as teens die — it never goes back down, and it
+              changes the world, not just the numbers. Horror Events fire
+              more often as it climbs, harsher ones unlock outright, and at
+              its higher tiers a couple of locations go permanently wrong
+              for the rest of the match — nowhere to settle down there
+              again, all night.
+            </p>
+          </section>
+
+          <section>
             <h3>The Post-Game Recap</h3>
             <p>
               Once the match ends, the secrecy drops — the end screen recaps
