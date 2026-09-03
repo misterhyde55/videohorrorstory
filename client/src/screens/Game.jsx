@@ -9,6 +9,7 @@ import PostGameRecap from "../components/PostGameRecap";
 import TurnOrderStrip from "../components/TurnOrderStrip";
 import SearchDiscovery from "../components/SearchDiscovery";
 import { reachableFrom } from "../utils/reachable";
+import { socket } from "../socket";
 
 function sanityTier(sanity) {
   if (sanity <= 2) return "panicked";
@@ -26,6 +27,12 @@ export default function GameScreen({ state, playerId, onLeave }) {
   const handleSearchResult = (result) => {
     if (!result) return;
     setDiscovery(result);
+  };
+
+  const handleBoardMove = (to) => {
+    socket.emit("action", { type: "move", to }, (res) => {
+      if (!res?.ok) setError(res?.error || "Action failed.");
+    });
   };
 
   // A find held open server-side (pendingDiscoveryUid) survives a page
@@ -162,6 +169,8 @@ export default function GameScreen({ state, playerId, onLeave }) {
           players={state.players}
           me={playerId}
           myLocation={me.location}
+          myTurn={myTurn}
+          myRole={me.role}
           slasherNearby={state.slasherNearby}
           slasherPresent={state.slasherPresent}
           killerName={killerName}
@@ -169,6 +178,8 @@ export default function GameScreen({ state, playerId, onLeave }) {
           monsterMaxHp={state.monsterMaxHp}
           hazardLocations={state.activeHorrorEventLocations}
           reachableLocations={reachableLocations}
+          onMove={handleBoardMove}
+          onSearchResult={handleSearchResult}
         />
       )}
 

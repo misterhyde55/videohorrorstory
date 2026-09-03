@@ -187,6 +187,24 @@ npm run dev:client   # Vite dev server on 5173
 
 ## Game design notes
 
+- The board renders as an illustrated map, not a diagram: every location is
+  a hand-drawn SVG landmark (`client/src/components/Landmark.jsx` — a
+  distinct silhouette per location type, water tower, cabin, diner, police
+  station, funhouse, and so on, sharing one moonlit visual language) sitting
+  directly on the terrain, connected by textured dirt-road routes with
+  small trail-marker dots, never a rectangular "room card." Player and
+  Killer pieces are custom SVG token icons (`Token.jsx`) in a physical
+  circular frame — no emoji — with each teen keeping a distinct border
+  pattern so pieces stay tellable apart without relying on color alone; the
+  Killer's token simply doesn't render while its location is hidden.
+  Clicking any location opens a small on-board info card (never a
+  navigation) showing its danger level, search history, and anything left
+  there, with a Search button when it's actually your move — the same
+  Search Discovery system described below. Movement is click-driven
+  directly on the board: selecting a highlighted, reachable landmark moves
+  you there along the real connection graph (the same one the sidebar's
+  Move buttons use), with the token sliding to its new spot rather than
+  snapping.
 - The board (`server/src/board.js`) picks one of two themed maps at random
   each game — the Abandoned Wonderland (Twisted Castle at the hub, Main
   Street as the only way out and where the getaway car sits, ten park
