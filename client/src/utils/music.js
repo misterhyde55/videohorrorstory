@@ -35,27 +35,36 @@ function noteFreq(semitone, octave = 0) {
 // drives the beat scheduler) and a rare "sting" probability. "master" scales
 // the whole mix down for the "silence is scarier" hush state without
 // needing a separate code path.
+//
+// The home screen keeps a full, present score — that's the one place this
+// game plays like a title screen. The moment a match starts, the mix drops
+// back to something closer to Friday the 13th (2017)'s sound design: mostly
+// wind/ambience and a barely-there drone while nothing is happening, with
+// the actual "music" (the ostinato, the pulse) held in reserve and only
+// earned once the Killer is genuinely a threat. Calm should feel like held
+// breath, not a soundtrack.
 const STATES = {
-  menu: { tempo: 116, drone: 0.42, cluster: 0.22, pulse: 0, heartbeat: 0, perc: 0.03, ostinato: 0.3, sting: 0, master: 1 },
-  calm: { tempo: 100, drone: 0.34, cluster: 0.14, pulse: 0.08, heartbeat: 0, perc: 0.03, ostinato: 0.16, sting: 0, master: 1 },
-  tension: { tempo: 122, drone: 0.4, cluster: 0.2, pulse: 0.2, heartbeat: 0.07, perc: 0.12, ostinato: 0.26, sting: 0.02, master: 1 },
-  danger: { tempo: 132, drone: 0.46, cluster: 0.26, pulse: 0.28, heartbeat: 0.3, perc: 0.2, ostinato: 0.3, sting: 0.05, master: 1 },
-  chase: { tempo: 168, drone: 0.34, cluster: 0.16, pulse: 0.42, heartbeat: 0.4, perc: 0.36, ostinato: 0.34, sting: 0.06, master: 1 },
-  final: { tempo: 176, drone: 0.48, cluster: 0.3, pulse: 0.46, heartbeat: 0.44, perc: 0.4, ostinato: 0.36, sting: 0.07, master: 1 },
+  menu: { tempo: 116, drone: 0.42, cluster: 0.22, pulse: 0, heartbeat: 0, perc: 0.03, ostinato: 0.3, sting: 0, ambient: 0, master: 1 },
+  calm: { tempo: 88, drone: 0.12, cluster: 0.04, pulse: 0, heartbeat: 0, perc: 0.012, ostinato: 0, sting: 0.02, ambient: 0.24, master: 1 },
+  tension: { tempo: 100, drone: 0.2, cluster: 0.09, pulse: 0.05, heartbeat: 0, perc: 0.05, ostinato: 0.07, sting: 0.035, ambient: 0.26, master: 1 },
+  danger: { tempo: 120, drone: 0.34, cluster: 0.18, pulse: 0.22, heartbeat: 0.24, perc: 0.15, ostinato: 0.22, sting: 0.05, ambient: 0.18, master: 1 },
+  chase: { tempo: 168, drone: 0.34, cluster: 0.16, pulse: 0.42, heartbeat: 0.4, perc: 0.36, ostinato: 0.34, sting: 0.06, ambient: 0.08, master: 1 },
+  final: { tempo: 176, drone: 0.48, cluster: 0.3, pulse: 0.46, heartbeat: 0.44, perc: 0.4, ostinato: 0.36, sting: 0.07, ambient: 0.06, master: 1 },
   // "The Killer is in the room and doesn't know you're here" — duck almost
   // everything so a lone heartbeat carries the moment instead of a wall of
   // synth, per the brief's "silence can also be scary".
-  hush: { tempo: 100, drone: 0.08, cluster: 0.02, pulse: 0, heartbeat: 0.5, perc: 0, ostinato: 0, sting: 0, master: 0.4 },
+  hush: { tempo: 100, drone: 0.05, cluster: 0, pulse: 0, heartbeat: 0.5, perc: 0, ostinato: 0, sting: 0, ambient: 0.14, master: 0.4 },
 };
 
 let built = false;
 let ctx = null;
 let bus = null;
 
-let droneGain, clusterGain, pulseGain, heartbeatGain, percGain, ostinatoGain, stateMasterGain;
+let droneGain, clusterGain, pulseGain, heartbeatGain, percGain, ostinatoGain, ambientGain, stingGain, stateMasterGain;
 let clusterFilter;
 let lfoOsc, lfoGain;
 let warbleOsc, warbleGain;
+let windFilter, windLfoOsc, windLfoGain;
 
 let currentState = "menu";
 let currentTempo = STATES.menu.tempo;
@@ -167,6 +176,39 @@ function buildGraph() {
   ostinatoGain = ctx.createGain();
   ostinatoGain.gain.value = 0;
   ostinatoGain.connect(stateMasterGain);
+
+  // Stings are a one-off event, not an ambient layer — always audible at a
+  // fixed level when they fire (gated only by how *often* they fire, via
+  // cfg.sting), rather than getting scaled down by the quiet percussion
+  // level Calm/Tension otherwise use. That's what makes them land as a
+  // genuine jolt during an otherwise near-silent stretch.
+  stingGain = ctx.createGain();
+  stingGain.gain.value = 1;
+  stingGain.connect(stateMasterGain);
+
+  // --- Ambient: a continuous, slowly-shifting filtered-noise bed — wind
+  // through the trees, a low room tone — carrying most of the gameplay
+  // mix's "creepiness" while everything else stays near-silent. This is
+  // what keeps Calm from being dead air. ---
+  ambientGain = ctx.createGain();
+  ambientGain.gain.value = 0;
+  ambientGain.connect(stateMasterGain);
+  const wind = ctx.createBufferSource();
+  wind.buffer = noiseBuffer(ctx, 4);
+  wind.loop = true;
+  windFilter = ctx.createBiquadFilter();
+  windFilter.type = "bandpass";
+  windFilter.frequency.value = 480;
+  windFilter.Q.value = 0.5;
+  windLfoOsc = ctx.createOscillator();
+  windLfoOsc.type = "sine";
+  windLfoOsc.frequency.value = 0.06;
+  windLfoGain = ctx.createGain();
+  windLfoGain.gain.value = 220;
+  windLfoOsc.connect(windLfoGain).connect(windFilter.frequency);
+  windLfoOsc.start();
+  wind.connect(windFilter).connect(ambientGain);
+  wind.start();
 }
 
 // --- One-shot synthesized hits, scheduled precisely on the audio clock ---
@@ -246,11 +288,23 @@ function playSting(time) {
     g.gain.setValueAtTime(0.001, time);
     g.gain.exponentialRampToValueAtTime(0.4, time + 0.01);
     g.gain.exponentialRampToValueAtTime(0.001, time + 0.9);
-    osc.connect(g).connect(percGain);
+    osc.connect(g).connect(stingGain);
     osc.start(time);
     osc.stop(time + 1);
   });
-  playPerc(time);
+  const noise = ctx.createBufferSource();
+  noise.buffer = noiseBuffer(ctx, 0.3);
+  const bp = ctx.createBiquadFilter();
+  bp.type = "bandpass";
+  bp.frequency.value = 2200 + Math.random() * 3200;
+  bp.Q.value = 9;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.001, time);
+  g.gain.exponentialRampToValueAtTime(0.6, time + 0.003);
+  g.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
+  noise.connect(bp).connect(g).connect(stingGain);
+  noise.start(time);
+  noise.stop(time + 0.12);
 }
 
 function scheduler() {
@@ -262,7 +316,7 @@ function scheduler() {
     currentTempo += (targetTempo - currentTempo) * 0.12;
     const beatDur = 60 / Math.max(40, currentTempo);
 
-    if (currentState !== "menu" && currentState !== "hush") {
+    if (cfg.pulse > 0.03) {
       playPulse(nextBeatTime);
     }
     if (cfg.heartbeat > 0.05 && beatCount % 2 === 0) {
@@ -274,7 +328,7 @@ function scheduler() {
     if (cfg.ostinato > 0.03) {
       playOstinatoNote(nextBeatTime);
     }
-    if (cfg.sting > 0 && Math.random() < cfg.sting * 0.15) {
+    if (cfg.sting > 0 && Math.random() < cfg.sting) {
       playSting(nextBeatTime);
     }
 
@@ -317,6 +371,7 @@ export function setMusicState(state, { immediate = false, fast = false } = {}) {
   rampTo(heartbeatGain, cfg.heartbeat, dur);
   rampTo(percGain, cfg.perc, dur);
   rampTo(ostinatoGain, cfg.ostinato, dur);
+  rampTo(ambientGain, cfg.ambient, dur);
   rampTo(stateMasterGain, cfg.master, dur);
   if (immediate) currentTempo = cfg.tempo;
 }
