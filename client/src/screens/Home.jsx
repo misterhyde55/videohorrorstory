@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { startAudioOnGesture, playHoverBlip, playSelectClick, isMuted, setMuted } from "../utils/sound";
+import {
+  startAudioOnGesture, playHoverBlip, playSelectClick,
+  getMasterVolume, setMasterVolume, getMusicVolume, setMusicVolume, getSfxVolume, setSfxVolume,
+  isMusicMuted, setMusicMuted, isSfxMuted, setSfxMuted,
+} from "../utils/sound";
+import { startMusic, setMusicState } from "../utils/music";
 import heroImage from "../assets/hero-tv.jpg";
 import SoloSetup from "./SoloSetup";
 import HostGame from "./HostGame";
@@ -21,22 +26,39 @@ export default function Home({ onCreate, onJoin, onSolo, onShowHelp, onShowTutor
   const [screen, setScreen] = useState("menu");
   const [cursor, setCursor] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
-  const [muted, setMutedState] = useState(isMuted());
+  const [masterVol, setMasterVolState] = useState(getMasterVolume());
+  const [musicVol, setMusicVolState] = useState(getMusicVolume());
+  const [sfxVol, setSfxVolState] = useState(getSfxVolume());
+  const [musicMuted, setMusicMutedState] = useState(isMusicMuted());
+  const [sfxMuted, setSfxMutedState] = useState(isSfxMuted());
   const screenRef = useRef(null);
 
   // The first real click or keypress anywhere on this screen is what lets
   // the browser's autoplay policy allow any sound at all — this listener
   // exists purely to catch that first gesture, then gets out of the way.
+  // That same gesture is what starts the generative menu score (see
+  // utils/music.js) — nothing plays before the player has interacted.
   useEffect(() => {
     const el = screenRef.current;
     if (!el) return undefined;
-    const onFirstGesture = () => startAudioOnGesture();
+    const onFirstGesture = () => {
+      startAudioOnGesture();
+      startMusic("menu");
+    };
     el.addEventListener("pointerdown", onFirstGesture, { once: true });
     el.addEventListener("keydown", onFirstGesture, { once: true });
     return () => {
       el.removeEventListener("pointerdown", onFirstGesture);
       el.removeEventListener("keydown", onFirstGesture);
     };
+  }, []);
+
+  // Coming back to the main menu from a setup screen — including via the
+  // in-game Leave button, which unmounts GameScreen and remounts Home —
+  // should bring the menu score back rather than leaving gameplay music
+  // playing under the title screen.
+  useEffect(() => {
+    setMusicState("menu");
   }, []);
 
   const menuItems = [
@@ -88,12 +110,6 @@ export default function Home({ onCreate, onJoin, onSolo, onShowHelp, onShowTutor
     return () => window.removeEventListener("keydown", onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen, cursor]);
-
-  function toggleMuted() {
-    const next = !muted;
-    setMuted(next);
-    setMutedState(next);
-  }
 
   const backToMenu = () => setScreen("menu");
 
@@ -187,12 +203,46 @@ export default function Home({ onCreate, onJoin, onSolo, onShowHelp, onShowTutor
               <button className="btn btn-ghost" onClick={() => setShowSettings(false)} type="button">Close</button>
             </div>
             <div className="modal-body">
-              <label className="settings-toggle-row">
-                <input type="checkbox" checked={!muted} onChange={toggleMuted} />
-                Sound &amp; ambience
-              </label>
+              <div className="volume-row">
+                <label htmlFor="vol-master">Master Volume</label>
+                <input
+                  id="vol-master" type="range" min="0" max="1" step="0.01" value={masterVol}
+                  onChange={(e) => { const v = parseFloat(e.target.value); setMasterVolState(v); setMasterVolume(v); }}
+                />
+              </div>
+
+              <div className="volume-row">
+                <label htmlFor="vol-music">Music Volume</label>
+                <input
+                  id="vol-music" type="range" min="0" max="1" step="0.01" value={musicVol} disabled={musicMuted}
+                  onChange={(e) => { const v = parseFloat(e.target.value); setMusicVolState(v); setMusicVolume(v); }}
+                />
+                <label className="settings-toggle-row inline">
+                  <input
+                    type="checkbox" checked={!musicMuted}
+                    onChange={(e) => { const on = e.target.checked; setMusicMutedState(!on); setMusicMuted(!on); }}
+                  />
+                  On
+                </label>
+              </div>
+
+              <div className="volume-row">
+                <label htmlFor="vol-sfx">SFX Volume</label>
+                <input
+                  id="vol-sfx" type="range" min="0" max="1" step="0.01" value={sfxVol} disabled={sfxMuted}
+                  onChange={(e) => { const v = parseFloat(e.target.value); setSfxVolState(v); setSfxVolume(v); }}
+                />
+                <label className="settings-toggle-row inline">
+                  <input
+                    type="checkbox" checked={!sfxMuted}
+                    onChange={(e) => { const on = e.target.checked; setSfxMutedState(!on); setSfxMuted(!on); }}
+                  />
+                  On
+                </label>
+              </div>
+
               <p className="settings-hint">
-                Controls the static hum and menu sound effects on this title screen.
+                Music covers the menu score and the dynamic in-game soundtrack. SFX covers menu blips and clicks.
               </p>
             </div>
           </div>

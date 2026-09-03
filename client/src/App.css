@@ -2932,6 +2932,31 @@
   color: #d9c9f5;
 }
 
+.settings-toggle-row.inline {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.volume-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 0.7rem;
+}
+
+.volume-row label:first-child {
+  width: 8.5rem;
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  color: #cbb8e8;
+}
+
+.volume-row input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--neon-cyan);
+}
+
 .settings-hint {
   color: #9a8ab0;
   font-size: 0.85rem;

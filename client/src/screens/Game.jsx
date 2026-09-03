@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Board from "../components/Board";
 import ActionPanel from "../components/ActionPanel";
 import PlayerCard from "../components/PlayerCard";
@@ -11,6 +11,28 @@ import SearchDiscovery from "../components/SearchDiscovery";
 import { reachableFrom } from "../utils/reachable";
 import { socket } from "../socket";
 import { sanityTier, SANITY_TIER_LABEL } from "../utils/sanity";
+import { setMusicState } from "../utils/music";
+
+// Derives which dynamic-music mix should be playing from signals the
+// current player would actually perceive — never from hidden state the
+// Killer's AI itself uses, so the score can't spoil information the UI
+// doesn't already show. "hush" (near-silence but for a heartbeat) is the
+// most tense mix of all: the Killer is right there and you're holding
+// still, hoping it moves on.
+function deriveMusicState(state, me, breathOverlay) {
+  if (state.phase === "ended") return "calm";
+  if (me.role === "teen") {
+    if (state.slasherPresent && (me.hiding || breathOverlay)) return "hush";
+    if (state.slasherPresent) return "chase";
+    if (state.clockPhase === "final") return "final";
+    if (me.hiding || breathOverlay) return "danger";
+    if (state.slasherNearby || state.recentHorrorEvent) return "tension";
+    return "calm";
+  }
+  if (state.clockPhase === "final") return "final";
+  if (state.recentHorrorEvent) return "tension";
+  return "calm";
+}
 
 export default function GameScreen({ state, playerId, onLeave }) {
   const [error, setError] = useState("");
@@ -110,6 +132,18 @@ export default function GameScreen({ state, playerId, onLeave }) {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, [state.phase]);
+
+  // Dynamic score: ramp toward whichever mix matches what's actually
+  // happening to this player right now. "hush"/"chase" escalate on a
+  // shorter crossfade so a sudden discovery actually lands as sudden.
+  const musicState = useMemo(
+    () => (me ? deriveMusicState(state, me, breathOverlay) : "calm"),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [state.phase, state.slasherPresent, state.slasherNearby, state.clockPhase, state.recentHorrorEvent, me?.hiding, me?.role, breathOverlay]
+  );
+  useEffect(() => {
+    setMusicState(musicState, { fast: musicState === "hush" || musicState === "chase" });
+  }, [musicState]);
 
   useEffect(() => {
     if (me?.role === "teen" && me.searching && me.searchEndsAt) {
