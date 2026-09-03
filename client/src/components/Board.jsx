@@ -96,10 +96,15 @@ export default function Board({
   monsterHp,
   monsterMaxHp,
   hazardLocations,
+  npcs,
   reachableLocations,
   onMove,
   onSearchResult,
 }) {
+  const npcLocations = new Map();
+  (npcs || []).forEach((n) => {
+    if (n.status === "waiting" || n.status === "endangered") npcLocations.set(n.locationId, n);
+  });
   const prevLocationsRef = useRef({});
   const [flashLocations, setFlashLocations] = useState(new Set());
   const [selectedLocationId, setSelectedLocationId] = useState(null);
@@ -241,6 +246,7 @@ export default function Board({
         const isReachable = reachableLocations?.includes(loc.id);
         const hasLoot = (loc.leftItems?.length || 0) > 0;
         const isSelected = selectedLocationId === loc.id;
+        const npcHere = npcLocations.get(loc.id);
         return (
           <button
             type="button"
@@ -254,6 +260,12 @@ export default function Board({
             }}
           >
             {hasLoot && <span className="loot-badge" title="Something was left here" />}
+            {npcHere && (
+              <span
+                className={`npc-badge${npcHere.status === "endangered" ? " endangered" : ""}`}
+                title={`${npcHere.name} needs rescuing`}
+              />
+            )}
             <Landmark type={loc.type} dangerLevel={loc.dangerLevel} hazard={isHaunted} size={LANDMARK_SIZE} />
             <span className="landmark-nameplate">{loc.name}</span>
           </button>

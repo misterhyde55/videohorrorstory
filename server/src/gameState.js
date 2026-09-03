@@ -47,6 +47,7 @@ const COMFORT_GAIN = 10; // The Leader grants 15 instead (see the "comfort" case
 const COMFORT_LIMIT = 30; // per player, per game (as the receiver)
 const ITEM_SANITY_LIMIT = 40; // per player, per game
 const OBJECTIVE_SANITY_LIMIT = 40; // per player, per game
+const NPC_SANITY_LIMIT = 24; // per player, per game — its own pool, separate from Comfort/Item/Objective/Regroup
 const BROKEN_ENTER_SANITY = 0;
 const BROKEN_RECOVER_SANITY = 30; // climb back to the bottom of Frightened to shake off Broken
 const BROKEN_ROUND_CAP = 10; // max Sanity gain per round while Broken
@@ -270,11 +271,20 @@ const NIGHTMARE_LEVEL_NAMES = [
 ];
 const NIGHTMARE_ZONE_TIERS = [3, 5]; // claim one permanent Nightmare Zone the first time each tier is reached
 
+// Clock breakpoints mirror the fractions already used elsewhere in this
+// file (EARLY_GAME_TIER*_ELAPSED, lateGameTier's remaining-time cutoffs)
+// so tier 4 lands around the same "final act" point the clock UI already
+// calls out (~85% elapsed) rather than requiring the literal last instant
+// before the clock runs out.
 function computeNightmareLevel(room) {
   if (!room.endsAt) return 0;
   const total = room.gameDurationMs ?? GAME_DURATION_MS;
   const elapsedFraction = Math.min(1, Math.max(0, 1 - (room.endsAt - Date.now()) / total));
-  const clockLevel = Math.floor(elapsedFraction * 4); // 0..4, paced with the game clock
+  let clockLevel = 0;
+  if (elapsedFraction >= 0.85) clockLevel = 4;
+  else if (elapsedFraction >= 0.67) clockLevel = 3;
+  else if (elapsedFraction >= 0.4) clockLevel = 2;
+  else if (elapsedFraction >= 0.2) clockLevel = 1;
   const deathLevel = Math.min(2, room.killCount || 0); // +0..2, a death makes the night worse for everyone
   return Math.min(6, clockLevel + deathLevel);
 }
@@ -300,6 +310,81 @@ function updateNightmareLevel(room) {
   }
 }
 
+// ---- NPC Survivors (Phase 5) ----
+// A couple of non-player survivors are scattered on the board each match —
+// not combatants, just a rescue/abandon dilemma layered onto the existing
+// map. A teen who reaches one can Rescue them (Sanity + a decent chance of
+// a found item, via the same left-item/pendingDiscoveryUid flow Search
+// already uses, so the client needs no new popup). Left alone, they get
+// swept along with the Nightmare Level: "endangered" once the world turns
+// (tier 4), dead if abandoned all the way to the final tier (6) — and the
+// Killer walking into their spot kills them outright, any time.
+const NPC_COUNT = 2;
+const NPC_ENDANGERED_TIER = 4;
+const NPC_DEATH_TIER = 6;
+const NPC_RESCUE_SANITY_GAIN = 12;
+const NPC_RESCUE_ITEM_CHANCE = 50; // percent
+const NPC_TEMPLATES = [
+  { id: "camper", name: "A Frightened Camper" },
+  { id: "worker", name: "A Park Worker" },
+  { id: "hiker", name: "A Lost Hiker" },
+  { id: "counselor", name: "A Missing Counselor" },
+];
+
+function spawnNpcs(room) {
+  const candidates = Object.values(room.board).filter((l) => !l.exit && !l.ritualSite);
+  const picks = [];
+  const pool = [...candidates];
+  const templates = [...NPC_TEMPLATES].sort(() => Math.random() - 0.5);
+  for (let i = 0; i < NPC_COUNT && pool.length > 0; i++) {
+    const idx = Math.floor(Math.random() * pool.length);
+    const loc = pool.splice(idx, 1)[0];
+    const template = templates[i % templates.length];
+    picks.push({
+      id: `npc-${i + 1}`,
+      templateId: template.id,
+      name: template.name,
+      locationId: loc.id,
+      status: "waiting", // waiting | endangered | rescued | dead
+    });
+  }
+  room.npcs = picks;
+}
+
+// Endangers or kills any still-unrescued NPC once the Nightmare Level
+// crosses their respective tier — called alongside updateNightmareLevel
+// each new round, so an abandoned NPC's fate tracks the same world
+// escalation teens can already see coming.
+function sweepNpcs(room) {
+  (room.npcs || []).forEach((npc) => {
+    if (npc.status === "waiting" && room.nightmareLevel >= NPC_ENDANGERED_TIER) {
+      npc.status = "endangered";
+      log(room, `${npc.name} is running out of time — ${room.board[npc.locationId]?.name} isn't safe for them anymore.`, "all");
+    }
+    if ((npc.status === "waiting" || npc.status === "endangered") && room.nightmareLevel >= NPC_DEATH_TIER) {
+      npc.status = "dead";
+      log(room, `${npc.name} didn't make it. No one came in time.`, "all");
+    }
+  });
+}
+
+// The Killer walking into (or shortcutting to) an NPC's spot kills them
+// outright, any time, regardless of Nightmare Level.
+function maybeKillNpcAt(room, locationId) {
+  const npc = (room.npcs || []).find((n) => n.locationId === locationId && (n.status === "waiting" || n.status === "endangered"));
+  if (!npc) return;
+  npc.status = "dead";
+  log(room, `${npc.name} never had a chance — the Killer found them first.`, "all");
+}
+
+function grantNpcSanity(room, player, amount) {
+  const remaining = NPC_SANITY_LIMIT - (player.npcSanityGainTotal || 0);
+  if (remaining <= 0) return 0;
+  const grant = Math.min(amount, remaining);
+  player.npcSanityGainTotal = (player.npcSanityGainTotal || 0) + grant;
+  return gainSanity(room, player, grant);
+}
+
 export function createRoom(code, hostId) {
   return {
     code,
@@ -307,6 +392,7 @@ export function createRoom(code, hostId) {
     phase: "lobby", // lobby | playing | ended
     players: new Map(), // id -> player
     board: null, // set at startGame — a fresh procedurally generated map
+    npcs: [], // {id, templateId, name, locationId, status} — see spawnNpcs
     layout: null,
     mapName: null,
     turnOrder: [],
@@ -394,6 +480,7 @@ export function addPlayer(room, id, name, roleOverride) {
     scavengeCategory: null, // Scavenge Supplies (Store/Gas Station) — biases the very next Search
     regroupGainTotal: 0, // Regroup (ritual site) — lifetime cap, its own pool
     regroupReceivedRound: null, // Regroup — once per round
+    npcSanityGainTotal: 0, // Rescue — lifetime cap, its own pool
   });
 }
 
@@ -508,6 +595,7 @@ export function startGame(room, { durationMs } = {}) {
   room.board = generated.locations;
   room.layout = generated.layout;
   room.mapName = generated.mapName;
+  spawnNpcs(room);
 
   teens.forEach((p, i) => {
     const character = TEEN_CHARACTERS[p.pickId];
@@ -550,6 +638,7 @@ export function startGame(room, { durationMs } = {}) {
     p.scavengeCategory = null;
     p.regroupGainTotal = 0;
     p.regroupReceivedRound = null;
+    p.npcSanityGainTotal = 0;
   });
   slasher.location = generated.startLocations.slasher;
   slasher.stalkStreak = 0;
@@ -915,6 +1004,7 @@ function advanceTurn(room) {
       pruneNoiseAlerts(room);
       pruneHorrorEvents(room);
       updateNightmareLevel(room);
+      sweepNpcs(room);
       maybeTriggerHorrorEvent(room);
     }
     const pid = currentPlayerId(room);
@@ -1782,6 +1872,33 @@ function teenAction(room, player, action) {
       log(room, `${player.characterName} comforts ${target.characterName}.`, "teens");
       return { ok: true };
     }
+    case "rescue_npc": {
+      const npc = (room.npcs || []).find(
+        (n) => n.locationId === player.location && (n.status === "waiting" || n.status === "endangered")
+      );
+      if (!npc) return { error: "There's no one here to rescue." };
+      npc.status = "rescued";
+      const sanityBefore = player.sanity;
+      grantNpcSanity(room, player, NPC_RESCUE_SANITY_GAIN);
+      log(room, `${player.characterName} gets ${npc.name} to safety.`, "teens");
+      let itemGranted = null;
+      if (roll(NPC_RESCUE_ITEM_CHANCE)) {
+        const item = drawFromPool(loc.searchPool);
+        if (item) {
+          item.uid = `${item.id}_${Date.now()}_${Math.floor(Math.random() * 1e6).toString(36)}`;
+          loc.leftItems = loc.leftItems || [];
+          loc.leftItems.push(item);
+          player.pendingDiscoveryUid = item.uid;
+          itemGranted = { uid: item.uid, itemId: item.id, itemName: item.name };
+          log(room, `${npc.name} presses something into your hands before running off.`, "teens");
+        }
+      }
+      return {
+        ok: true,
+        sanityActionTaken: player.sanity !== sanityBefore,
+        interactionResult: { type: "rescue", npcName: npc.name, item: itemGranted },
+      };
+    }
     default:
       return { error: "Unknown action." };
   }
@@ -1878,6 +1995,7 @@ function slasherAction(room, player, action) {
       clearEvadeCooldown(room, prevLocation);
       log(room, `The Slasher moves to ${room.board[action.to].name}.`, "slasher");
       scareTeensAt(room, action.to);
+      maybeKillNpcAt(room, action.to);
       return { ok: true };
     }
     case "attack": {
@@ -1943,6 +2061,7 @@ function slasherAction(room, player, action) {
         ? `Something that looked exactly like ${target.characterName} was already waiting at ${room.board[target.location].name}...`
         : `The Stalker appears out of nowhere at ${room.board[target.location].name}!`, "slasher");
       scareTeensAt(room, target.location);
+      maybeKillNpcAt(room, target.location);
       return { ok: true };
     }
     default:
@@ -2064,6 +2183,12 @@ export function publicState(room, forPlayerId) {
         // Let's Go is once per round, the other three are once per turn.
         base.abilityReady = p.pickId === "leader" ? p.abilityUsedRound !== room.round : !p.abilityUsedTurn;
         base.locationInteraction = room.phase === "playing" ? computeLocationInteraction(room, p) : null;
+        base.npcHere =
+          room.phase === "playing"
+            ? (room.npcs || []).find(
+                (n) => n.locationId === p.location && (n.status === "waiting" || n.status === "endangered")
+              ) || null
+            : null;
       }
     }
     return base;
@@ -2114,6 +2239,7 @@ export function publicState(room, forPlayerId) {
       room.recentHorrorEvent && room.round - room.recentHorrorEvent.round <= 1 ? room.recentHorrorEvent : null,
     killerCluesFound: !isSlasher ? room.killerCluesFound || 0 : null,
     killerCluesNeeded: !isSlasher ? KILLER_WEAKNESS_THRESHOLD : null,
+    npcs: (room.npcs || []).map((n) => ({ id: n.id, name: n.name, locationId: n.locationId, status: n.status })),
     killerWeaknessExposed: room.killerWeaknessExposed,
     recentWeaknessReveal:
       room.recentWeaknessReveal && room.round - room.recentWeaknessReveal.round <= 1 ? room.recentWeaknessReveal : null,

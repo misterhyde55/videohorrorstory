@@ -138,6 +138,19 @@ export default function HowToPlay({ onClose }) {
           </section>
 
           <section>
+            <h3>NPC Survivors</h3>
+            <p>
+              A couple of other people are stuck out there too, marked on
+              the map. Reach one and Rescue them for Sanity, and often
+              something useful they were holding onto. Leave them too long
+              and it stops being your call — once the Nightmare Level turns
+              far enough, they're on their own, and if it goes all the way,
+              they don't make it. The Killer walking into their spot ends
+              it immediately, any time.
+            </p>
+          </section>
+
+          <section>
             <h3>Nightmare Level</h3>
             <p>
               A separate, global escalation track (0-6) rises as the clock

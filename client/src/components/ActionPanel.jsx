@@ -129,6 +129,18 @@ function TeenActions({ state, me, loc, onError, onSearchResult, onItemUseResult 
 
       <InteractGroup me={me} onError={onError} />
 
+      {me.npcHere && (
+        <ActionGroup title={me.npcHere.status === "endangered" ? "Rescue — running out of time!" : "Rescue"}>
+          <button
+            type="button"
+            className={me.npcHere.status === "endangered" ? "btn btn-danger" : "btn btn-accent"}
+            onClick={() => act({ type: "rescue_npc" }, onError)}
+          >
+            Rescue {me.npcHere.name}
+          </button>
+        </ActionGroup>
+      )}
+
       {leftItemsHere.length > 0 && (
         <ActionGroup title="Left Here">
           {leftItemsHere.map((it) => (
