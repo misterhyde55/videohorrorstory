@@ -351,7 +351,7 @@ export function canStart(room) {
 //  "slasher" — visible to the Slasher only, hidden from teens (protects the
 //              Slasher's own movement/lurk/shortcut from free tracking)
 function log(room, message, scope = "all") {
-  room.log.push({ t: Date.now(), message, scope });
+  room.log.push({ t: Date.now(), round: room.round, message, scope });
   if (room.log.length > 200) room.log.shift();
 }
 

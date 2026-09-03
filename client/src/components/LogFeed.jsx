@@ -13,7 +13,10 @@ export default function LogFeed({ log }) {
   return (
     <div className="log-feed" ref={containerRef}>
       {log.map((entry, i) => (
-        <p key={entry.t + "-" + i}>{entry.message}</p>
+        <p key={entry.t + "-" + i}>
+          {entry.round != null && <span className="log-round">R{entry.round}</span>}
+          {entry.message}
+        </p>
       ))}
     </div>
   );

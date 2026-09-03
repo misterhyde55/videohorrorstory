@@ -1310,6 +1310,12 @@
   padding-bottom: 0.2rem;
 }
 
+.log-round {
+  color: #6b5a80;
+  font-variant-numeric: tabular-nums;
+  margin-right: 0.4rem;
+}
+
 .endgame {
   grid-area: board / board / sidebar / sidebar;
   text-align: center;
