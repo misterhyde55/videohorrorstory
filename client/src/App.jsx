@@ -16,6 +16,7 @@ export default function App() {
   const [state, setState] = useState(null);
   const [error, setError] = useState("");
   const [showHelp, setShowHelp] = useState(false);
+  const [showLog, setShowLog] = useState(false);
   const [showTutorial, setShowTutorial] = useState(() => {
     try {
       return !localStorage.getItem(TUTORIAL_SEEN_KEY);
@@ -139,10 +140,21 @@ export default function App() {
             <span className="vhs-rec-dot" aria-hidden="true" />
             <span className="vhs-rec-label">REC</span>
             {inGame ? (
-              <div className="vhs-header-log">
-                <div className="vhs-header-log-title">Game Log</div>
-                <LogFeed log={state.log} />
-              </div>
+              <button type="button" className="vhs-header-recent" onClick={() => setShowLog(true)}>
+                <span className="vhs-header-log-title">Recent</span>
+                <span className="vhs-header-recent-line">
+                  {state.log?.length ? (
+                    <>
+                      {state.log[state.log.length - 1].round != null && (
+                        <span className="log-round">R{state.log[state.log.length - 1].round}</span>
+                      )}
+                      {state.log[state.log.length - 1].message}
+                    </>
+                  ) : (
+                    "—"
+                  )}
+                </span>
+              </button>
             ) : (
               <span className="vhs-tracking-bar" aria-hidden="true" />
             )}
@@ -174,6 +186,19 @@ export default function App() {
       {state && state.phase !== "lobby" && <GameScreen state={state} playerId={playerId} onLeave={leaveRoom} />}
 
       {showHelp && <HowToPlay onClose={() => setShowHelp(false)} />}
+      {showLog && inGame && (
+        <div className="modal-backdrop" onClick={() => setShowLog(false)}>
+          <div className="modal-card log-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Game Log</h2>
+              <button className="btn btn-ghost" onClick={() => setShowLog(false)} type="button">Close</button>
+            </div>
+            <div className="modal-body">
+              <LogFeed log={state.log} full />
+            </div>
+          </div>
+        </div>
+      )}
       {!state && showTutorial && <Tutorial onClose={closeTutorial} onPractice={startPractice} />}
     </div>
   );

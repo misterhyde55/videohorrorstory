@@ -16,6 +16,52 @@ const TREE_CLUSTERS = [
   [72, 82, 4.8], [12, 30, 4], [8, 40, 4.6], [90, 60, 5], [94, 72, 4.4],
 ];
 
+// Small fixed set pieces scattered across the open ground (never on a
+// route or a location) so the board reads as an actual place between its
+// landmarks, not empty space with icons floating on it. Purely decorative.
+const CLUTTER = [
+  { x: 20, y: 46, kind: "fence" }, { x: 80, y: 50, kind: "fence" },
+  { x: 44, y: 30, kind: "booth" }, { x: 58, y: 66, kind: "booth" },
+  { x: 26, y: 60, kind: "crate" }, { x: 70, y: 34, kind: "crate" },
+  { x: 36, y: 46, kind: "lamp" }, { x: 62, y: 50, kind: "lamp" },
+  { x: 18, y: 64, kind: "lamp" }, { x: 82, y: 66, kind: "lamp" },
+  { x: 48, y: 58, kind: "crate" }, { x: 14, y: 76, kind: "fence" },
+];
+
+function Clutter({ x, y, kind }) {
+  if (kind === "lamp") {
+    return (
+      <g transform={`translate(${x} ${y})`} opacity="0.85">
+        <line x1="0" y1="0" x2="0" y2="-5.5" stroke="#5b4128" strokeWidth="0.4" />
+        <circle cx="0" cy="-6" r="1.1" fill="#ffd35c" opacity="0.9" />
+        <circle cx="0" cy="-6" r="2.6" fill="#ffd35c" opacity="0.22" />
+      </g>
+    );
+  }
+  if (kind === "booth") {
+    return (
+      <g transform={`translate(${x} ${y})`} opacity="0.8">
+        <path d="M-3 -2 L0 -4.5 L3 -2 L3 2 L-3 2 Z" fill="#3a1030" stroke="#ff5fa8" strokeWidth="0.25" strokeOpacity="0.7" />
+      </g>
+    );
+  }
+  if (kind === "crate") {
+    return (
+      <g transform={`translate(${x} ${y})`} opacity="0.75">
+        <rect x="-1.6" y="-1.6" width="3.2" height="3.2" fill="#5b4128" stroke="#8a6a45" strokeWidth="0.25" />
+      </g>
+    );
+  }
+  return (
+    <g transform={`translate(${x} ${y})`} opacity="0.6">
+      <line x1="-3" y1="0" x2="3" y2="0" stroke="#5b4128" strokeWidth="0.35" />
+      <line x1="-3" y1="-1.6" x2="-3" y2="0.6" stroke="#5b4128" strokeWidth="0.35" />
+      <line x1="0" y1="-1.6" x2="0" y2="0.6" stroke="#5b4128" strokeWidth="0.35" />
+      <line x1="3" y1="-1.6" x2="3" y2="0.6" stroke="#5b4128" strokeWidth="0.35" />
+    </g>
+  );
+}
+
 // A location's coordinate along a connection line, used both to draw the
 // route itself and to seed small "trail marker" dots along it — and to
 // interpolate a token's mid-move position for the step animation below.
@@ -26,7 +72,8 @@ function pointAlong(a, b, t) {
 // Landmarks are centered on their board position as a column (icon above
 // its nameplate), so tokens need to clear both before they sit below —
 // otherwise they land right across the location name.
-const TOKEN_ROW_Y = 58;
+const LANDMARK_SIZE = 82;
+const TOKEN_ROW_Y = 78;
 
 function tokenSlotOffset(index, total) {
   if (total <= 1) return { x: 0, y: TOKEN_ROW_Y };
@@ -149,16 +196,27 @@ export default function Board({
         <circle cx="90" cy="10" r="14" fill="url(#moonGlow)" />
         <circle cx="90" cy="10" r="4.2" fill="#fdf6dd" />
 
+        {/* Roads are drawn before the tree/clutter dressing so the park's
+            greenery reads as sitting alongside the path, not paved over. */}
+        {routes.map(({ key, a, b }) => (
+          <line key={key + "-bed"} x1={a.x} y1={a.y} x2={b.x} y2={b.y} className="board-road-bed" />
+        ))}
+        {routes.map(({ key, a, b }) => (
+          <line key={key + "-edge"} x1={a.x} y1={a.y} x2={b.x} y2={b.y} className="board-road-edge" />
+        ))}
+        {routes.map(({ key, a, b }) => (
+          <line key={key + "-line"} x1={a.x} y1={a.y} x2={b.x} y2={b.y} className="board-road-line" />
+        ))}
+
         {TREE_CLUSTERS.map(([x, y, r], i) => (
           <circle key={"tree" + i} cx={x} cy={y} r={r} fill="#241a52" stroke="#9b30ff" strokeOpacity="0.25" strokeWidth="0.3" opacity="0.9" />
+        ))}
+        {CLUTTER.map((c, i) => (
+          <Clutter key={"clutter" + i} {...c} />
         ))}
 
         <ellipse cx="12" cy="88" rx="12" ry="8" fill="url(#lakeGlow)" opacity="0.9" />
         <ellipse cx="12" cy="88" rx="12" ry="8" fill="none" stroke="#8fd6e0" strokeOpacity="0.35" strokeWidth="0.4" />
-
-        {routes.map(({ key, a, b }) => (
-          <line key={key} x1={a.x} y1={a.y} x2={b.x} y2={b.y} className="board-route" />
-        ))}
 
         <rect x="0" y="0" width="100" height="100" fill="url(#fogGradient)" opacity="0.5" />
       </svg>
@@ -196,7 +254,7 @@ export default function Board({
             }}
           >
             {hasLoot && <span className="loot-badge" title="Something was left here" />}
-            <Landmark type={loc.type} dangerLevel={loc.dangerLevel} hazard={isHaunted} size={56} />
+            <Landmark type={loc.type} dangerLevel={loc.dangerLevel} hazard={isHaunted} size={LANDMARK_SIZE} />
             <span className="landmark-nameplate">{loc.name}</span>
           </button>
         );

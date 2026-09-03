@@ -166,7 +166,7 @@ export function generateBoard(rng = Math.random) {
 
   // Relax any pair that ended up too close together, a few passes, clamped
   // to the map bounds.
-  const MIN_DIST = 16;
+  const MIN_DIST = 19;
   for (let pass = 0; pass < 30; pass++) {
     let moved = false;
     for (let i = 0; i < ids.length; i++) {

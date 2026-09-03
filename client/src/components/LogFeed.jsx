@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-export default function LogFeed({ log }) {
+export default function LogFeed({ log, full }) {
   const containerRef = useRef(null);
   useEffect(() => {
     // Scroll only this feed's own box to its latest entry — scrollIntoView
@@ -11,7 +11,7 @@ export default function LogFeed({ log }) {
   }, [log]);
 
   return (
-    <div className="log-feed" ref={containerRef}>
+    <div className={`log-feed${full ? " log-feed-full" : ""}`} ref={containerRef}>
       {log.map((entry, i) => (
         <p key={entry.t + "-" + i}>
           {entry.round != null && <span className="log-round">R{entry.round}</span>}

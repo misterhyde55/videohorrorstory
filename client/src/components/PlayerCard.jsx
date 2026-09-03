@@ -66,20 +66,28 @@ export default function PlayerCard({ me, carRepaired, monsterHp, monsterMaxHp, o
           <button
             type="button"
             className="player-card-toggle"
-            onClick={() => setExpanded((v) => !v)}
-            aria-expanded={expanded}
+            onClick={() => setExpanded(true)}
           >
             <span>Gear &amp; Objectives ({itemCount}/{me.itemCapacity})</span>
-            <span className={`player-card-toggle-arrow${expanded ? " open" : ""}`} aria-hidden="true">▾</span>
+            <span className="player-card-toggle-arrow" aria-hidden="true">▸</span>
           </button>
-          {expanded && (
-            <div className="player-card-collapsible">
+        </>
+      )}
+
+      {expanded && (
+        <div className="modal-backdrop" onClick={() => setExpanded(false)}>
+          <div className="modal-card gear-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Gear &amp; Objectives</h2>
+              <button className="btn btn-ghost" onClick={() => setExpanded(false)} type="button">Close</button>
+            </div>
+            <div className="modal-body">
               <ObjectiveTracker items={me.items} carRepaired={carRepaired} />
               <div className="player-card-divider" />
               <Inventory items={me.items} capacity={me.itemCapacity} onUseItem={onUseItem} />
             </div>
-          )}
-        </>
+          </div>
+        </div>
       )}
     </div>
   );
