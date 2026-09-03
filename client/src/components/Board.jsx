@@ -298,14 +298,21 @@ export default function Board({
               handleNodeClick(loc.id);
             }}
           >
-            {hasLoot && <span className="loot-badge" title="Something was left here" />}
-            {npcHere && (
-              <span
-                className={`npc-badge${npcHere.status === "endangered" ? " endangered" : ""}`}
-                title={`${npcHere.name} needs rescuing`}
-              />
-            )}
-            <Landmark type={loc.type} dangerLevel={loc.dangerLevel} hazard={isHaunted} size={LANDMARK_SIZE} />
+            <div className="landmark-tile">
+              {hasLoot && <span className="loot-badge" title="Something was left here" />}
+              {npcHere && (
+                <span
+                  className={`npc-badge${npcHere.status === "endangered" ? " endangered" : ""}`}
+                  title={`${npcHere.name} needs rescuing`}
+                />
+              )}
+              {loc.searchCount > 0 && (
+                <span className="tile-search-badge" title={`Searched ${loc.searchCount} time${loc.searchCount > 1 ? "s" : ""}`}>
+                  {loc.searchCount}
+                </span>
+              )}
+              <Landmark type={loc.type} dangerLevel={loc.dangerLevel} hazard={isHaunted} size={LANDMARK_SIZE} />
+            </div>
             <span className="landmark-nameplate">{loc.name}</span>
           </button>
         );

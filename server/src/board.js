@@ -97,13 +97,13 @@ const PINEHAVEN_POSITIONS = {
   "Pinehaven Campgrounds": { x: 50, y: 42 }, // the hub — also the Slasher's start
   "Old Water Tower": { x: 50, y: 14 }, // due north, elevated and isolated
   "Pinehaven Diner": { x: 76, y: 22 }, // northeast, roadside
-  "Abandoned Police Station": { x: 86, y: 46 }, // east, same small-town road as the Diner
-  "Cabin 1": { x: 76, y: 64 }, // southeast cabin cluster
-  "Cabin 2": { x: 62, y: 78 },
-  "Camp Counselor Cabin": { x: 82, y: 80 },
-  "General Store": { x: 44, y: 68 }, // south — the commercial/entrance stretch
-  "Gas Station": { x: 34, y: 80 },
-  "Camp Entrance": { x: 50, y: 88 }, // the one way out
+  "Abandoned Police Station": { x: 84, y: 44 }, // east, same small-town road as the Diner
+  "Cabin 1": { x: 80, y: 60 }, // southeast cabin cluster
+  "Cabin 2": { x: 60, y: 80 },
+  "Camp Counselor Cabin": { x: 86, y: 82 },
+  "General Store": { x: 40, y: 66 }, // south — the commercial/entrance stretch
+  "Gas Station": { x: 26, y: 82 },
+  "Camp Entrance": { x: 50, y: 92 }, // the one way out
   "Forest Trail": { x: 20, y: 50 }, // west, a shortcut through the woods
   "Boat Dock": { x: 12, y: 26 }, // northwest, out on the lake — a dead end
 };
@@ -289,8 +289,11 @@ export function generateBoard(rng = Math.random) {
   });
 
   // Relax any pair that ended up too close together, a few passes, clamped
-  // to the map bounds.
-  const MIN_DIST = 19;
+  // to the map bounds. Each location now renders as a real card-shaped
+  // tile (see .landmark-tile in App.css), a noticeably bigger visual
+  // footprint than the old bare icon — this needs to stay wide enough
+  // that neighboring tiles never overlap.
+  const MIN_DIST = 23;
   for (let pass = 0; pass < 30; pass++) {
     let moved = false;
     for (let i = 0; i < ids.length; i++) {

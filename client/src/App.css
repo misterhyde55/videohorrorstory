@@ -1011,6 +1011,44 @@
   filter: saturate(0.6) brightness(0.92);
 }
 
+/* Each location sits on its own physical tile, like a real board-game
+   piece placed on the map, instead of just floating illustration over the
+   background — a die-cut cardboard chit with a printed border, not
+   another glowing UI card. */
+.landmark-tile {
+  position: relative;
+  width: 84px;
+  height: 92px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  border-radius: 9px;
+  background: linear-gradient(155deg, #4a3d2c 0%, #362c1f 55%, #241c13 100%);
+  border: 2.5px solid #17110a;
+  box-shadow:
+    0 5px 8px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px rgba(232, 220, 192, 0.14),
+    inset 0 -8px 12px rgba(0, 0, 0, 0.3);
+}
+
+.tile-search-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 2px;
+  border-radius: 50%;
+  background: #17110a;
+  border: 1.4px solid #c9b98a;
+  color: #e8dcc0;
+  font-size: 0.55rem;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+  z-index: 2;
+}
+
 /* A soft glow disc behind the icon communicates state — relying on
    drop-shadow alone was invisible for silhouettes with little filled
    area (a dock, a trail), so every state gets a guaranteed-visible disc
