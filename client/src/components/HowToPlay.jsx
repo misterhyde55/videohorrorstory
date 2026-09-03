@@ -124,26 +124,33 @@ export default function HowToPlay({ onClose }) {
           <section>
             <h3>Sanity</h3>
             <p>
-              Every teen has a Sanity meter (0–10, starting at 8) alongside their
-              Health. Being alone drains it each turn — sticking with a teammate
-              just stops the bleeding, it doesn't heal you — and the Monster
-              suddenly appearing costs Sanity too. Low Sanity makes every action
-              less reliable, and a fully panicked teen can hallucinate or stumble
-              into the wrong room while trying to move.
+              Every teen has a Sanity meter (0–100, starting at 80) alongside
+              their Health. Being alone drains it each turn — sticking with a
+              teammate just stops the bleeding, it doesn't heal you — and
+              seeing the Monster, watching a teammate get hit, or finding a
+              body all cost real, noticeable Sanity. Five states track how
+              you're holding up:
             </p>
+            <ul>
+              <li><strong>Stable</strong> (76–100) — no penalty.</li>
+              <li><strong>Uneasy</strong> (51–75) — minor penalties to Fight/Flee/Escape rolls.</li>
+              <li><strong>Frightened</strong> (26–50) — noticeably harder rolls, and Hold Your Breath gets tougher.</li>
+              <li><strong>Panicked</strong> (1–25) — significantly harder rolls, you move slower, you can stumble or hallucinate, and you're louder while hiding.</li>
+              <li><strong>Broken</strong> (0) — a Trauma Card, and everything above gets worse until you recover.</li>
+            </ul>
             <p>
               Recovering Sanity takes deliberate effort, through three channels,
               each capped so it can't be farmed:
             </p>
             <ul>
-              <li>🤝 <strong>Comfort</strong> — spend your whole turn to steady a teammate in your location for +1 Sanity (+2 from The Leader). Each teen can only be comforted once per round, and up to 3 times total per game.</li>
-              <li>🥤 <strong>Sanity items</strong> — an Energy Drink, Cassette Player, or Family Photo restores 1, a Favorite VHS restores 2 (and takes a whole turn to watch). Capped at 4 total from items per game.</li>
-              <li>🎯 <strong>Objectives</strong> — repairing the car restores 1; banishing or destroying the Monster, or escaping, restores 2. Capped at 4 total from objectives per game.</li>
+              <li>🤝 <strong>Comfort</strong> — spend your whole turn to steady a teammate in your location for +10 Sanity (+15 from The Leader). Each teen can only be comforted once per round, and up to 30 total per game.</li>
+              <li>🥤 <strong>Sanity items</strong> — Monster Energy restores 10 (and gives +1 Movement that turn), a Favorite Cassette restores 25, a Family Photo restores 20, and a rare Personal Item restores 30. Capped at 40 total from items per game.</li>
+              <li>🎯 <strong>Objectives</strong> — repairing the car restores 5; banishing or destroying the Monster restores 10 to every teen still in it; escaping restores 10 (12 with a Gas Can) to the teen who made it out. Capped at 40 total from objectives per game.</li>
             </ul>
             <p>
               Hit 0 Sanity and you go <strong>Broken</strong> — you draw a Trauma
-              Card and can only recover 1 Sanity per round until you claw your
-              way back to 3. It can only happen once a game; after that, a bad
+              Card and can only recover 10 Sanity per round until you claw your
+              way back to 30. It can only happen once a game; after that, a bad
               scare bottoms you out at 1 Sanity instead.
             </p>
           </section>

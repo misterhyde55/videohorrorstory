@@ -6,23 +6,33 @@
 //   kill   -> a weapon item, used while sharing a location with the Slasher
 //   banish -> ritual_candle + occult_book + cursed_tape, used at the ritual site
 
+// Every item now carries a small structured info block on top of its
+// flavor/effect prose, so the client can render a real spec sheet (name,
+// category, exact effect, uses, noise, objective status) instead of
+// leaving the player to guess what picking something up is actually worth:
+//   category: Objective | Weapon | Healing | Utility | Sanity
+//   uses: a number, "Passive" (works just by being carried), "Instant"
+//         (applies the moment it's found), or "Objective" (consumed by
+//         its objective action, not a manual Use)
+//   noise: None | Quiet | Loud
+//   objective: true if it's required (or a component of a required kit)
 export const ITEMS = {
-  car_keys: { id: "car_keys", name: "Car Keys", icon: "🔑", flavor: "Still on the park manager's keyring.", effect: "Required to Drive Away once the car's repaired. The only item escape actually needs.", kit: "escape" },
-  gas_can: { id: "gas_can", name: "Gas Can", icon: "⛽", flavor: "Just enough to get down the road.", effect: "Optional — carry one when you drive away for extra peace of mind (+1 bonus Sanity on escape).", kit: "escape" },
-  tool_kit: { id: "tool_kit", name: "Tool Kit", icon: "🧰", flavor: "Enough to get that engine running again.", effect: "Optional — repairing the car works without one, but a Tool Kit does it silently (no Noise).", kit: "escape" },
-  machete: { id: "machete", name: "Rusty Machete", icon: "🔪", flavor: "Park maintenance never returned this.", effect: "+25% Fight chance. Wears out and breaks after a few hits.", kit: "kill", weapon: true, bonus: 25, durability: 3 },
-  shotgun: { id: "shotgun", name: "Shotgun", icon: "🔫", flavor: "One shell left. Make it count.", effect: "+35% Fight chance. Breaks after one hit — make it count.", kit: "kill", weapon: true, bonus: 35, durability: 1 },
-  fireaxe: { id: "fireaxe", name: "Fire Axe", icon: "🪓", flavor: "Behind glass marked EMERGENCY ONLY.", effect: "+20% Fight chance. Wears out and breaks after a couple hits.", kit: "kill", weapon: true, bonus: 20, durability: 2 },
-  ritual_candle: { id: "ritual_candle", name: "Black Candle", icon: "🕯️", flavor: "Wax the color of a bruise.", effect: "Banish kit — gather all three (or two, as the Nerd), then perform the ritual at the ritual site. Consumed when you do.", kit: "banish" },
-  occult_book: { id: "occult_book", name: "Occult Book", icon: "📖", flavor: "The pages describe how it got out — and how to send it back.", effect: "Banish kit — gather all three (or two, as the Nerd), then perform the ritual at the ritual site. Consumed when you do.", kit: "banish" },
-  cursed_tape: { id: "cursed_tape", name: "Cursed VHS Tape", icon: "📼", flavor: "Static crawls across the label.", effect: "Banish kit — gather all three (or two, as the Nerd), then perform the ritual at the ritual site. Consumed when you do.", kit: "banish" },
-  flashlight: { id: "flashlight", name: "Flashlight", icon: "🔦", flavor: "Cuts through the dark. Improves your searching.", effect: "While carried, a Search that would come up empty gets one automatic reroll.", utility: "search_bonus" },
-  first_aid: { id: "first_aid", name: "First Aid Kit", icon: "🩹", flavor: "Patches you up — or brings someone back.", effect: "Restores you to full Health, or revives a fallen teammate at 1 HP. Single use.", utility: "heal" },
-  energy_drink: { id: "energy_drink", name: "Energy Drink", icon: "🥤", flavor: "Warm, flat, and definitely past its date. Drink it anyway.", effect: "Restores 1 Sanity. Safe to drink even with the Slasher right there. Single use.", utility: "sanity", sanityAmount: 1 },
-  cassette_player: { id: "cassette_player", name: "Cassette Player", icon: "📻", flavor: "Warped tape, but the mixtape still plays.", effect: "Restores 1 Sanity. Single use.", utility: "sanity", sanityAmount: 1 },
-  family_photo: { id: "family_photo", name: "Family Photo", icon: "🖼️", flavor: "Creased at the corners from being carried everywhere.", effect: "Restores 1 Sanity. Can't use with the Slasher right there. Single use.", utility: "sanity", sanityAmount: 1, noMonsterHere: true },
-  favorite_vhs: { id: "favorite_vhs", name: "Favorite VHS", icon: "📼", flavor: "You've watched this a hundred times. It still helps.", effect: "Restores 2 Sanity. Can't use with the Slasher right there. Single use.", utility: "sanity", sanityAmount: 2, noMonsterHere: true },
-  canvas_bag: { id: "canvas_bag", name: "Canvas Bag", icon: "🎒", flavor: "More room to carry what you find.", effect: "Permanently expands your inventory by 2, the moment you find it.", utility: "capacity", capacityBonus: 2 },
+  car_keys: { id: "car_keys", name: "Car Keys", icon: "🔑", category: "Objective", flavor: "Still on the park manager's keyring.", effect: "Required to Drive Away once the car's repaired. The only item escape actually needs.", uses: "Objective", noise: "None", objective: true, kit: "escape" },
+  gas_can: { id: "gas_can", name: "Gas Can", icon: "⛽", category: "Utility", flavor: "Just enough to get down the road.", effect: "Optional — carry one when you drive away for extra peace of mind (+12 bonus Sanity on escape instead of +10).", uses: "Objective", noise: "None", objective: false, kit: "escape" },
+  tool_kit: { id: "tool_kit", name: "Tool Kit", icon: "🧰", category: "Utility", flavor: "Enough to get that engine running again.", effect: "Optional — repairing the car works without one, but a Tool Kit does it silently (no Noise).", uses: "Objective", noise: "None", objective: false, kit: "escape" },
+  machete: { id: "machete", name: "Rusty Machete", icon: "🔪", category: "Weapon", flavor: "Park maintenance never returned this.", effect: "+25% Fight chance. Wears out and breaks after a few hits.", uses: 3, noise: "Loud", objective: false, kit: "kill", weapon: true, bonus: 25, durability: 3 },
+  shotgun: { id: "shotgun", name: "Shotgun", icon: "🔫", category: "Weapon", flavor: "One shell left. Make it count.", effect: "+35% Fight chance. Breaks after one hit — make it count.", uses: 1, noise: "Loud", objective: false, kit: "kill", weapon: true, bonus: 35, durability: 1 },
+  fireaxe: { id: "fireaxe", name: "Fire Axe", icon: "🪓", category: "Weapon", flavor: "Behind glass marked EMERGENCY ONLY.", effect: "+20% Fight chance. Wears out and breaks after a couple hits.", uses: 2, noise: "Loud", objective: false, kit: "kill", weapon: true, bonus: 20, durability: 2 },
+  ritual_candle: { id: "ritual_candle", name: "Black Candle", icon: "🕯️", category: "Objective", flavor: "Wax the color of a bruise.", effect: "Banish kit — gather all three (or two, as the Nerd), then perform the ritual at the ritual site. Consumed when you do.", uses: "Objective", noise: "None", objective: true, kit: "banish" },
+  occult_book: { id: "occult_book", name: "Occult Book", icon: "📖", category: "Objective", flavor: "The pages describe how it got out — and how to send it back.", effect: "Banish kit — gather all three (or two, as the Nerd), then perform the ritual at the ritual site. Consumed when you do.", uses: "Objective", noise: "None", objective: true, kit: "banish" },
+  cursed_tape: { id: "cursed_tape", name: "Cursed VHS Tape", icon: "📼", category: "Objective", flavor: "Static crawls across the label.", effect: "Banish kit — gather all three (or two, as the Nerd), then perform the ritual at the ritual site. Consumed when you do.", uses: "Objective", noise: "None", objective: true, kit: "banish" },
+  flashlight: { id: "flashlight", name: "Flashlight", icon: "🔦", category: "Utility", flavor: "Cuts through the dark. Improves your searching.", effect: "While carried, a Search that would come up empty gets one automatic reroll.", uses: "Passive", noise: "Quiet", objective: false, utility: "search_bonus" },
+  first_aid: { id: "first_aid", name: "Medkit", icon: "🩹", category: "Healing", flavor: "Patches you up — or brings someone back.", effect: "Restores you to full Health, or revives a fallen teammate at 1 HP.", uses: 1, noise: "Quiet", objective: false, utility: "heal" },
+  energy_drink: { id: "energy_drink", name: "Monster Energy", icon: "🥤", category: "Sanity", flavor: "A quick hit of caffeine keeps you moving and focused.", effect: "Restores 10 Sanity and grants +1 Movement this turn. Safe to drink even with the Slasher right there.", uses: 1, noise: "Quiet", objective: false, utility: "sanity", sanityAmount: 10, moveBonus: 1 },
+  cassette_player: { id: "cassette_player", name: "Favorite Cassette", icon: "📻", category: "Sanity", flavor: "For a moment, the music drowns out the nightmare.", effect: "Restores 25 Sanity.", uses: 1, noise: "Quiet", objective: false, utility: "sanity", sanityAmount: 25 },
+  family_photo: { id: "family_photo", name: "Family Photo", icon: "🖼️", category: "Sanity", flavor: "A reminder of home helps you regain control.", effect: "Restores 20 Sanity. Can't use with the Slasher right there.", uses: 1, noise: "Quiet", objective: false, utility: "sanity", sanityAmount: 20, noMonsterHere: true },
+  favorite_vhs: { id: "favorite_vhs", name: "Personal Item", icon: "📼", category: "Sanity", flavor: "You've watched this a hundred times. It still helps — more than you'd expect.", effect: "Restores 30 Sanity. Rare. Can't use with the Slasher right there.", uses: 1, noise: "Quiet", objective: false, utility: "sanity", sanityAmount: 30, noMonsterHere: true },
+  canvas_bag: { id: "canvas_bag", name: "Canvas Bag", icon: "🎒", category: "Utility", flavor: "More room to carry what you find.", effect: "Permanently expands your inventory by 2, the moment you find it.", uses: "Instant", noise: "None", objective: false, utility: "capacity", capacityBonus: 2 },
 };
 
 // Search pools: weighted lists of item ids (or null for "nothing"). Car

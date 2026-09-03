@@ -29,7 +29,7 @@ const STEPS = [
     body: ["Sanity is your fear meter. It drops when you're alone or scared.", "Low Sanity = shaky, unreliable actions."],
     list: [
       "👥 Stick together — stops it from dropping further.",
-      "🥤 Drink an Energy Drink, 🤝 get Comforted, or use another item to steady it.",
+      "🥤 Drink a Monster Energy, 🤝 get Comforted, or use another item to steady it.",
       "💀 Hit 0 and you break down.",
     ],
   },

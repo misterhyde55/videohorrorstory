@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Board from "../components/Board";
 import ActionPanel from "../components/ActionPanel";
 import PlayerCard from "../components/PlayerCard";
@@ -10,18 +10,17 @@ import TurnOrderStrip from "../components/TurnOrderStrip";
 import SearchDiscovery from "../components/SearchDiscovery";
 import { reachableFrom } from "../utils/reachable";
 import { socket } from "../socket";
-
-function sanityTier(sanity) {
-  if (sanity <= 2) return "panicked";
-  if (sanity <= 5) return "shaken";
-  return "steady";
-}
+import { sanityTier, SANITY_TIER_LABEL } from "../utils/sanity";
 
 export default function GameScreen({ state, playerId, onLeave }) {
   const [error, setError] = useState("");
   const [now, setNow] = useState(Date.now());
   const [breathOverlay, setBreathOverlay] = useState(null);
   const [discovery, setDiscovery] = useState(null);
+  const [itemFeedback, setItemFeedback] = useState(null);
+  const [sanityToast, setSanityToast] = useState(null);
+  const [tierBanner, setTierBanner] = useState(null);
+  const prevSanityRef = useRef(undefined);
   const me = state.players.find((p) => p.id === playerId);
 
   const handleSearchResult = (result) => {
@@ -29,11 +28,56 @@ export default function GameScreen({ state, playerId, onLeave }) {
     setDiscovery(result);
   };
 
+  const handleItemUseResult = (result) => {
+    if (!result) return;
+    setItemFeedback({ ...result, key: Date.now() });
+  };
+
+  const handleUseItem = (item) => {
+    socket.emit("action", { type: "use_item", itemId: item.id }, (res) => {
+      if (!res?.ok) setError(res?.error || "Action failed.");
+      else if (res.itemUseResult) handleItemUseResult(res.itemUseResult);
+    });
+  };
+
   const handleBoardMove = (to) => {
     socket.emit("action", { type: "move", to }, (res) => {
       if (!res?.ok) setError(res?.error || "Action failed.");
     });
   };
+
+  // A floating "+25" / "-10" whenever Sanity actually changes, plus a
+  // banner the moment a new state (Stable/Uneasy/.../Broken) is entered —
+  // so a change is always felt, not just reflected in a bar somewhere.
+  useEffect(() => {
+    if (me?.role !== "teen" || me.sanity == null) return;
+    const prev = prevSanityRef.current;
+    if (prev != null && prev !== me.sanity) {
+      setSanityToast({ delta: me.sanity - prev, key: Date.now() });
+      const prevTier = sanityTier(prev);
+      const nextTier = sanityTier(me.sanity);
+      if (prevTier !== nextTier) setTierBanner({ tier: nextTier, key: Date.now() + 1 });
+    }
+    prevSanityRef.current = me.sanity;
+  }, [me?.sanity, me?.role]);
+
+  useEffect(() => {
+    if (!sanityToast) return undefined;
+    const id = setTimeout(() => setSanityToast(null), 1800);
+    return () => clearTimeout(id);
+  }, [sanityToast]);
+
+  useEffect(() => {
+    if (!tierBanner) return undefined;
+    const id = setTimeout(() => setTierBanner(null), 2600);
+    return () => clearTimeout(id);
+  }, [tierBanner]);
+
+  useEffect(() => {
+    if (!itemFeedback) return undefined;
+    const id = setTimeout(() => setItemFeedback(null), 2800);
+    return () => clearTimeout(id);
+  }, [itemFeedback]);
 
   // A find held open server-side (pendingDiscoveryUid) survives a page
   // refresh or reconnect — rebuild the same popup from the item still
@@ -50,6 +94,10 @@ export default function GameScreen({ state, playerId, onLeave }) {
       itemId: item.id,
       itemName: item.name,
       effect: item.effect,
+      category: item.category,
+      uses: item.uses,
+      noiseLevel: item.noise,
+      objective: !!item.objective,
       capacityItem: item.utility === "capacity",
       inventoryFull: (me.items?.length || 0) >= (me.itemCapacity || 0) && item.utility !== "capacity",
       noisy: false,
@@ -93,7 +141,8 @@ export default function GameScreen({ state, playerId, onLeave }) {
     } else {
       const character = state.characters?.[me.pickId];
       const tier = sanityTier(me.sanity);
-      const speed = tier === "panicked" ? 1 : character?.stats?.speed ?? 1;
+      const baseSpeed = (tier === "panicked" || tier === "broken") ? 1 : character?.stats?.speed ?? 1;
+      const speed = baseSpeed + (me.tempSpeedBonus || 0);
       reachableLocations = speed > 1 ? reachableFrom(state.board, me.location, speed) : myLoc.connections;
     }
   }
@@ -122,7 +171,33 @@ export default function GameScreen({ state, playerId, onLeave }) {
         )}
 
         {error && <div className="banner banner-error" onAnimationEnd={() => setError("")}>{error}</div>}
+
+        {tierBanner && (
+          <div key={tierBanner.key} className={`banner banner-tier-change tier-${tierBanner.tier}`}>
+            SANITY: {SANITY_TIER_LABEL[tierBanner.tier]?.toUpperCase()}
+          </div>
+        )}
+
+        {itemFeedback && (
+          <div key={itemFeedback.key} className="banner banner-item-feedback">
+            <strong>{itemFeedback.itemName?.toUpperCase()} USED</strong>
+            {itemFeedback.type === "sanity" && (
+              <span className="feedback-line">SANITY {itemFeedback.sanityBefore} &rarr; {itemFeedback.sanityAfter}
+                {itemFeedback.moveBonus ? ` · MOVEMENT +${itemFeedback.moveBonus} this turn` : ""}
+              </span>
+            )}
+            {itemFeedback.type === "heal" && (
+              <span className="feedback-line">HEALTH {itemFeedback.hpBefore} &rarr; {itemFeedback.hpAfter}</span>
+            )}
+          </div>
+        )}
       </div>
+
+      {sanityToast && (
+        <div key={sanityToast.key} className={`sanity-toast${sanityToast.delta < 0 ? " drop" : " gain"}`}>
+          SANITY {sanityToast.delta > 0 ? "+" : ""}{sanityToast.delta}
+        </div>
+      )}
 
       <div className="game-roster">
         <SurvivorHud players={state.players} me={playerId} />
@@ -134,6 +209,7 @@ export default function GameScreen({ state, playerId, onLeave }) {
           searchEndsAt={breathOverlay.searchEndsAt}
           searching={me.searching}
           hiding={me.hiding}
+          sanity={me.sanity}
           onResolved={() => setBreathOverlay(null)}
         />
       )}
@@ -184,9 +260,9 @@ export default function GameScreen({ state, playerId, onLeave }) {
       )}
 
       <div className="game-sidebar">
-        <PlayerCard me={me} carRepaired={state.objectives?.carRepaired} monsterHp={state.monsterHp} monsterMaxHp={state.monsterMaxHp} />
+        <PlayerCard me={me} carRepaired={state.objectives?.carRepaired} monsterHp={state.monsterHp} monsterMaxHp={state.monsterMaxHp} onUseItem={handleUseItem} />
         {state.phase !== "ended" && (
-          <ActionPanel state={state} me={me} onError={setError} onSearchResult={handleSearchResult} />
+          <ActionPanel state={state} me={me} onError={setError} onSearchResult={handleSearchResult} onItemUseResult={handleItemUseResult} />
         )}
       </div>
     </div>

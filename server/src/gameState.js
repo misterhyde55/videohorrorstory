@@ -15,8 +15,9 @@ const FLEE_BASE = 30;
 const FLEE_STEALTH_MULT = 12;
 const STALKER_FLEE_PENALTY = 15;
 
-const SHAKEN_PENALTY = 10;
-const PANIC_PENALTY = 20;
+const UNEASY_PENALTY = 5;
+const FRIGHTENED_PENALTY = 15;
+const PANIC_PENALTY = 25;
 const PANIC_STUMBLE_CHANCE = 20;
 const HALLUCINATION_CHANCE = 30;
 
@@ -35,16 +36,31 @@ const EARLY_GAME_PENALTY_TIER2 = 10; // ~20-40% elapsed
 const EARLY_GAME_TIER1_ELAPSED = 0.2;
 const EARLY_GAME_TIER2_ELAPSED = 0.4;
 
-// ---- Sanity Recovery Rules (exact spec) ----
-const SANITY_MAX = 10;
-const SANITY_START = 8;
-const COMFORT_GAIN = 1;
-const COMFORT_LIMIT = 3; // per player, per game (as the receiver)
-const ITEM_SANITY_LIMIT = 4; // per player, per game
-const OBJECTIVE_SANITY_LIMIT = 4; // per player, per game
+// ---- Sanity Recovery Rules (0-100 scale) ----
+// Percentage-shaped so players can read a change at a glance. Every loss
+// and gain is a deliberately chunky, "felt" amount (see loseSanity/
+// gainSanity call sites) — no more shaving off 1-2 points at a time.
+const SANITY_MAX = 100;
+const SANITY_START = 80;
+const COMFORT_GAIN = 10; // The Leader grants 15 instead (see the "comfort" case)
+const COMFORT_LIMIT = 30; // per player, per game (as the receiver)
+const ITEM_SANITY_LIMIT = 40; // per player, per game
+const OBJECTIVE_SANITY_LIMIT = 40; // per player, per game
 const BROKEN_ENTER_SANITY = 0;
-const BROKEN_RECOVER_SANITY = 3;
-const BROKEN_ROUND_CAP = 1; // max Sanity gain per round while Broken
+const BROKEN_RECOVER_SANITY = 30; // climb back to the bottom of Frightened to shake off Broken
+const BROKEN_ROUND_CAP = 10; // max Sanity gain per round while Broken
+
+// ---- Sanity loss amounts (see design doc: "losses should be meaningful,
+// never -1/-2/-3") ----
+const SANITY_LOSS_SEE_KILLER = 10;
+const SANITY_LOSS_ATTACKED = 20;
+const SANITY_LOSS_WITNESS_ATTACK = 5;
+const SANITY_LOSS_DISCOVER_DEAD = 15;
+const SANITY_LOSS_HORROR_EVENT = 10;
+const SANITY_LOSS_CURSED_LOCATION = 5;
+const SANITY_LOSS_FAILED_FEAR_CHECK = 10;
+const SANITY_GAIN_MAJOR_OBJECTIVE = 10; // escape / banish / destroy the monster — every alive teen
+const SANITY_GAIN_OBJECTIVE_PROGRESS = 5; // repairing the car
 
 // ---- Noise System ----
 // The Killer never sees teen locations directly (see canSeeLocation in
@@ -104,7 +120,7 @@ const HORROR_EVENTS = [
       room.horrorEvents.set(loc.id, { name: "Something's Wrong Here", expiresRound: room.round + 2 });
       aliveTeens(room)
         .filter((t) => t.location === loc.id)
-        .forEach((t) => loseSanity(room, t, 1));
+        .forEach((t) => loseSanity(room, t, SANITY_LOSS_HORROR_EVENT));
       log(room, `Something is deeply wrong at ${loc.name} — no one will be able to settle down there for a while.`, "all");
       return "Something turns hostile somewhere on the map.";
     },
@@ -124,7 +140,7 @@ const HORROR_EVENTS = [
     apply(room) {
       const teens = aliveTeens(room);
       if (teens.length === 0) return null;
-      teens.forEach((t) => loseSanity(room, t, 1));
+      teens.forEach((t) => loseSanity(room, t, SANITY_LOSS_HORROR_EVENT));
       log(room, "Every dead radio in the place screams static at once.", "teens");
       return "Every radio in the place screams static at once.";
     },
@@ -166,7 +182,7 @@ const HORROR_EVENTS = [
       const teens = aliveTeens(room);
       if (teens.length === 0) return null;
       const teen = teens[Math.floor(Math.random() * teens.length)];
-      gainSanity(room, teen, 1);
+      gainSanity(room, teen, 10);
       log(room, `${teen.characterName} finds an old home movie of happier times, tucked away at ${room.board[teen.location]?.name}. It helps, a little.`, "teens");
       return "Someone finds an old home movie of happier times.";
     },
@@ -393,6 +409,8 @@ export function startGame(room, { durationMs } = {}) {
     p.distractUsed = false;
     p.deathRound = null;
     p.deathLocation = null;
+    p.knownDeaths = new Set();
+    p.tempSpeedBonus = 0;
   });
   slasher.location = generated.startLocations.slasher;
   slasher.stalkStreak = 0;
@@ -476,16 +494,23 @@ function killerDifficultyModifier(room) {
   return lateGameTier(room) * 10;
 }
 
+// Five states on the 0-100 scale: Stable (76-100, no penalty), Uneasy
+// (51-75, minor), Frightened (26-50, harder Fear Checks/Hold Your Breath),
+// Panicked (1-25, significantly harder + more Noise), Broken (0, Trauma).
 function sanityTier(player) {
-  if (player.sanity <= 2) return "panicked";
-  if (player.sanity <= 5) return "shaken";
-  return "steady";
+  const sanity = typeof player === "number" ? player : player.sanity;
+  if (sanity <= 0) return "broken";
+  if (sanity <= 25) return "panicked";
+  if (sanity <= 50) return "frightened";
+  if (sanity <= 75) return "uneasy";
+  return "stable";
 }
 
 function sanityPenalty(player) {
   const tier = sanityTier(player);
-  if (tier === "panicked") return PANIC_PENALTY;
-  if (tier === "shaken") return SHAKEN_PENALTY;
+  if (tier === "broken" || tier === "panicked") return PANIC_PENALTY;
+  if (tier === "frightened") return FRIGHTENED_PENALTY;
+  if (tier === "uneasy") return UNEASY_PENALTY;
   return 0;
 }
 
@@ -496,11 +521,21 @@ function sanityPenalty(player) {
 // channels (Trauma/Card, Objectives, Items, Comfort, Rest) — or which loss
 // source (isolation, jump-scares, wounds) — triggered it.
 
+const TIER_ORDER = ["broken", "panicked", "frightened", "uneasy", "stable"];
+const TIER_ENTER_LOG = {
+  panicked: (n) => `${n} is panicking — their mind is unraveling.`,
+  frightened: (n) => `${n} is badly frightened.`,
+  uneasy: (n) => `${n} is growing uneasy.`,
+  stable: (n) => `${n} steadies their nerves.`,
+};
+
 function logSanityTierChange(room, player, before, after) {
   if (after === before) return;
-  if (after === "panicked") log(room, `${player.characterName} is panicking — their mind is unraveling.`, "teens");
-  else if (after === "shaken") log(room, `${player.characterName} is badly shaken.`, "teens");
-  else if (after === "steady") log(room, `${player.characterName} steadies their nerves.`, "teens");
+  // Only announce the tier actually being ENTERED — moving from panicked
+  // straight to stable in one big gain should say "steadies", not both.
+  const worsened = TIER_ORDER.indexOf(after) < TIER_ORDER.indexOf(before);
+  const line = TIER_ENTER_LOG[after]?.(player.characterName);
+  if (line && (worsened || after === "stable")) log(room, line, "teens");
 }
 
 function enterBroken(room, player) {
@@ -573,6 +608,13 @@ function grantItemSanity(room, player, amount) {
   return gainSanity(room, player, grant);
 }
 
+// A win-condition objective (banishing or destroying the Monster) ends the
+// horror for the whole team at once, so every teen still in it shares the
+// relief — unlike Escape, which only the teen behind the wheel gets.
+function grantMajorObjectiveSanityToAll(room) {
+  aliveTeens(room).forEach((t) => grantObjectiveSanity(room, t, SANITY_GAIN_MAJOR_OBJECTIVE));
+}
+
 function hasActiveHorrorEvent(room, locationId) {
   return room.horrorEvents.has(locationId);
 }
@@ -598,7 +640,7 @@ function canComfort(room, giver, target) {
 function applySanityTick(room, player) {
   const roommates = aliveTeens(room).filter((t) => t.location === player.location);
   if (roommates.length > 1) return;
-  const drain = lateGameTier(room) >= 2 ? 2 : 1;
+  const drain = lateGameTier(room) >= 2 ? 5 : 3;
   loseSanity(room, player, drain);
 }
 
@@ -622,7 +664,7 @@ function scareTeensAt(room, locationId) {
   const hasRebel = teensHere.some((t) => t.pickId === "rebel");
   teensHere.forEach((t) => {
     if (hasRebel && t.pickId !== "rebel") return;
-    loseSanity(room, t, 1);
+    loseSanity(room, t, SANITY_LOSS_SEE_KILLER);
   });
 }
 
@@ -789,6 +831,12 @@ export function applyAction(room, playerId, action) {
   if (player.role === "slasher" && action.type !== "shortcut" && player.specialCooldown > 0) {
     player.specialCooldown -= 1;
   }
+  // A Monster Energy's "+1 Movement this turn" only ever applies to the
+  // turn it was drunk on — once that turn actually ends (used or not),
+  // the bonus is gone.
+  if (player.role === "teen" && result?.consumeTurn !== false && player.tempSpeedBonus) {
+    player.tempSpeedBonus = 0;
+  }
 
   checkWin(room);
   if (!room.winner && result?.consumeTurn !== false) advanceTurn(room);
@@ -796,6 +844,7 @@ export function applyAction(room, playerId, action) {
     ok: true,
     ...(result?.searchStarted ? { searchStarted: result.searchStarted } : {}),
     ...(result?.searchResult ? { searchResult: result.searchResult } : {}),
+    ...(result?.itemUseResult ? { itemUseResult: result.itemUseResult } : {}),
   };
 }
 
@@ -808,7 +857,8 @@ function teenAction(room, player, action) {
   const character = TEEN_CHARACTERS[player.pickId];
   const tier = sanityTier(player);
 
-  if (tier === "panicked" && roll(HALLUCINATION_CHANCE)) {
+  const panickedOrWorse = tier === "panicked" || tier === "broken";
+  if (panickedOrWorse && roll(HALLUCINATION_CHANCE)) {
     log(room, `${player.characterName}: "${randomHallucination()}"`, "teens");
   }
 
@@ -831,12 +881,13 @@ function teenAction(room, player, action) {
       return { ok: true };
     }
     case "move": {
-      const speed = tier === "panicked" ? 1 : character.stats.speed;
+      const baseSpeed = panickedOrWorse ? 1 : character.stats.speed;
+      const speed = baseSpeed + (player.tempSpeedBonus || 0);
       const reachableSet = reachable(room, player.location, speed);
       if (!reachableSet.has(action.to)) return { error: "That location isn't reachable from here." };
       let destination = action.to;
       let stumbled = false;
-      if (tier === "panicked" && roll(PANIC_STUMBLE_CHANCE)) {
+      if (panickedOrWorse && roll(PANIC_STUMBLE_CHANCE)) {
         const options = [...reachableSet].filter((l) => l !== action.to);
         if (options.length) {
           destination = options[Math.floor(Math.random() * options.length)];
@@ -848,6 +899,21 @@ function teenAction(room, player, action) {
         ? `${player.characterName} panics and stumbles into ${room.board[destination].name} instead!`
         : `${player.characterName} moves to ${room.board[destination].name}.`, "teens");
       if (stumbled) emitNoise(room, destination, "noisy");
+
+      // Discovering a teammate's body (that this player didn't already
+      // witness happen) is its own gut-punch, separate from the ambient
+      // "someone died" news everyone already sees in the log.
+      [...room.players.values()]
+        .filter((t) => t.role === "teen" && t.status === "dead" && t.deathLocation === destination && !player.knownDeaths?.has(t.id))
+        .forEach((t) => {
+          player.knownDeaths?.add(t.id);
+          log(room, `${player.characterName} finds ${t.characterName}'s body at ${room.board[destination].name}.`, "teens");
+          loseSanity(room, player, SANITY_LOSS_DISCOVER_DEAD);
+        });
+
+      if (hasActiveHorrorEvent(room, destination)) {
+        loseSanity(room, player, SANITY_LOSS_CURSED_LOCATION);
+      }
       return { ok: true };
     }
     case "search": {
@@ -891,6 +957,10 @@ function teenAction(room, player, action) {
             itemId: item.id,
             itemName: item.name,
             effect: item.effect,
+            category: item.category,
+            uses: item.uses,
+            noiseLevel: item.noise,
+            objective: !!item.objective,
             capacityItem: item.utility === "capacity",
             inventoryFull,
             noisy: madeNoise,
@@ -971,22 +1041,40 @@ function teenAction(room, player, action) {
       const item = player.items[idx];
       if (item.utility === "heal") {
         if (player.hp >= player.hpMax) return { error: "You're not hurt." };
+        const hpBefore = player.hp;
         player.hp = player.hpMax;
         player.items.splice(idx, 1);
         log(room, `${player.characterName} patches up with the ${item.name}.`, "teens");
-        return { ok: true };
+        return { ok: true, itemUseResult: { itemId: item.id, itemName: item.name, type: "heal", hpBefore, hpAfter: player.hp, hpMax: player.hpMax } };
       }
       if (item.utility === "sanity") {
         const slasher = slasherOf(room);
         const monsterHere = slasher && slasher.location === player.location;
         if (item.noMonsterHere && monsterHere) return { error: "Not with the Slasher right here." };
         if (player.sanity >= player.sanityMax) return { error: "You're already at ease." };
+        const sanityBefore = player.sanity;
         const grant = grantItemSanity(room, player, item.sanityAmount);
+        if (item.moveBonus) player.tempSpeedBonus = (player.tempSpeedBonus || 0) + item.moveBonus;
         player.items.splice(idx, 1);
         log(room, grant > 0
           ? `${player.characterName} uses the ${item.name} and feels a little steadier.`
           : `${player.characterName} uses the ${item.name}, but it doesn't seem to help anymore.`, "teens");
-        return { ok: true, sanityActionTaken: true };
+        return {
+          ok: true,
+          sanityActionTaken: true,
+          // A can of Monster Energy is a quick swig, not your whole turn —
+          // drinking it doesn't cost the action its +1 Movement is meant to
+          // apply to. Every other Sanity item still uses the full turn.
+          ...(item.moveBonus ? { consumeTurn: false } : {}),
+          itemUseResult: {
+            itemId: item.id,
+            itemName: item.name,
+            type: "sanity",
+            sanityBefore,
+            sanityAfter: player.sanity,
+            moveBonus: item.moveBonus || 0,
+          },
+        };
       }
       return { error: "That item can't be used directly." };
     }
@@ -1024,7 +1112,7 @@ function teenAction(room, player, action) {
       const hasToolKit = player.items.some((it) => it.id === "tool_kit");
       room.objectives.carRepaired = true;
       room.carEverRepaired = true;
-      grantObjectiveSanity(room, player, 1);
+      grantObjectiveSanity(room, player, SANITY_GAIN_OBJECTIVE_PROGRESS);
       log(room, `${player.characterName} gets the engine running again.`, "teens");
       if (hasToolKit) log(room, `The Tool Kit makes quick, quiet work of it — no one heard a thing.`, "teens");
       else emitNoise(room, player.location, "noisy");
@@ -1038,6 +1126,9 @@ function teenAction(room, player, action) {
       const chance = FIGHT_BASE + character.stats.strength * FIGHT_STRENGTH_MULT + (weapon?.bonus ?? 0)
         - sanityPenalty(player) - lateGameTier(room) * 10;
       room.thingRevealed = true;
+      // A gunshot or a swung axe is loud whether or not it lands — matches
+      // the "Noise: Loud" every weapon's item info actually promises.
+      if (weapon) emitNoise(room, player.location, "loud");
       let killedMonster = false;
       if (roll(chance)) {
         let broke = false;
@@ -1056,7 +1147,7 @@ function teenAction(room, player, action) {
           room.monsterHp -= 1;
           log(room, `${player.characterName} wounds the monster with ${weaponName}! (${room.monsterHp}/${MONSTER_MAX_HP} HP left)${broke ? ` The ${weaponName} breaks in the process!` : ""}`);
           if (room.monsterHp <= 0) {
-            grantObjectiveSanity(room, player, 2);
+            grantMajorObjectiveSanityToAll(room);
             killedMonster = true;
           }
         }
@@ -1080,8 +1171,12 @@ function teenAction(room, player, action) {
       } else {
         log(room, `${player.characterName} tries to flee but stumbles!`);
         room.thingRevealed = true;
-        if (character.id !== "athlete") applyWound(room, player, 1);
-        else log(room, `${player.characterName} shrugs it off.`);
+        if (character.id !== "athlete") {
+          applyWound(room, player, 1);
+        } else {
+          log(room, `${player.characterName} shrugs it off.`);
+          loseSanity(room, player, SANITY_LOSS_FAILED_FEAR_CHECK);
+        }
       }
       return { ok: true };
     }
@@ -1095,7 +1190,7 @@ function teenAction(room, player, action) {
       }
       removeItems(player, have);
       room.monsterHp = 0;
-      grantObjectiveSanity(room, player, 2);
+      grantMajorObjectiveSanityToAll(room);
       log(room, `${player.characterName} performs the ritual. The monster is dragged screaming back into the tape.`, "teens");
       emitNoise(room, player.location, "noisy");
       return { ok: true, sanityActionTaken: true };
@@ -1105,7 +1200,7 @@ function teenAction(room, player, action) {
       if (!hasItems(player, ["car_keys"]).length) return { error: "You need the car keys." };
       if (!room.objectives.carRepaired) return { error: "The car still needs to be repaired first." };
       const hasGasCan = hasItems(player, ["gas_can"]).length > 0;
-      grantObjectiveSanity(room, player, hasGasCan ? 3 : 2);
+      grantObjectiveSanity(room, player, hasGasCan ? SANITY_GAIN_MAJOR_OBJECTIVE + 2 : SANITY_GAIN_MAJOR_OBJECTIVE);
       player.status = "escaped";
       log(room, hasGasCan
         ? `${player.characterName} tops off the tank and peels out — no chance of running dry now!`
@@ -1146,7 +1241,7 @@ function teenAction(room, player, action) {
       if (room.comfortPairsThisRound.has(`${target.id}>${player.id}`)) {
         return { error: "You two already comforted each other this round." };
       }
-      const baseGain = player.pickId === "leader" ? 2 : COMFORT_GAIN;
+      const baseGain = player.pickId === "leader" ? 15 : COMFORT_GAIN;
       const remaining = COMFORT_LIMIT - target.comfortGainTotal;
       const grant = Math.min(baseGain, remaining);
       target.comfortGainTotal += grant;
@@ -1162,18 +1257,27 @@ function teenAction(room, player, action) {
 }
 
 function applyWound(room, player, amount) {
+  const witnesses = aliveTeens(room).filter((t) => t.id !== player.id && t.location === player.location);
   player.hp = Math.max(0, player.hp - amount);
   if (player.hp <= 0) {
-    const wasAlone = !aliveTeens(room).some((t) => t.id !== player.id && t.location === player.location);
+    const wasAlone = witnesses.length === 0;
     player.status = "dead";
     player.deathRound = room.round;
     player.deathLocation = player.location;
+    player.knownDeaths?.add(player.id);
     room.killCount += 1;
     if (wasAlone) room.soloKillHappened = true;
     log(room, `${player.characterName} has been killed.`);
   } else {
     log(room, `${player.characterName} is injured.`);
+    loseSanity(room, player, SANITY_LOSS_ATTACKED);
   }
+  // Anyone else standing there watched it happen — they don't need to
+  // separately "discover" this death later if they're the ones who saw it.
+  witnesses.forEach((t) => {
+    t.knownDeaths?.add(player.id);
+    loseSanity(room, t, SANITY_LOSS_WITNESS_ATTACK);
+  });
 }
 
 // Resolves a search that was started when the Slasher cornered a hiding
@@ -1421,6 +1525,7 @@ export function publicState(room, forPlayerId) {
       base.specialCooldown = p.specialCooldown;
       base.distractUsed = p.distractUsed;
       base.pendingDiscoveryUid = p.pendingDiscoveryUid || null;
+      base.tempSpeedBonus = p.tempSpeedBonus || 0;
     }
     return base;
   });
@@ -1642,7 +1747,7 @@ export function decideTeenBotAction(room, bot) {
 
   // Tend to Sanity: drink an Energy Drink if carrying one, or comfort a
   // struggling teammate.
-  if (bot.sanity <= 3) {
+  if (bot.sanity <= 30) {
     const sanityIdx = bot.items.findIndex((it) => it.utility === "sanity");
     if (sanityIdx >= 0) return { type: "use_item", itemId: bot.items[sanityIdx].id };
     const teammateHere = aliveTeens(room).find((t) => canComfort(room, bot, t));

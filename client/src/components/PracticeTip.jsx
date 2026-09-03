@@ -30,7 +30,7 @@ function computeTip(state, me) {
   if (me.hiding) return "🤫 You're hidden and holding still. Staying put helps you stay hidden.";
   if (state.slasherNearby) return "👀 The killer is close by. Consider hiding or moving away.";
   if (me.broken) return "💀 You're Broken — recovery is slow. Drink something or get Comforted.";
-  if (me.sanity <= 5) return "🧠 Sanity's dropping. Find an Energy Drink or stick with teammates.";
+  if (me.sanity <= 50) return "🧠 Sanity's dropping. Find a Monster Energy or stick with teammates.";
   if (me.hp < me.hpMax) return "❤️ You're hurt — a First Aid Kit can patch you up.";
   if (!me.items || me.items.length === 0) return "🔦 Try Search Area to find useful supplies.";
   if (state.objectives?.carRepaired) return "🚗 The car's fixed — grab the Car Keys, then Drive Away!";

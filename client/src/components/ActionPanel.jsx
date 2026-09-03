@@ -2,6 +2,7 @@ import { useState } from "react";
 import { socket } from "../socket";
 import { KILLERS, TEEN_CHARACTERS } from "../data/characters";
 import { reachableFrom } from "../utils/reachable";
+import { sanityTier } from "../utils/sanity";
 
 function act(action, onError, onResult) {
   socket.emit("action", action, (res) => {
@@ -10,13 +11,7 @@ function act(action, onError, onResult) {
   });
 }
 
-function sanityTier(sanity) {
-  if (sanity <= 2) return "panicked";
-  if (sanity <= 5) return "shaken";
-  return "steady";
-}
-
-export default function ActionPanel({ state, me, onError, onSearchResult }) {
+export default function ActionPanel({ state, me, onError, onSearchResult, onItemUseResult }) {
   const myTurn = state.turnPlayerId === me.id;
   const loc = state.board[me.location];
 
@@ -37,10 +32,18 @@ export default function ActionPanel({ state, me, onError, onSearchResult }) {
       </div>
     );
   }
-  return <TeenActions state={state} me={me} loc={loc} onError={onError} onSearchResult={onSearchResult} />;
+  return <TeenActions state={state} me={me} loc={loc} onError={onError} onSearchResult={onSearchResult} onItemUseResult={onItemUseResult} />;
 }
 
-function TeenActions({ state, me, loc, onError, onSearchResult }) {
+function usePreviewLabel(it) {
+  if (it.utility === "heal") return "+HEALTH";
+  if (it.utility === "sanity") {
+    return `+${it.sanityAmount} SANITY${it.moveBonus ? ` / +${it.moveBonus} MOVE` : ""}`;
+  }
+  return "";
+}
+
+function TeenActions({ state, me, loc, onError, onSearchResult, onItemUseResult }) {
   const [distractTarget, setDistractTarget] = useState("");
   const [giveItem, setGiveItem] = useState("");
   const [giveTo, setGiveTo] = useState("");
@@ -50,7 +53,7 @@ function TeenActions({ state, me, loc, onError, onSearchResult }) {
   const hasKit = (ids, min) => ids.filter((id) => items.some((it) => it.id === id)).length >= min;
   const character = TEEN_CHARACTERS[me.pickId];
   const tier = sanityTier(me.sanity);
-  const speed = tier === "panicked" ? 1 : character.stats.speed;
+  const speed = ((tier === "panicked" || tier === "broken") ? 1 : character.stats.speed) + (me.tempSpeedBonus || 0);
   const teammatesHere = state.players.filter(
     (p) => p.id !== me.id && p.role === "teen" && p.location === me.location && p.status !== "dead" && p.status !== "escaped"
   );
@@ -87,9 +90,12 @@ function TeenActions({ state, me, loc, onError, onSearchResult }) {
       {hazardHere && (
         <div className="sense-banner panicked">Something's deeply wrong here — you can't settle down enough to comfort anyone.</div>
       )}
-      {tier !== "steady" && (
+      {tier !== "stable" && (
         <div className={`sense-banner ${tier}`}>
-          {tier === "panicked" ? "You're panicking — your actions may go wrong." : "You're shaken — your actions are less reliable."}
+          {tier === "broken" && "You're broken — everything is much harder right now."}
+          {tier === "panicked" && "You're panicking — your actions may go wrong, and you're louder."}
+          {tier === "frightened" && "You're frightened — your actions are noticeably less reliable."}
+          {tier === "uneasy" && "You're uneasy — your actions are slightly less reliable."}
         </div>
       )}
 
@@ -115,6 +121,10 @@ function TeenActions({ state, me, loc, onError, onSearchResult }) {
                   itemId: it.id,
                   itemName: it.name,
                   effect: it.effect,
+                  category: it.category,
+                  uses: it.uses,
+                  noiseLevel: it.noise,
+                  objective: !!it.objective,
                   capacityItem: it.utility === "capacity",
                   inventoryFull: items.length >= me.itemCapacity && it.utility !== "capacity",
                   noisy: false,
@@ -140,9 +150,9 @@ function TeenActions({ state, me, loc, onError, onSearchResult }) {
             key={it.id}
             className="btn btn-secondary"
             title={it.effect}
-            onClick={() => act({ type: "use_item", itemId: it.id }, onError)}
+            onClick={() => act({ type: "use_item", itemId: it.id }, onError, (res) => onItemUseResult?.(res.itemUseResult))}
           >
-            Use {it.name}
+            {it.utility === "heal" ? "Use" : "Drink"} {it.name} <span className="use-preview">{usePreviewLabel(it)}</span>
           </button>
         ))}
         {loc.carSite && !carRepaired && (

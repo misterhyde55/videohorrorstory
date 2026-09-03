@@ -3,14 +3,15 @@ import { TEEN_CHARACTERS, KILLERS, STAT_LABELS } from "../data/characters";
 import Inventory from "./Inventory";
 import HealthBar from "./HealthBar";
 import ObjectiveTracker from "./ObjectiveTracker";
+import { sanityTier, SANITY_TIER_LABEL, BROKEN_RECOVER_SANITY } from "../utils/sanity";
 
-function sanityTier(sanity) {
-  if (sanity <= 2) return "panicked";
-  if (sanity <= 5) return "shaken";
-  return "steady";
-}
+const SANITY_STATUS_TEXT = {
+  uneasy: "Uneasy — minor Fear penalties",
+  frightened: "Frightened — Fear Checks and Hold Your Breath are harder",
+  panicked: "Panicked — actions and Hold Your Breath are much harder, and you're louder",
+};
 
-export default function PlayerCard({ me, carRepaired, monsterHp, monsterMaxHp }) {
+export default function PlayerCard({ me, carRepaired, monsterHp, monsterMaxHp, onUseItem }) {
   const [expanded, setExpanded] = useState(false);
   const isSlasher = me.role === "slasher";
   const info = isSlasher ? KILLERS[me.pickId] : TEEN_CHARACTERS[me.pickId];
@@ -32,12 +33,12 @@ export default function PlayerCard({ me, carRepaired, monsterHp, monsterMaxHp })
           <HealthBar hp={me.hp} max={me.hpMax} kind="teen" label="Health" />
           <HealthBar hp={me.sanity} max={me.sanityMax} kind="sanity" label="Sanity" />
           {me.broken ? (
-            <div className="sanity-status panicked">
-              BROKEN — recover to 3 Sanity
+            <div className="sanity-status broken">
+              BROKEN — recover to {BROKEN_RECOVER_SANITY} Sanity
             </div>
-          ) : tier !== "steady" && (
+          ) : tier !== "stable" && (
             <div className={`sanity-status ${tier}`}>
-              {tier === "panicked" ? "Panicked — actions unreliable" : "Shaken — actions less reliable"}
+              {SANITY_TIER_LABEL[tier]} — {SANITY_STATUS_TEXT[tier]?.split(" — ")[1] || ""}
             </div>
           )}
           <div className="stat-row">
@@ -75,7 +76,7 @@ export default function PlayerCard({ me, carRepaired, monsterHp, monsterMaxHp })
             <div className="player-card-collapsible">
               <ObjectiveTracker items={me.items} carRepaired={carRepaired} />
               <div className="player-card-divider" />
-              <Inventory items={me.items} capacity={me.itemCapacity} />
+              <Inventory items={me.items} capacity={me.itemCapacity} onUseItem={onUseItem} />
             </div>
           )}
         </>

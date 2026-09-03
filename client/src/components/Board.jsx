@@ -123,20 +123,20 @@ export default function Board({
             <stop offset="100%" stopColor="#fff2c9" stopOpacity="0" />
           </radialGradient>
           <radialGradient id="lakeGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#2c4a4d" />
-            <stop offset="100%" stopColor="#152a2c" />
+            <stop offset="0%" stopColor="#2ee6ff" stopOpacity="0.55" />
+            <stop offset="100%" stopColor="#173f6e" stopOpacity="0.8" />
           </radialGradient>
           <linearGradient id="groundWash" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#1c2415" />
-            <stop offset="100%" stopColor="#14170f" />
+            <stop offset="0%" stopColor="#2a2860" />
+            <stop offset="100%" stopColor="#1c1442" />
           </linearGradient>
           <linearGradient id="fogGradient" x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0%" stopColor="#20261a" stopOpacity="0.55" />
-            <stop offset="35%" stopColor="#20261a" stopOpacity="0" />
+            <stop offset="0%" stopColor="#ff2e88" stopOpacity="0.16" />
+            <stop offset="35%" stopColor="#2ee6ff" stopOpacity="0" />
           </linearGradient>
           <radialGradient id="vignette" cx="50%" cy="50%" r="75%">
-            <stop offset="55%" stopColor="#000000" stopOpacity="0" />
-            <stop offset="100%" stopColor="#000000" stopOpacity="0.5" />
+            <stop offset="55%" stopColor="#170f38" stopOpacity="0" />
+            <stop offset="100%" stopColor="#0d0824" stopOpacity="0.55" />
           </radialGradient>
         </defs>
 
@@ -150,11 +150,11 @@ export default function Board({
         <circle cx="90" cy="10" r="4.2" fill="#fdf6dd" />
 
         {TREE_CLUSTERS.map(([x, y, r], i) => (
-          <circle key={"tree" + i} cx={x} cy={y} r={r} fill="#101c0c" opacity="0.85" />
+          <circle key={"tree" + i} cx={x} cy={y} r={r} fill="#241a52" stroke="#9b30ff" strokeOpacity="0.25" strokeWidth="0.3" opacity="0.9" />
         ))}
 
         <ellipse cx="12" cy="88" rx="12" ry="8" fill="url(#lakeGlow)" opacity="0.9" />
-        <ellipse cx="12" cy="88" rx="12" ry="8" fill="none" stroke="#8fd6e0" strokeOpacity="0.2" strokeWidth="0.4" />
+        <ellipse cx="12" cy="88" rx="12" ry="8" fill="none" stroke="#8fd6e0" strokeOpacity="0.35" strokeWidth="0.4" />
 
         {routes.map(({ key, a, b }) => (
           <line key={key} x1={a.x} y1={a.y} x2={b.x} y2={b.y} className="board-route" />

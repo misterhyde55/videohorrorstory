@@ -46,9 +46,18 @@ export default function SearchDiscovery({ result, me, onError, onDismiss }) {
     title = result.noNoiseLine ? "Pick Up Item" : "Found Something";
     body = (
       <>
-        <p className="discovery-item-name">{result.itemName}</p>
+        <p className="discovery-item-name">
+          {result.itemName}
+          {result.category && <span className={`item-category-tag cat-${result.category.toLowerCase()}`}>{result.category}</span>}
+          {result.objective && <span className="item-tag kit-objective">Objective</span>}
+        </p>
         {result.effect && <p className="discovery-item-effect">{result.effect}</p>}
         {result.capacityItem && <p className="discovery-item-effect">Picking it up permanently expands what you can carry.</p>}
+        <div className="discovery-item-stats">
+          <span><strong>Uses:</strong> {result.uses ?? "—"}</span>
+          <span><strong>Noise:</strong> {result.noiseLevel ?? "—"}</span>
+          <span><strong>Objective Item:</strong> {result.objective ? "Yes" : "No"}</span>
+        </div>
         {result.inventoryFull && !result.capacityItem && (
           <p className="discovery-full-warning">Your bag is full — take it and you'll need to leave something else behind.</p>
         )}
