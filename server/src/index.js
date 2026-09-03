@@ -60,6 +60,14 @@ const roomSockets = new Map();
 const socketMeta = new Map();
 
 const botTimersPending = new Set();
+// code -> { playerId, since } for whichever room currently has a human's
+// turn sitting on a dead socket. A disconnected human whose turn comes up
+// would otherwise stall the whole match forever — nothing else in the game
+// ever acts on their behalf — so once the grace window passes, the AI
+// steps in for just that one turn. Resets the moment the current player
+// changes (a new turn, or they reconnect and get a live socket again).
+const disconnectedTurnTimers = new Map();
+const DISCONNECTED_TURN_GRACE_MS = 15000;
 
 function broadcast(code) {
   const room = rooms.get(code);
@@ -312,6 +320,7 @@ function handleLeave(socket, { onlyLobby = false } = {}) {
     rooms.delete(meta.code);
     roomSockets.delete(meta.code);
     botTimersPending.delete(meta.code);
+    disconnectedTurnTimers.delete(meta.code);
     return;
   }
   broadcast(meta.code);
@@ -319,7 +328,30 @@ function handleLeave(socket, { onlyLobby = false } = {}) {
 
 setInterval(() => {
   for (const [code, room] of rooms) {
-    if (checkClockExpired(room)) broadcast(code);
+    if (checkClockExpired(room)) {
+      broadcast(code);
+      continue;
+    }
+    if (room.phase !== "playing") {
+      disconnectedTurnTimers.delete(code);
+      continue;
+    }
+    const currentId = room.turnOrder[room.turnIndex];
+    const currentPlayer = room.players.get(currentId);
+    if (!currentPlayer || currentPlayer.isBot || roomSockets.get(code)?.has(currentId)) {
+      disconnectedTurnTimers.delete(code);
+      continue;
+    }
+    const tracked = disconnectedTurnTimers.get(code);
+    if (!tracked || tracked.playerId !== currentId) {
+      disconnectedTurnTimers.set(code, { playerId: currentId, since: Date.now() });
+    } else if (Date.now() - tracked.since >= DISCONNECTED_TURN_GRACE_MS) {
+      const decide = currentPlayer.role === "slasher" ? decideBotAction : decideTeenBotAction;
+      const result = applyAction(room, currentId, decide(room, currentPlayer));
+      scheduleSearchSettlement(code, result);
+      disconnectedTurnTimers.delete(code);
+      broadcast(code);
+    }
   }
 }, 1000);
 

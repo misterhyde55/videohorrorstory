@@ -264,9 +264,29 @@ export function addBot(room, role, name) {
   return id;
 }
 
+// Removing a player shifts everyone after them left by one slot in
+// turnOrder, but turnIndex is just a number — left unadjusted it silently
+// points at the wrong player (skipping whoever's turn it truly is) or, if
+// it was already at the end of the array, past the end entirely, which
+// stalls the game since nothing then matches currentPlayerId(). Re-anchor
+// it to the same player who logically still holds the turn: whoever came
+// right after the removed player in the old order (which, post-filter,
+// is simply the same numeric index — or wraps via modulo if that removed
+// player themselves held the turn).
 export function removePlayer(room, id) {
+  const currentId = room.turnOrder[room.turnIndex];
   room.players.delete(id);
   room.turnOrder = room.turnOrder.filter((pid) => pid !== id);
+  if (room.turnOrder.length === 0) {
+    room.turnIndex = 0;
+    return;
+  }
+  if (currentId !== id) {
+    const idx = room.turnOrder.indexOf(currentId);
+    room.turnIndex = idx >= 0 ? idx : room.turnIndex % room.turnOrder.length;
+  } else {
+    room.turnIndex = room.turnIndex % room.turnOrder.length;
+  }
 }
 
 export function setRole(room, id, role) {
