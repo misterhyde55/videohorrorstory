@@ -30,6 +30,13 @@ export default function ActionPanel({ state, me, onError, onSearchResult }) {
   }
 
   if (me.role === "slasher") return <SlasherActions state={state} me={me} loc={loc} onError={onError} />;
+  if (me.pendingDiscoveryUid) {
+    return (
+      <div className="action-panel waiting">
+        Decide what to do with what you just found — see the popup above.
+      </div>
+    );
+  }
   return <TeenActions state={state} me={me} loc={loc} onError={onError} onSearchResult={onSearchResult} />;
 }
 
@@ -56,6 +63,7 @@ function TeenActions({ state, me, loc, onError, onSearchResult }) {
   const carRepaired = state.objectives?.carRepaired;
   const sightings = state.sightings || [];
   const hazardHere = (state.activeHorrorEventLocations || []).includes(me.location);
+  const leftItemsHere = loc.leftItems || [];
 
   return (
     <div className="action-panel">
@@ -93,12 +101,39 @@ function TeenActions({ state, me, loc, onError, onSearchResult }) {
         ))}
       </ActionGroup>
 
+      {leftItemsHere.length > 0 && (
+        <ActionGroup title="Left Here">
+          {leftItemsHere.map((it) => (
+            <button
+              key={it.uid}
+              className="btn btn-secondary"
+              title={it.effect}
+              onClick={() =>
+                onSearchResult?.({
+                  type: "item",
+                  uid: it.uid,
+                  itemId: it.id,
+                  itemName: it.name,
+                  effect: it.effect,
+                  capacityItem: it.utility === "capacity",
+                  inventoryFull: items.length >= me.itemCapacity && it.utility !== "capacity",
+                  noisy: false,
+                  noNoiseLine: true,
+                })
+              }
+            >
+              Take {it.name}
+            </button>
+          ))}
+        </ActionGroup>
+      )}
+
       <ActionGroup title="Actions">
         <button
           className="btn btn-secondary"
           onClick={() => act({ type: "search" }, onError, (res) => onSearchResult?.(res.searchResult))}
         >
-          Search Area
+          {loc.searchCount ? "Search Again" : "Search Area"}
         </button>
         {usableItems.map((it) => (
           <button

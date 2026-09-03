@@ -1,5 +1,5 @@
 import { generateBoard } from "./board.js";
-import { drawFromPool, randomEvent, randomHallucination, drawTraumaCard } from "./cards.js";
+import { drawFromPool, randomEvent, randomHallucination, drawTraumaCard, pickSearchOutcome, drawClue, drawLore, ITEMS } from "./cards.js";
 import { TEEN_CHARACTERS, KILLERS, SPECIAL_COOLDOWN } from "./characters.js";
 
 const MAX_TEENS = 4;
@@ -377,6 +377,7 @@ export function startGame(room, { durationMs } = {}) {
     p.hiding = false;
     p.searching = false;
     p.searchEndsAt = null;
+    p.pendingDiscoveryUid = null;
     p.evadeCooldownLocation = null;
     p.status = "alive";
     p.characterName = character.name;
@@ -574,6 +575,21 @@ function grantItemSanity(room, player, amount) {
 
 function hasActiveHorrorEvent(room, locationId) {
   return room.horrorEvents.has(locationId);
+}
+
+// Shared by the "comfort" action handler and the teen AI's own decision
+// logic, so a bot never lines up a Comfort the server is just going to
+// reject — an AI stuck retrying an illegal action every tick would stall
+// its own turn (and the whole match) forever.
+function canComfort(room, giver, target) {
+  if (!target || target.role !== "teen" || target.location !== giver.location || target.status !== "alive") return false;
+  if (target.id === giver.id) return false;
+  if (target.sanity >= target.sanityMax) return false;
+  if (hasActiveHorrorEvent(room, giver.location)) return false;
+  if (target.comfortReceivedRound === room.round) return false;
+  if (target.comfortGainTotal >= COMFORT_LIMIT) return false;
+  if (room.comfortPairsThisRound.has(`${target.id}>${giver.id}`)) return false;
+  return true;
 }
 
 // Isolation drains Sanity; grouping up with teammates only protects against
@@ -785,6 +801,9 @@ export function applyAction(room, playerId, action) {
 
 function teenAction(room, player, action) {
   if (player.status === "dead" || player.status === "escaped") return { error: "You cannot act." };
+  if (player.pendingDiscoveryUid && action.type !== "take_item" && action.type !== "leave_item") {
+    return { error: "Decide what to do with what you just found first." };
+  }
   const loc = room.board[player.location];
   const character = TEEN_CHARACTERS[player.pickId];
   const tier = sanityTier(player);
@@ -832,37 +851,112 @@ function teenAction(room, player, action) {
       return { ok: true };
     }
     case "search": {
-      // Quick Study: the Nerd rerolls a total miss ("searches more thoroughly").
-      // Rally: the Leader gets one bonus draw whenever the result isn't an
-      // escape/banish kit item, and takes it only if it upgrades to one
-      // ("finds objective items more easily") — never trades away a decent
-      // non-kit find for nothing.
-      let item = drawFromPool(loc.searchPool);
-      if (!item && character.id === "nerd") item = drawFromPool(loc.searchPool);
-      if (!item && player.items.some((it) => it.utility === "search_bonus")) item = drawFromPool(loc.searchPool);
-      if (character.id === "leader" && !item?.kit) {
-        const bonus = drawFromPool(loc.searchPool);
-        if (bonus?.kit) item = bonus;
+      const searchCount = loc.searchCount || 0;
+      let outcome = pickSearchOutcome(searchCount);
+      // Quick Study / Flashlight: one reroll of the whole outcome on a
+      // total miss ("searches more thoroughly") — a real second chance at
+      // finding anything at all, not just a better item.
+      if (outcome === "nothing" && (character.id === "nerd" || player.items.some((it) => it.utility === "search_bonus"))) {
+        outcome = pickSearchOutcome(searchCount);
       }
+      loc.searchCount = searchCount + 1;
       const madeNoise = roll(SEARCH_NOISE_CHANCE);
       if (madeNoise) emitNoise(room, player.location, "noisy");
-      if (item?.utility === "capacity") {
-        player.itemCapacity += item.capacityBonus;
-        log(room, `${player.characterName} searches ${loc.name} and finds a ${item.name}! More room to carry gear now.`, "teens");
-        return { ok: true, searchResult: { type: "item", itemName: item.name, note: "More room to carry gear now.", noisy: madeNoise } };
-      }
-      if (item && player.items.length >= player.itemCapacity) {
-        log(room, `${player.characterName} searches ${loc.name} and finds ${item.name}, but there's no room left to carry it.`, "teens");
-        return { ok: true, searchResult: { type: "full", itemName: item.name, noisy: madeNoise } };
-      }
-      if (item) {
-        player.items.push(item);
+
+      if (outcome === "item") {
+        // Rally: the Leader gets one bonus draw whenever the result isn't
+        // an escape/banish kit item, and takes it only if it upgrades to
+        // one ("finds objective items more easily").
+        let item = null;
+        for (let tries = 0; tries < 20 && !item; tries++) item = drawFromPool(loc.searchPool);
+        if (!item) item = { ...ITEMS.energy_drink };
+        if (character.id === "leader" && !item?.kit) {
+          const bonus = drawFromPool(loc.searchPool);
+          if (bonus?.kit) item = bonus;
+        }
+        item.uid = `${item.id}_${Date.now()}_${Math.floor(Math.random() * 1e6).toString(36)}`;
+        loc.leftItems = loc.leftItems || [];
+        loc.leftItems.push(item);
+        // Held open until the player says Take or Leave — see take_item /
+        // leave_item below, and the pendingDiscoveryUid gate above.
+        player.pendingDiscoveryUid = item.uid;
+        const inventoryFull = player.items.length >= player.itemCapacity && item.utility !== "capacity";
         log(room, `${player.characterName} searches ${loc.name} and finds ${item.name}.`, "teens");
-        return { ok: true, searchResult: { type: "item", itemName: item.name, noisy: madeNoise } };
+        return {
+          ok: true,
+          consumeTurn: false,
+          searchResult: {
+            type: "item",
+            uid: item.uid,
+            itemId: item.id,
+            itemName: item.name,
+            effect: item.effect,
+            capacityItem: item.utility === "capacity",
+            inventoryFull,
+            noisy: madeNoise,
+            searchCount: loc.searchCount,
+          },
+        };
+      }
+      if (outcome === "clue") {
+        const text = drawClue(loc);
+        loc.discoveredInformation = loc.discoveredInformation || [];
+        loc.discoveredInformation.push({ type: "clue", text });
+        log(room, `${player.characterName} searches ${loc.name} and turns up a clue: "${text}"`, "teens");
+        return { ok: true, searchResult: { type: "clue", text, noisy: madeNoise, searchCount: loc.searchCount } };
+      }
+      if (outcome === "vhs") {
+        const text = drawLore();
+        loc.discoveredInformation = loc.discoveredInformation || [];
+        loc.discoveredInformation.push({ type: "vhs", text });
+        log(room, `${player.characterName} searches ${loc.name} and finds an old home movie.`, "teens");
+        return { ok: true, searchResult: { type: "vhs", text, noisy: madeNoise, searchCount: loc.searchCount } };
       }
       const ev = randomEvent();
       log(room, `${player.characterName} searches ${loc.name} and finds nothing. ${ev.text}`, "teens");
-      return { ok: true, searchResult: { type: "nothing", note: ev.text, noisy: madeNoise } };
+      return { ok: true, searchResult: { type: "nothing", note: ev.text, noisy: madeNoise, searchCount: loc.searchCount } };
+    }
+    case "take_item": {
+      const items = loc.leftItems || [];
+      const idx = items.findIndex((it) => it.uid === action.uid);
+      if (idx < 0) return { error: "That item isn't here anymore." };
+      const item = items[idx];
+      // Resolving the item you just found ends the turn you spent
+      // searching for it; picking up something noticed earlier (yours or
+      // a teammate's leftovers) is a free bonus action that doesn't cost
+      // one, same as Give or Discard.
+      const resolvingPending = player.pendingDiscoveryUid === item.uid;
+      if (resolvingPending) player.pendingDiscoveryUid = null;
+      const consumeTurn = resolvingPending;
+      if (item.utility === "capacity") {
+        items.splice(idx, 1);
+        player.itemCapacity += item.capacityBonus;
+        log(room, `${player.characterName} picks up the ${item.name}. More room to carry gear now.`, "teens");
+        return { ok: true, consumeTurn };
+      }
+      if (player.items.length >= player.itemCapacity) {
+        if (!action.dropItemId) return { error: "Your bag is full — choose something to leave behind first." };
+        const dropIdx = player.items.findIndex((it) => it.id === action.dropItemId);
+        if (dropIdx < 0) return { error: "You don't have that item." };
+        const [dropped] = player.items.splice(dropIdx, 1);
+        dropped.uid = `${dropped.id}_${Date.now()}_${Math.floor(Math.random() * 1e6).toString(36)}`;
+        loc.leftItems = loc.leftItems || [];
+        loc.leftItems.push(dropped);
+        items.splice(items.findIndex((it) => it.uid === action.uid), 1);
+        player.items.push(item);
+        log(room, `${player.characterName} leaves the ${dropped.name} behind and takes the ${item.name}.`, "teens");
+        return { ok: true, consumeTurn };
+      }
+      items.splice(idx, 1);
+      player.items.push(item);
+      log(room, `${player.characterName} picks up the ${item.name}.`, "teens");
+      return { ok: true, consumeTurn };
+    }
+    case "leave_item": {
+      if (!player.pendingDiscoveryUid) return { error: "There's nothing pending to leave." };
+      player.pendingDiscoveryUid = null;
+      log(room, `${player.characterName} leaves it where it is.`, "teens");
+      return { ok: true };
     }
     case "discard": {
       const idx = player.items.findIndex((it) => it.id === action.itemId);
@@ -1326,6 +1420,7 @@ export function publicState(room, forPlayerId) {
       base.itemCapacity = p.itemCapacity;
       base.specialCooldown = p.specialCooldown;
       base.distractUsed = p.distractUsed;
+      base.pendingDiscoveryUid = p.pendingDiscoveryUid || null;
     }
     return base;
   });
@@ -1483,6 +1578,23 @@ export function decideTeenBotAction(room, bot) {
   const neighbors = neighborsOf(room, bot.location);
   const randomNeighbor = () => (neighbors.length ? neighbors[Math.floor(Math.random() * neighbors.length)] : null);
 
+  // A find is waiting on a Take/Leave call — nothing else is legal until
+  // it's resolved, so this always takes priority.
+  if (bot.pendingDiscoveryUid) {
+    const found = (loc.leftItems || []).find((it) => it.uid === bot.pendingDiscoveryUid);
+    if (!found) return { type: "leave_item" };
+    if (found.utility === "capacity" || bot.items.length < bot.itemCapacity) {
+      return { type: "take_item", uid: found.uid };
+    }
+    // Bag's full — swap it in only if it's worth more than the least
+    // useful thing already carried (a kit piece or a weapon/heal item).
+    const worseIdx = bot.items.findIndex((it) => !it.kit && !it.weapon && it.utility !== "heal");
+    if (found.kit && worseIdx >= 0) {
+      return { type: "take_item", uid: found.uid, dropItemId: bot.items[worseIdx].id };
+    }
+    return { type: "leave_item" };
+  }
+
   // Already mid-search (the Slasher cornered a hiding spot) — moving away
   // on this turn auto-resolves it as a successful getaway.
   if (bot.searching) {
@@ -1533,10 +1645,15 @@ export function decideTeenBotAction(room, bot) {
   if (bot.sanity <= 3) {
     const sanityIdx = bot.items.findIndex((it) => it.utility === "sanity");
     if (sanityIdx >= 0) return { type: "use_item", itemId: bot.items[sanityIdx].id };
-    const teammateHere = aliveTeens(room).find(
-      (t) => t.id !== bot.id && t.location === bot.location && t.sanity < t.sanityMax
-    );
+    const teammateHere = aliveTeens(room).find((t) => canComfort(room, bot, t));
     if (teammateHere) return { type: "comfort", targetId: teammateHere.id };
+  }
+
+  // Grab anything sitting here from an earlier search — free, no roll
+  // needed — before deciding what else to do this turn.
+  const leftHere = (loc.leftItems || [])[0];
+  if (leftHere && (leftHere.utility === "capacity" || bot.items.length < bot.itemCapacity)) {
+    return { type: "take_item", uid: leftHere.uid };
   }
 
   // Chase the current objective.
@@ -1561,7 +1678,7 @@ export function decideTeenBotAction(room, bot) {
 
   // No pressing objective: search here fairly often, otherwise explore —
   // occasionally toward a living teammate to regroup rather than scatter.
-  if (roll(45) && bot.items.length < MAX_ITEMS) return { type: "search" };
+  if (roll(45)) return { type: "search" };
   if (roll(30)) {
     const teenLocations = new Set(aliveTeens(room).filter((t) => t.id !== bot.id).map((t) => t.location));
     if (teenLocations.size > 0) {

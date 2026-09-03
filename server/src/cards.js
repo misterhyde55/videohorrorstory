@@ -43,6 +43,67 @@ export function drawFromPool(poolName, rng = Math.random) {
   return pick ? { ...ITEMS[pick] } : null;
 }
 
+// Diminishing-returns odds for the Search Discovery system, keyed by how
+// many times a location has already been searched (by anyone — the count
+// lives on the location, not the player). Index 0 = 1st search, 1 = 2nd,
+// 2 = 3rd and every search after that. This is the sole anti-farming lever:
+// nothing gets better the more a spot is picked over, but nothing is ever
+// permanently exhausted either — see gameState.js's "search" handler.
+export const SEARCH_ODDS = [
+  { item: 0.70, clue: 0.15, vhs: 0.05, nothing: 0.10 },
+  { item: 0.45, clue: 0.15, vhs: 0.05, nothing: 0.35 },
+  { item: 0.25, clue: 0.10, vhs: 0.05, nothing: 0.60 },
+];
+
+export function pickSearchOutcome(searchCount, rng = Math.random) {
+  const tier = SEARCH_ODDS[Math.min(searchCount, SEARCH_ODDS.length - 1)];
+  const r = rng();
+  let acc = 0;
+  for (const outcome of Object.keys(tier)) {
+    acc += tier[outcome];
+    if (r < acc) return outcome;
+  }
+  return "nothing";
+}
+
+// Non-item discoveries: informational, take no inventory space, and get
+// auto-recorded the moment they're found. Clues are little templates so
+// they can at least gesture at the specific spot they turned up — not the
+// full bespoke per-location loot table the design doc sketches, but real
+// location texture rather than one generic string everywhere.
+const CLUE_TEMPLATES = [
+  (loc) => `A torn page describes something moving near ${loc.name} after dark.`,
+  (loc) => `Scratches gouge the inside of a door here — something wanted out, or in.`,
+  (loc) => `A hand-drawn map marks ${loc.name} with a red X and nothing else.`,
+  (loc) => `Muddy boot prints lead away from here in a hurry, and don't come back.`,
+  (loc) => `A journal page: "Don't go near ${loc.name} alone. Not after what happened."`,
+  (loc) => `Something's been dragged across the floor here recently.`,
+  (loc) => `A phone number is scrawled on the wall, half scratched out.`,
+  (loc) => `Claw marks rake up one whole wall, well above head height.`,
+];
+
+export function drawClue(loc, rng = Math.random) {
+  const make = CLUE_TEMPLATES[Math.floor(rng() * CLUE_TEMPLATES.length)];
+  return make(loc);
+}
+
+// Lore VHS tapes — a distinct discovery from the physical Favorite VHS
+// item (which is a carried Sanity item). These are found footage: pure
+// worldbuilding, recorded into the location's discoveredInformation and
+// never picked up.
+export const VHS_LORE = [
+  "A home movie: kids laughing around a campfire, decades ago. The tape cuts to static halfway through.",
+  "A grainy recording shows the park under construction. A voice off-camera says something you can't quite make out.",
+  "Someone recorded themselves reading from an old book. Their voice shakes on the last page.",
+  "A local news clip about a disappearance nobody ever solved.",
+  "A birthday party tape. Everyone in frame is smiling except one figure at the edge of the shot.",
+  "Home security footage, timestamped last year. Something walks past the camera on two legs, slowly.",
+];
+
+export function drawLore(rng = Math.random) {
+  return VHS_LORE[Math.floor(rng() * VHS_LORE.length)];
+}
+
 export const EVENTS = [
   { id: "creaking_floor", text: "A floorboard creaks somewhere behind you." },
   { id: "distant_scream", text: "You hear a scream from across the park." },

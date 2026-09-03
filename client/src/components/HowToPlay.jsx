@@ -79,6 +79,23 @@ export default function HowToPlay({ onClose }) {
           </section>
 
           <section>
+            <h3>Searching</h3>
+            <p>
+              Search never quietly drops something in your bag — it pops up
+              right on the board showing exactly what you found, and you
+              decide: Take it, Leave It where it is, or Take &amp; Replace
+              something if your bag's full. Leave something behind and it
+              stays real — you or a teammate can grab it later for free,
+              no new search needed. The odds of finding anything good drop
+              the more a spot's already been picked over (never all the
+              way to zero), and not every search even turns up an item —
+              sometimes it's a clue or an old VHS tape of found-footage
+              lore instead, recorded automatically. A location that's had
+              something left at it shows a small marker on the map.
+            </p>
+          </section>
+
+          <section>
             <h3>Horror Events</h3>
             <p>
               A handful of times each match, in no fixed order, a random Horror

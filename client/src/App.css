@@ -227,31 +227,6 @@
   font-style: italic;
 }
 
-.banner-search-result {
-  font-weight: bold;
-  animation: searchToastIn 0.2s ease-out;
-}
-
-.banner-search-result.search-item {
-  background: rgba(57, 255, 138, 0.14);
-  border: 1px solid var(--neon-green);
-  color: #baffd8;
-}
-
-.banner-search-result.search-full {
-  background: rgba(255, 179, 71, 0.14);
-  border: 1px solid #ffb347;
-  color: #ffe2b8;
-}
-
-.banner-search-result.search-nothing {
-  background: rgba(203, 184, 232, 0.1);
-  border: 1px solid #8a7aa0;
-  color: #cbb8e8;
-  font-weight: normal;
-  font-style: italic;
-}
-
 .search-noise-line {
   margin-top: 0.3rem;
   font-size: 0.72rem;
@@ -265,9 +240,49 @@
   font-weight: bold;
 }
 
-@keyframes searchToastIn {
-  0% { opacity: 0; transform: translateY(-4px); }
-  100% { opacity: 1; transform: translateY(0); }
+/* Search Discovery popup */
+.discovery-modal-backdrop {
+  z-index: 120;
+}
+
+.discovery-modal-card {
+  max-width: 420px;
+}
+
+.discovery-modal-body {
+  padding-top: 1rem;
+}
+
+.discovery-item-name {
+  font-size: 1.15rem;
+  font-weight: bold;
+  color: var(--neon-green);
+  margin: 0 0 0.4rem;
+}
+
+.discovery-item-effect {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+  color: #cbb8e8;
+}
+
+.discovery-full-warning {
+  margin: 0 0 0.4rem;
+  font-size: 0.82rem;
+  color: #ffb347;
+}
+
+.discovery-clue-text {
+  font-style: italic;
+  color: #d9c9f5;
+  margin: 0 0 0.4rem;
+}
+
+.discovery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
 }
 
 .practice-banner {
@@ -819,6 +834,25 @@
 .map-node.reachable {
   border-color: var(--neon-green);
   animation: reachablePulse 1.8s ease-in-out infinite;
+}
+
+.map-node-loot-badge {
+  position: absolute;
+  top: -0.25rem;
+  right: -0.25rem;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--neon-green);
+  border: 1px solid #0a3a1e;
+  box-shadow: 0 0 6px rgba(57, 255, 138, 0.85);
+  z-index: 2;
+  animation: lootPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes lootPulse {
+  0%, 100% { opacity: 0.65; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.15); }
 }
 
 @keyframes reachablePulse {

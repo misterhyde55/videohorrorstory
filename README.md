@@ -108,9 +108,35 @@ exact location (never who caused it) and fades after 2–3 rounds: running
 from the Slasher, repairing the car, performing the ritual, stumbling
 while panicked, and driving away all make noise — and every Search has a
 25% chance of rummaging loud enough to be heard too, shown right on the
-search result ("Noise Level: NOISY" vs "Quiet"). Teens get one
-**Diversion** per game — fake a Noise Alert at any location on the map to
-send the Slasher somewhere you're not.
+search result. Teens get one **Diversion** per game — fake a Noise Alert
+at any location on the map to send the Slasher somewhere you're not.
+
+### Search Discovery
+
+Searching a location never silently stuffs something into your bag. It
+pops up a popup right on top of the board showing exactly what turned up,
+and you decide what happens next — nothing resolves off-screen. The odds
+shift the more a spot's been picked over (tracked per location, not per
+player, so it doesn't reset just because someone else takes a turn there):
+a first search is generous, a second is noticeably thinner, and a third
+or later search mostly comes up empty — though never permanently, and a
+location is never fully exhausted. Not every search turns up an item,
+either — you might turn up a **clue** (a scrap of in-world detail about
+that spot) or an old **VHS tape** of found-footage lore, both recorded
+automatically with nothing to carry, or come up empty with a flavor line
+explaining why.
+
+When it is an item, you get real choices:
+- **Take** — into your bag, if there's room.
+- **Leave It** — it stays exactly where it is, as a real object at that
+  location, not a random reroll — the same teen or a teammate arriving on
+  a later turn can just pick it up (also free, no new roll) from the
+  "Left Here" list.
+- **Take & Replace** — if your bag's already full, choose one carried
+  item to drop in its place; the dropped item is left behind at that spot
+  the same way, for someone else to find.
+
+A location that's had things left at it shows a small marker on the map.
 
 ### The Post-Game Recap
 

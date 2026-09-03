@@ -7,6 +7,7 @@ import HoldYourBreath from "../components/HoldYourBreath";
 import PracticeTip from "../components/PracticeTip";
 import PostGameRecap from "../components/PostGameRecap";
 import TurnOrderStrip from "../components/TurnOrderStrip";
+import SearchDiscovery from "../components/SearchDiscovery";
 import { reachableFrom } from "../utils/reachable";
 
 function sanityTier(sanity) {
@@ -19,19 +20,35 @@ export default function GameScreen({ state, playerId, onLeave }) {
   const [error, setError] = useState("");
   const [now, setNow] = useState(Date.now());
   const [breathOverlay, setBreathOverlay] = useState(null);
-  const [searchToast, setSearchToast] = useState(null);
+  const [discovery, setDiscovery] = useState(null);
   const me = state.players.find((p) => p.id === playerId);
 
   const handleSearchResult = (result) => {
     if (!result) return;
-    setSearchToast({ ...result, key: Date.now() });
+    setDiscovery(result);
   };
 
+  // A find held open server-side (pendingDiscoveryUid) survives a page
+  // refresh or reconnect — rebuild the same popup from the item still
+  // sitting at this location so the decision isn't lost.
   useEffect(() => {
-    if (!searchToast) return undefined;
-    const id = setTimeout(() => setSearchToast(null), 3200);
-    return () => clearTimeout(id);
-  }, [searchToast]);
+    if (!me?.pendingDiscoveryUid) return;
+    if (discovery?.uid === me.pendingDiscoveryUid) return;
+    const loc = state.board?.[me.location];
+    const item = loc?.leftItems?.find((it) => it.uid === me.pendingDiscoveryUid);
+    if (!item) return;
+    setDiscovery({
+      type: "item",
+      uid: item.uid,
+      itemId: item.id,
+      itemName: item.name,
+      effect: item.effect,
+      capacityItem: item.utility === "capacity",
+      inventoryFull: (me.items?.length || 0) >= (me.itemCapacity || 0) && item.utility !== "capacity",
+      noisy: false,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me?.pendingDiscoveryUid]);
 
   useEffect(() => {
     if (state.phase !== "playing") return undefined;
@@ -97,19 +114,6 @@ export default function GameScreen({ state, playerId, onLeave }) {
           <div className="banner banner-horror-event">👻 {state.recentHorrorEvent.summary}</div>
         )}
 
-        {searchToast && (
-          <div key={searchToast.key} className={`banner banner-search-result search-${searchToast.type}`}>
-            <div>
-              {searchToast.type === "item" && `🔦 FOUND — ${searchToast.itemName}${searchToast.note ? ` (${searchToast.note})` : ""}`}
-              {searchToast.type === "full" && `🎒 FOUND ${searchToast.itemName} — but your bag's full. Drop something first.`}
-              {searchToast.type === "nothing" && `🔍 NOTHING FOUND — ${searchToast.note}`}
-            </div>
-            <div className={`search-noise-line${searchToast.noisy ? " noisy" : ""}`}>
-              🔊 Noise Level: {searchToast.noisy ? "NOISY — the Slasher may have heard you." : "Quiet — nobody heard a thing."}
-            </div>
-          </div>
-        )}
-
         {error && <div className="banner banner-error" onAnimationEnd={() => setError("")}>{error}</div>}
       </div>
 
@@ -124,6 +128,15 @@ export default function GameScreen({ state, playerId, onLeave }) {
           searching={me.searching}
           hiding={me.hiding}
           onResolved={() => setBreathOverlay(null)}
+        />
+      )}
+
+      {discovery && (
+        <SearchDiscovery
+          result={discovery}
+          me={me}
+          onError={setError}
+          onDismiss={() => setDiscovery(null)}
         />
       )}
 

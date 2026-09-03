@@ -151,13 +151,15 @@ export default function Board({
         const isFlashing = flashLocations.has(loc.id);
         const isHaunted = hazardLocations?.includes(loc.id);
         const isReachable = reachableLocations?.includes(loc.id);
+        const hasLoot = (loc.leftItems?.length || 0) > 0;
         return (
           <div
             key={loc.id}
-            className={`map-node${isMine ? " here" : ""}${loc.ritualSite ? " ritual" : ""}${loc.exit ? " exit" : ""}${loc.carSite ? " carsite" : ""}${isSensed ? " sensed" : ""}${isFlashing ? " flash" : ""}${isHaunted ? " haunted" : ""}${isReachable ? " reachable" : ""}`}
+            className={`map-node${isMine ? " here" : ""}${loc.ritualSite ? " ritual" : ""}${loc.exit ? " exit" : ""}${loc.carSite ? " carsite" : ""}${isSensed ? " sensed" : ""}${isFlashing ? " flash" : ""}${isHaunted ? " haunted" : ""}${isReachable ? " reachable" : ""}${hasLoot ? " has-loot" : ""}`}
             style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
             title={isHaunted ? `${loc.description} Something's wrong here right now.` : loc.description}
           >
+            {hasLoot && <span className="map-node-loot-badge" title="Something was left here" />}
             <div className="map-node-label">
               <span className="map-node-icon">{TYPE_ICONS[loc.type] || "📍"}</span> {loc.name}
               {isHaunted && <span className="map-node-icon haunted-icon">👻</span>}
