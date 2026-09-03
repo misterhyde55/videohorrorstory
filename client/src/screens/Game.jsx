@@ -99,9 +99,14 @@ export default function GameScreen({ state, playerId, onLeave }) {
 
         {searchToast && (
           <div key={searchToast.key} className={`banner banner-search-result search-${searchToast.type}`}>
-            {searchToast.type === "item" && `🔦 FOUND — ${searchToast.itemName}${searchToast.note ? ` (${searchToast.note})` : ""}`}
-            {searchToast.type === "full" && `🎒 FOUND ${searchToast.itemName} — but your bag's full. Drop something first.`}
-            {searchToast.type === "nothing" && `🔍 NOTHING FOUND — ${searchToast.note}`}
+            <div>
+              {searchToast.type === "item" && `🔦 FOUND — ${searchToast.itemName}${searchToast.note ? ` (${searchToast.note})` : ""}`}
+              {searchToast.type === "full" && `🎒 FOUND ${searchToast.itemName} — but your bag's full. Drop something first.`}
+              {searchToast.type === "nothing" && `🔍 NOTHING FOUND — ${searchToast.note}`}
+            </div>
+            <div className={`search-noise-line${searchToast.noisy ? " noisy" : ""}`}>
+              🔊 Noise Level: {searchToast.noisy ? "NOISY — the Slasher may have heard you." : "Quiet — nobody heard a thing."}
+            </div>
           </div>
         )}
 

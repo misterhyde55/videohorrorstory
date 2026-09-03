@@ -22,6 +22,7 @@ const HALLUCINATION_CHANCE = 30;
 
 const REVIVE_HP = 1;
 const SEARCH_DURATION_MS = 10000;
+const SEARCH_NOISE_CHANCE = 25; // percent chance a Search rummages loud enough to be heard
 
 // The Slasher can't move (or shortcut) for its first 2 turns — a head
 // start so teens can scatter and gear up before the hunt begins.
@@ -843,23 +844,25 @@ function teenAction(room, player, action) {
         const bonus = drawFromPool(loc.searchPool);
         if (bonus?.kit) item = bonus;
       }
+      const madeNoise = roll(SEARCH_NOISE_CHANCE);
+      if (madeNoise) emitNoise(room, player.location, "noisy");
       if (item?.utility === "capacity") {
         player.itemCapacity += item.capacityBonus;
         log(room, `${player.characterName} searches ${loc.name} and finds a ${item.name}! More room to carry gear now.`, "teens");
-        return { ok: true, searchResult: { type: "item", itemName: item.name, note: "More room to carry gear now." } };
+        return { ok: true, searchResult: { type: "item", itemName: item.name, note: "More room to carry gear now.", noisy: madeNoise } };
       }
       if (item && player.items.length >= player.itemCapacity) {
         log(room, `${player.characterName} searches ${loc.name} and finds ${item.name}, but there's no room left to carry it.`, "teens");
-        return { ok: true, searchResult: { type: "full", itemName: item.name } };
+        return { ok: true, searchResult: { type: "full", itemName: item.name, noisy: madeNoise } };
       }
       if (item) {
         player.items.push(item);
         log(room, `${player.characterName} searches ${loc.name} and finds ${item.name}.`, "teens");
-        return { ok: true, searchResult: { type: "item", itemName: item.name } };
+        return { ok: true, searchResult: { type: "item", itemName: item.name, noisy: madeNoise } };
       }
       const ev = randomEvent();
       log(room, `${player.characterName} searches ${loc.name} and finds nothing. ${ev.text}`, "teens");
-      return { ok: true, searchResult: { type: "nothing", note: ev.text } };
+      return { ok: true, searchResult: { type: "nothing", note: ev.text, noisy: madeNoise } };
     }
     case "discard": {
       const idx = player.items.findIndex((it) => it.id === action.itemId);

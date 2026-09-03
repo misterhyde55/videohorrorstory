@@ -66,13 +66,15 @@ export default function HowToPlay({ onClose }) {
             <p>
               The Killer never sees where you are — it only learns your exact spot
               by standing right there with you. Everything else it has to figure
-              out by listening. Most of what you do is silent: walking, searching,
-              resting, hiding, using items. A few things aren't, and generate a
+              out by listening. Most of what you do is silent: walking, resting,
+              hiding, using items. A few things aren't, and generate a
               Noise Alert that names the exact location (never who caused it),
               fading after a couple of rounds: running from the Killer, repairing
               the car, performing the ritual, stumbling while panicked, and
-              driving away. Use that — lead it somewhere loud, then go somewhere
-              quiet.
+              driving away. Searching is a bit of a gamble too — about 1 in 4
+              searches rummages loud enough to be heard, and you'll see the
+              Noise Level right on the result. Use all of that — lead it
+              somewhere loud, then go somewhere quiet.
             </p>
           </section>
 

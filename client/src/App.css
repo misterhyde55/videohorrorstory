@@ -252,6 +252,19 @@
   font-style: italic;
 }
 
+.search-noise-line {
+  margin-top: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: normal;
+  font-style: normal;
+  color: #8a7aa0;
+}
+
+.search-noise-line.noisy {
+  color: var(--neon-pink);
+  font-weight: bold;
+}
+
 @keyframes searchToastIn {
   0% { opacity: 0; transform: translateY(-4px); }
   100% { opacity: 1; transform: translateY(0); }

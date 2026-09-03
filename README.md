@@ -102,11 +102,13 @@ punctuate a match rather than flooding it.
 
 The Slasher never sees where the teens are — it only knows a teen's exact
 location while standing in the same spot with them. Everything else it has
-to learn by listening. Most teen actions are silent (walking, searching,
-resting, hiding, using items), but a few generate a **Noise Alert** that
-names the exact location (never who caused it) and fades after 2–3 rounds:
-running from the Slasher, repairing the car, performing the ritual,
-stumbling while panicked, and driving away all make noise. Teens get one
+to learn by listening. Most teen actions are silent (walking, resting,
+hiding, using items), but a few generate a **Noise Alert** that names the
+exact location (never who caused it) and fades after 2–3 rounds: running
+from the Slasher, repairing the car, performing the ritual, stumbling
+while panicked, and driving away all make noise — and every Search has a
+25% chance of rummaging loud enough to be heard too, shown right on the
+search result ("Noise Level: NOISY" vs "Quiet"). Teens get one
 **Diversion** per game — fake a Noise Alert at any location on the map to
 send the Slasher somewhere you're not.
 
