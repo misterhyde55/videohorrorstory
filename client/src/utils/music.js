@@ -1,30 +1,26 @@
-// A small generative horror-synth score for VHS: Video Horror Story —
-// aiming squarely at 1980s slasher-movie synth scores (Carpenter's
-// Halloween/The Fog, Tangerine Dream) rather than a "video game menu"
-// sound: a relentless, minimal minor-2nd ostinato, a dissonant tritone
-// drone underneath everything, and a slow analog tape-warble wobble over
-// the whole mix. Everything is synthesized live with the Web Audio API
-// (oscillators, filtered noise) rather than played from audio files — so
-// there is no "loop point" to seam-match at all: the drone/cluster layers
-// are continuous oscillators, and the rhythmic layers (ostinato/pulse/
-// heartbeat/perc/sting) are freshly synthesized on every beat, never a
-// repeating clip.
+// A small generative horror score for VHS: Video Horror Story, aimed
+// squarely at the Friday the 13th (2017) sound design: gameplay is mostly
+// genuine outdoor-night ambience (wind, crickets) with almost no "music"
+// at all while nothing is happening — dread comes from what you DON'T
+// hear (the crickets going quiet) more than from a synth score. Actual
+// musical material (drone/dissonant cluster/ostinato/pulse) is held in
+// reserve and only earns its way in once the Killer is a real threat. The
+// home screen is the one place this still plays like a full 80s slasher
+// title theme.
 //
-// The whole score is one persistent engine, not separate tracks that get
-// swapped in and out — a handful of gain "layers" are mixed together, and
-// changing MUSIC state just ramps each layer's target gain (and the overall
-// tempo) toward a new preset, which is what gives the "cinematic crossfade"
-// between Menu/Calm/Tension/Danger/Chase/Final Act. Because it's a single
-// engine, there is no way to end up with two tracks playing at once.
+// Everything is synthesized live with the Web Audio API (oscillators,
+// filtered noise) — no audio files, so there's no "loop point" to seam-
+// match. A shared convolution reverb send gives the whole mix some space/
+// depth instead of sounding like bare dry oscillators.
+//
+// One persistent engine, not separate tracks swapped in and out — a
+// handful of gain "layers" are mixed together, and changing MUSIC state
+// just ramps each layer's target gain (and tempo) toward a new preset.
+// Because it's a single engine, two tracks can never end up playing at once.
 
 import { getAudioContext, getMusicBus, noiseBuffer } from "./sound";
 
 const ROOT = 55; // A1 — a dark, low horror-synth key
-// The two-note cell the ostinato and drone are built from: the root and a
-// minor 2nd above it, the classic "wrong note" dissonance horror scores
-// lean on (think the Halloween theme's insistent half-step). TRITONE adds
-// the other genre-defining interval — the "devil's interval" — to the
-// sustained cluster underneath.
 const MINOR2 = 1;
 const TRITONE = 6;
 function noteFreq(semitone, octave = 0) {
@@ -34,9 +30,7 @@ function noteFreq(semitone, octave = 0) {
 // "Brown" (red) noise — a leaky integration of white noise — is heavily
 // weighted toward the low end and sounds like a soft, natural rumble/wind
 // rather than a hiss, unlike raw white noise which reads as radio/TV
-// static even after filtering. Used for the ambient wind bed only; the
-// short percussive ticks elsewhere still use sound.js's white noiseBuffer,
-// where a bit of hiss reads as a creak/click rather than a hum.
+// static even after filtering.
 function brownNoiseBuffer(c, seconds = 4) {
   const buf = c.createBuffer(1, c.sampleRate * seconds, c.sampleRate);
   const data = buf.getChannelData(0);
@@ -49,40 +43,51 @@ function brownNoiseBuffer(c, seconds = 4) {
   return buf;
 }
 
+// A short, decaying-noise impulse response for a simple algorithmic
+// reverb — gives every layer that routes through it some room/space
+// instead of the flat, dry, slightly cheap quality raw oscillators have
+// on their own. This is most of what separates "generated in a browser"
+// from "sounds like it belongs in a movie".
+function reverbImpulse(c, seconds = 2.2, decay = 3.2) {
+  const len = Math.floor(c.sampleRate * seconds);
+  const buf = c.createBuffer(2, len, c.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const data = buf.getChannelData(ch);
+    for (let i = 0; i < len; i++) {
+      data[i] = (Math.random() * 2 - 1) * (1 - i / len) ** decay;
+    }
+  }
+  return buf;
+}
+
 // Each state is a target mix (0..1 per layer) plus a target tempo (BPM-ish,
-// drives the beat scheduler) and a rare "sting" probability. "master" scales
-// the whole mix down for the "silence is scarier" hush state without
-// needing a separate code path.
-//
-// The home screen keeps a full, present score — that's the one place this
-// game plays like a title screen. The moment a match starts, the mix drops
-// back to something closer to Friday the 13th (2017)'s sound design: mostly
-// wind/ambience and a barely-there drone while nothing is happening, with
-// the actual "music" (the ostinato, the pulse) held in reserve and only
-// earned once the Killer is genuinely a threat. Calm should feel like held
-// breath, not a soundtrack.
+// drives the beat scheduler) and a rare "sting" probability. "master"
+// scales the whole mix down for the "silence is scarier" hush state.
+// "crickets" is inverted from everything else — present while it's safe,
+// gone the moment it isn't, since real crickets going quiet is itself a
+// horror-movie cue.
 const STATES = {
-  menu: { tempo: 116, drone: 0.42, cluster: 0.22, pulse: 0, heartbeat: 0, perc: 0.03, ostinato: 0.3, sting: 0, ambient: 0, master: 1 },
-  calm: { tempo: 88, drone: 0.12, cluster: 0.04, pulse: 0, heartbeat: 0, perc: 0.012, ostinato: 0, sting: 0.02, ambient: 0.14, master: 1 },
-  tension: { tempo: 100, drone: 0.2, cluster: 0.09, pulse: 0.05, heartbeat: 0, perc: 0.05, ostinato: 0.07, sting: 0.035, ambient: 0.16, master: 1 },
-  danger: { tempo: 120, drone: 0.34, cluster: 0.18, pulse: 0.22, heartbeat: 0.24, perc: 0.15, ostinato: 0.22, sting: 0.05, ambient: 0.11, master: 1 },
-  chase: { tempo: 168, drone: 0.34, cluster: 0.16, pulse: 0.42, heartbeat: 0.4, perc: 0.36, ostinato: 0.34, sting: 0.06, ambient: 0.05, master: 1 },
-  final: { tempo: 176, drone: 0.48, cluster: 0.3, pulse: 0.46, heartbeat: 0.44, perc: 0.4, ostinato: 0.36, sting: 0.07, ambient: 0.04, master: 1 },
+  menu: { tempo: 116, drone: 0.4, cluster: 0.2, pulse: 0, heartbeat: 0, perc: 0.03, ostinato: 0.28, sting: 0, ambient: 0, crickets: 0, master: 1 },
+  calm: { tempo: 80, drone: 0.05, cluster: 0, pulse: 0, heartbeat: 0, perc: 0, ostinato: 0, sting: 0.014, ambient: 0.16, crickets: 0.22, master: 1 },
+  tension: { tempo: 92, drone: 0.14, cluster: 0.05, pulse: 0, heartbeat: 0, perc: 0.02, ostinato: 0, sting: 0.03, ambient: 0.18, crickets: 0.1, master: 1 },
+  danger: { tempo: 112, drone: 0.3, cluster: 0.16, pulse: 0.2, heartbeat: 0.22, perc: 0.13, ostinato: 0.18, sting: 0.045, ambient: 0.1, crickets: 0, master: 1 },
+  chase: { tempo: 164, drone: 0.32, cluster: 0.15, pulse: 0.4, heartbeat: 0.38, perc: 0.34, ostinato: 0.32, sting: 0.055, ambient: 0.05, crickets: 0, master: 1 },
+  final: { tempo: 172, drone: 0.46, cluster: 0.28, pulse: 0.44, heartbeat: 0.42, perc: 0.38, ostinato: 0.34, sting: 0.065, ambient: 0.04, crickets: 0, master: 1 },
   // "The Killer is in the room and doesn't know you're here" — duck almost
-  // everything so a lone heartbeat carries the moment instead of a wall of
-  // synth, per the brief's "silence can also be scary".
-  hush: { tempo: 100, drone: 0.05, cluster: 0, pulse: 0, heartbeat: 0.5, perc: 0, ostinato: 0, sting: 0, ambient: 0.08, master: 0.4 },
+  // everything so a lone heartbeat carries the moment, crickets included:
+  // the world goes quiet because you're holding your breath.
+  hush: { tempo: 96, drone: 0.04, cluster: 0, pulse: 0, heartbeat: 0.5, perc: 0, ostinato: 0, sting: 0, ambient: 0.07, crickets: 0, master: 0.4 },
 };
 
 let built = false;
 let ctx = null;
 let bus = null;
 
-let droneGain, clusterGain, pulseGain, heartbeatGain, percGain, ostinatoGain, ambientGain, stingGain, stateMasterGain;
+let droneGain, clusterGain, pulseGain, heartbeatGain, percGain, ostinatoGain, ambientGain, cricketsGain, stingGain, stateMasterGain;
 let clusterFilter;
 let lfoOsc, lfoGain;
 let warbleOsc, warbleGain;
-let windFilter, windLfoOsc, windLfoGain;
+let reverbSend, reverbNode;
 
 let currentState = "menu";
 let currentTempo = STATES.menu.tempo;
@@ -91,6 +96,7 @@ let targetTempo = STATES.menu.tempo;
 let schedulerId = null;
 let nextBeatTime = 0;
 let beatCount = 0;
+let nextCricketTime = 0;
 
 const RAMP = 1.6; // seconds — normal crossfade between states
 const RAMP_FAST = 0.7; // seconds — used for sudden escalation (chase, hush)
@@ -113,11 +119,21 @@ function buildGraph() {
   stateMasterGain.gain.value = 1;
   stateMasterGain.connect(bus);
 
+  // A shared reverb send — most layers feed it a little, giving the whole
+  // mix some room/depth instead of sounding like dry oscillators typed
+  // directly into a browser.
+  reverbNode = ctx.createConvolver();
+  reverbNode.buffer = reverbImpulse(ctx);
+  const reverbReturn = ctx.createGain();
+  reverbReturn.gain.value = 0.55;
+  reverbNode.connect(reverbReturn).connect(stateMasterGain);
+  reverbSend = ctx.createGain();
+  reverbSend.gain.value = 1;
+  reverbSend.connect(reverbNode);
+
   // A slow, subtle pitch wobble fanned out to every sustained oscillator's
-  // detune below — an analog tape-warble wow-and-flutter, tying the score
-  // to the game's VHS identity and giving it that slightly-unstable
-  // 80s-synth-through-an-old-tape-deck quality instead of a clean, static
-  // digital drone.
+  // detune — an analog tape-warble wow-and-flutter tying the score to the
+  // game's VHS identity.
   warbleOsc = ctx.createOscillator();
   warbleOsc.type = "sine";
   warbleOsc.frequency.value = 0.18;
@@ -127,11 +143,11 @@ function buildGraph() {
   warbleOsc.start();
 
   // --- Drone: root and tritone, an octave down, heavily detuned against
-  // each other so they beat slowly and never quite settle — the sustained
-  // "something is wrong" tone under the whole score. ---
+  // each other so they beat slowly and never quite settle. ---
   droneGain = ctx.createGain();
   droneGain.gain.value = 0;
   droneGain.connect(stateMasterGain);
+  droneGain.connect(reverbSend);
   [
     { semi: 0, detune: -8 },
     { semi: 0, detune: 8 },
@@ -147,9 +163,7 @@ function buildGraph() {
   });
 
   // --- Cluster: root + minor 2nd + tritone through a filter with a very
-  // slow LFO sweep on the cutoff — a sustained dissonant chord instead of
-  // a pretty triad, the "cold synth pad" of a slasher score, not a fantasy
-  // adventure one. ---
+  // slow LFO sweep — a sustained dissonant chord, not a pretty triad. ---
   clusterGain = ctx.createGain();
   clusterGain.gain.value = 0;
   clusterFilter = ctx.createBiquadFilter();
@@ -158,6 +172,7 @@ function buildGraph() {
   clusterFilter.Q.value = 0.7;
   clusterFilter.connect(clusterGain);
   clusterGain.connect(stateMasterGain);
+  clusterGain.connect(reverbSend);
   [0, MINOR2, TRITONE].forEach((semi) => {
     const osc = ctx.createOscillator();
     osc.type = "sawtooth";
@@ -177,8 +192,7 @@ function buildGraph() {
   lfoOsc.start();
 
   // Rhythmic layers are silent continuous gain buses; the actual sound for
-  // each hit is a short-lived node created fresh in the scheduler below —
-  // these just let per-layer volume be ramped independently of the notes.
+  // each hit is a short-lived node created fresh in the scheduler below.
   pulseGain = ctx.createGain();
   pulseGain.gain.value = 0;
   pulseGain.connect(stateMasterGain);
@@ -190,35 +204,34 @@ function buildGraph() {
   percGain = ctx.createGain();
   percGain.gain.value = 0;
   percGain.connect(stateMasterGain);
+  percGain.connect(reverbSend);
 
   ostinatoGain = ctx.createGain();
   ostinatoGain.gain.value = 0;
   ostinatoGain.connect(stateMasterGain);
+  ostinatoGain.connect(reverbSend);
 
-  // Stings are a one-off event, not an ambient layer — always audible at a
-  // fixed level when they fire (gated only by how *often* they fire, via
-  // cfg.sting), rather than getting scaled down by the quiet percussion
-  // level Calm/Tension otherwise use. That's what makes them land as a
-  // genuine jolt during an otherwise near-silent stretch.
+  // Stings are a one-off event, always audible at a fixed level when they
+  // fire (gated only by how *often* they fire, via cfg.sting) rather than
+  // scaled down by the quiet percussion level Calm/Tension use — that's
+  // what makes them land as a genuine jolt during a near-silent stretch.
+  // Routed hard through reverb for a proper "orchestral hit" boom.
   stingGain = ctx.createGain();
   stingGain.gain.value = 1;
   stingGain.connect(stateMasterGain);
+  stingGain.connect(reverbSend);
 
   // --- Ambient: a continuous, slowly-shifting low rumble — wind through
-  // the trees, a low room tone — carrying most of the gameplay mix's
-  // "creepiness" while everything else stays near-silent. This is what
-  // keeps Calm from being dead air. Built from brown noise (a heavily
-  // low-end-weighted noise color, unlike raw white noise) run through two
-  // cascaded low-pass stages so nothing above a soft, muffled rumble gets
-  // through — a single mild filter on white noise reads as harsh radio/TV
-  // static, which is the opposite of what this layer is for. ---
+  // the trees — carrying most of Calm's atmosphere. Brown noise through
+  // two cascaded low-pass stages so nothing above a soft, muffled rumble
+  // gets through. ---
   ambientGain = ctx.createGain();
   ambientGain.gain.value = 0;
   ambientGain.connect(stateMasterGain);
   const wind = ctx.createBufferSource();
   wind.buffer = brownNoiseBuffer(ctx, 6);
   wind.loop = true;
-  windFilter = ctx.createBiquadFilter();
+  const windFilter = ctx.createBiquadFilter();
   windFilter.type = "lowpass";
   windFilter.frequency.value = 260;
   windFilter.Q.value = 0.3;
@@ -226,15 +239,24 @@ function buildGraph() {
   windFilter2.type = "lowpass";
   windFilter2.frequency.value = 340;
   windFilter2.Q.value = 0.3;
-  windLfoOsc = ctx.createOscillator();
+  const windLfoOsc = ctx.createOscillator();
   windLfoOsc.type = "sine";
   windLfoOsc.frequency.value = 0.05;
-  windLfoGain = ctx.createGain();
+  const windLfoGain = ctx.createGain();
   windLfoGain.gain.value = 110;
   windLfoOsc.connect(windLfoGain).connect(windFilter.frequency);
   windLfoOsc.start();
   wind.connect(windFilter).connect(windFilter2).connect(ambientGain);
   wind.start();
+
+  // --- Crickets: the single biggest "outdoor at night" identifier, and —
+  // critically — an instantly-readable horror cue when they suddenly
+  // aren't there anymore. Short high, narrow-band chirps, randomly timed,
+  // scheduled in the beat loop below rather than as a continuous layer. ---
+  cricketsGain = ctx.createGain();
+  cricketsGain.gain.value = 0;
+  cricketsGain.connect(stateMasterGain);
+  cricketsGain.connect(reverbSend);
 }
 
 // --- One-shot synthesized hits, scheduled precisely on the audio clock ---
@@ -277,10 +299,35 @@ function playPerc(time) {
   noise.stop(time + 0.12);
 }
 
+// A single cricket chirp — 2-3 quick pulses at a narrow high frequency.
+// Randomized pitch/spacing per chirp so a run of them never sounds like a
+// mechanical loop.
+function playCricket(time) {
+  const freq = 3800 + Math.random() * 1400;
+  const pulses = 2 + Math.floor(Math.random() * 2);
+  for (let i = 0; i < pulses; i++) {
+    const t = time + i * 0.045;
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.value = freq;
+    const bp = ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.value = freq;
+    bp.Q.value = 18;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.001, t);
+    g.gain.exponentialRampToValueAtTime(0.18, t + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+    osc.connect(bp).connect(g).connect(cricketsGain);
+    osc.start(t);
+    osc.stop(t + 0.04);
+  }
+}
+
 // The driving, relentless two-note figure — root and a minor 2nd above it,
-// alternating every beat — that carries the "stalker theme" identity. A
-// detuned square wave through a resonant low-pass gives it a harder, more
-// mechanical edge than a soft triangle arpeggio would.
+// alternating every beat. A detuned square wave through a resonant
+// low-pass gives it a harder, more mechanical edge than a soft triangle
+// arpeggio would.
 let ostinatoStep = 0;
 function playOstinatoNote(time) {
   const semi = ostinatoStep % 2 === 0 ? 0 : MINOR2;
@@ -361,6 +408,18 @@ function scheduler() {
     beatCount++;
     nextBeatTime += beatDur;
   }
+
+  // Crickets run on their own irregular clock, not the beat grid — real
+  // ones don't chirp in time. Only scheduled at all while cfg.crickets is
+  // meaningfully above zero, so they vanish immediately (not just fade)
+  // the moment a state with crickets: 0 takes over.
+  if (cfg.crickets > 0.03) {
+    if (nextCricketTime < ctx.currentTime) nextCricketTime = ctx.currentTime + 0.2;
+    while (nextCricketTime < ctx.currentTime + 0.5) {
+      if (Math.random() < cfg.crickets) playCricket(nextCricketTime);
+      nextCricketTime += 0.35 + Math.random() * 0.9;
+    }
+  }
 }
 
 /** Idempotent — safe to call from multiple mounts/effects. Builds the audio
@@ -398,6 +457,7 @@ export function setMusicState(state, { immediate = false, fast = false } = {}) {
   rampTo(percGain, cfg.perc, dur);
   rampTo(ostinatoGain, cfg.ostinato, dur);
   rampTo(ambientGain, cfg.ambient, dur);
+  rampTo(cricketsGain, cfg.crickets, dur);
   rampTo(stateMasterGain, cfg.master, dur);
   if (immediate) currentTempo = cfg.tempo;
 }
