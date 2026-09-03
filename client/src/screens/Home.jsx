@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { TEEN_CHARACTERS, KILLERS, STAT_LABELS } from "../data/characters";
 import { startAudioOnGesture, playHoverBlip, playSelectClick, isMuted, setMuted } from "../utils/sound";
 import heroImage from "../assets/hero-tv.jpg";
+import SoloSetup from "./SoloSetup";
+import HostGame from "./HostGame";
+import JoinGame from "./JoinGame";
 
 const TAGLINE_LINES = [
   "AN 80s HORROR ADVENTURE",
@@ -13,10 +15,10 @@ const TAGLINE_LINES = [
 
 export default function Home({ onCreate, onJoin, onSolo, onShowHelp, onShowTutorial, disabled }) {
   const [name, setName] = useState(localStorage.getItem("vhs_name") || "");
-  const [code, setCode] = useState("");
-  const [mode, setMode] = useState(null);
-  const [soloCharacter, setSoloCharacter] = useState(null);
-  const [soloKiller, setSoloKiller] = useState(null);
+  // "menu" is the title screen itself; "create"/"join"/"solo" are dedicated
+  // full-screen views navigated to from the menu — not an inline form that
+  // grows the title screen underneath the menu.
+  const [screen, setScreen] = useState("menu");
   const [cursor, setCursor] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
   const [muted, setMutedState] = useState(isMuted());
@@ -38,9 +40,9 @@ export default function Home({ onCreate, onJoin, onSolo, onShowHelp, onShowTutor
   }, []);
 
   const menuItems = [
-    { key: "create", label: "Host a Game", onSelect: () => setMode("create") },
-    { key: "join", label: "Join a Game", onSelect: () => setMode("join") },
-    { key: "solo", label: "Play Solo", onSelect: () => setMode("solo") },
+    { key: "create", label: "Host a Game", onSelect: () => setScreen("create") },
+    { key: "join", label: "Join a Game", onSelect: () => setScreen("join") },
+    { key: "solo", label: "Play Solo", onSelect: () => setScreen("solo") },
     { key: "tutorial", label: "Tutorial", onSelect: () => onShowTutorial() },
     { key: "help", label: "How to Play", onSelect: () => onShowHelp() },
     { key: "settings", label: "Settings", onSelect: () => setShowSettings(true) },
@@ -59,9 +61,9 @@ export default function Home({ onCreate, onJoin, onSolo, onShowHelp, onShowTutor
   }
 
   // Retro up/down + Enter navigation, only while the main menu itself is
-  // showing — once a mode is picked the form below owns normal Tab/Enter.
+  // showing — a dedicated setup screen owns normal Tab/Enter once open.
   useEffect(() => {
-    if (mode) return undefined;
+    if (screen !== "menu") return undefined;
     function onKeyDown(e) {
       if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -85,7 +87,7 @@ export default function Home({ onCreate, onJoin, onSolo, onShowHelp, onShowTutor
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, cursor]);
+  }, [screen, cursor]);
 
   function toggleMuted() {
     const next = !muted;
@@ -93,15 +95,16 @@ export default function Home({ onCreate, onJoin, onSolo, onShowHelp, onShowTutor
     setMutedState(next);
   }
 
-  function submit(e) {
-    e.preventDefault();
-    if (!name.trim()) return;
-    if (mode === "create") onCreate(name.trim());
-    else if (mode === "join") {
-      if (code.trim()) onJoin(name.trim(), code.trim());
-    } else if (mode === "solo") {
-      if (soloCharacter) onSolo(name.trim(), soloCharacter, soloKiller);
-    }
+  const backToMenu = () => setScreen("menu");
+
+  if (screen === "solo") {
+    return <SoloSetup name={name} setName={setName} onBack={backToMenu} onSolo={onSolo} disabled={disabled} />;
+  }
+  if (screen === "create") {
+    return <HostGame name={name} setName={setName} onBack={backToMenu} onCreate={onCreate} disabled={disabled} />;
+  }
+  if (screen === "join") {
+    return <JoinGame name={name} setName={setName} onBack={backToMenu} onJoin={onJoin} disabled={disabled} />;
   }
 
   return (
@@ -172,102 +175,8 @@ export default function Home({ onCreate, onJoin, onSolo, onShowHelp, onShowTutor
         </div>
       </div>
 
-      <div className={`tape-slot${mode ? " expanded" : ""}`}>
-        {!mode && <p className="tape-prompt">&#9664; Insert Tape &mdash; pick an option above &#9654;</p>}
-
-        {mode && (
-          <form onSubmit={submit} className={mode === "solo" ? "form-stack solo-form" : "form-stack"}>
-            <label>
-              Your Name
-              <input value={name} onChange={(e) => setName(e.target.value)} maxLength={20} placeholder="Ashley" required />
-            </label>
-
-            {mode === "join" && (
-              <label>
-                Room Code
-                <input
-                  value={code}
-                  onChange={(e) => setCode(e.target.value.toUpperCase())}
-                  maxLength={4}
-                  placeholder="XXXX"
-                  required
-                  className="code-input"
-                />
-              </label>
-            )}
-
-            {mode === "solo" && (
-              <>
-                <p className="solo-blurb">
-                  No other players needed — 3 AI teens join your side, and an AI plays the Slasher.
-                </p>
-
-                <span className="solo-label">Choose Your Teen</span>
-                <div className="pick-grid">
-                  {Object.values(TEEN_CHARACTERS).map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      className={`pick-card${soloCharacter === c.id ? " selected" : ""}`}
-                      onClick={() => setSoloCharacter(c.id)}
-                    >
-                      <span className="pick-icon">{c.icon}</span>
-                      <span className="pick-name">{c.name}</span>
-                      <span className="pick-tagline">{c.tagline}</span>
-                      <div className="stat-row">
-                        {STAT_LABELS.map((s) => (
-                          <span key={s.key} className="stat-chip-mini" title={s.label}>
-                            {s.icon} {c.stats[s.key]}
-                          </span>
-                        ))}
-                      </div>
-                      <span className="pick-ability">{c.ability}</span>
-                    </button>
-                  ))}
-                </div>
-
-                <span className="solo-label">Choose Your Opponent</span>
-                <div className="pick-grid">
-                  <button
-                    type="button"
-                    className={`pick-card killer${soloKiller === null ? " selected" : ""}`}
-                    onClick={() => setSoloKiller(null)}
-                  >
-                    <span className="pick-icon">🎲</span>
-                    <span className="pick-name">Surprise Me</span>
-                    <span className="pick-tagline">Randomly picks a killer for you.</span>
-                  </button>
-                  {Object.values(KILLERS).map((k) => (
-                    <button
-                      key={k.id}
-                      type="button"
-                      className={`pick-card killer${soloKiller === k.id ? " selected" : ""}`}
-                      onClick={() => setSoloKiller(k.id)}
-                    >
-                      <span className="pick-icon">{k.icon}</span>
-                      <span className="pick-name">{k.name}</span>
-                      <span className="pick-tagline">{k.tagline}</span>
-                      <span className="pick-ability">{k.ability}</span>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-
-            <div className="tape-form-actions">
-              <button type="button" className="btn btn-ghost" onClick={() => setMode(null)}>
-                &#9664; Back
-              </button>
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={disabled || (mode === "solo" && !soloCharacter)}
-              >
-                {mode === "create" ? "Create Room" : mode === "join" ? "Join Room" : "Start Solo Game"}
-              </button>
-            </div>
-          </form>
-        )}
+      <div className="tape-slot">
+        <p className="tape-prompt">&#9664; Insert Tape &mdash; pick an option above &#9654;</p>
       </div>
 
       {showSettings && (
