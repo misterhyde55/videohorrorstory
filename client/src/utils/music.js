@@ -31,6 +31,24 @@ function noteFreq(semitone, octave = 0) {
   return ROOT * 2 ** ((semitone + octave * 12) / 12);
 }
 
+// "Brown" (red) noise — a leaky integration of white noise — is heavily
+// weighted toward the low end and sounds like a soft, natural rumble/wind
+// rather than a hiss, unlike raw white noise which reads as radio/TV
+// static even after filtering. Used for the ambient wind bed only; the
+// short percussive ticks elsewhere still use sound.js's white noiseBuffer,
+// where a bit of hiss reads as a creak/click rather than a hum.
+function brownNoiseBuffer(c, seconds = 4) {
+  const buf = c.createBuffer(1, c.sampleRate * seconds, c.sampleRate);
+  const data = buf.getChannelData(0);
+  let last = 0;
+  for (let i = 0; i < data.length; i++) {
+    const white = Math.random() * 2 - 1;
+    last = (last + 0.02 * white) / 1.02;
+    data[i] = last * 3.2;
+  }
+  return buf;
+}
+
 // Each state is a target mix (0..1 per layer) plus a target tempo (BPM-ish,
 // drives the beat scheduler) and a rare "sting" probability. "master" scales
 // the whole mix down for the "silence is scarier" hush state without
@@ -45,15 +63,15 @@ function noteFreq(semitone, octave = 0) {
 // breath, not a soundtrack.
 const STATES = {
   menu: { tempo: 116, drone: 0.42, cluster: 0.22, pulse: 0, heartbeat: 0, perc: 0.03, ostinato: 0.3, sting: 0, ambient: 0, master: 1 },
-  calm: { tempo: 88, drone: 0.12, cluster: 0.04, pulse: 0, heartbeat: 0, perc: 0.012, ostinato: 0, sting: 0.02, ambient: 0.24, master: 1 },
-  tension: { tempo: 100, drone: 0.2, cluster: 0.09, pulse: 0.05, heartbeat: 0, perc: 0.05, ostinato: 0.07, sting: 0.035, ambient: 0.26, master: 1 },
-  danger: { tempo: 120, drone: 0.34, cluster: 0.18, pulse: 0.22, heartbeat: 0.24, perc: 0.15, ostinato: 0.22, sting: 0.05, ambient: 0.18, master: 1 },
-  chase: { tempo: 168, drone: 0.34, cluster: 0.16, pulse: 0.42, heartbeat: 0.4, perc: 0.36, ostinato: 0.34, sting: 0.06, ambient: 0.08, master: 1 },
-  final: { tempo: 176, drone: 0.48, cluster: 0.3, pulse: 0.46, heartbeat: 0.44, perc: 0.4, ostinato: 0.36, sting: 0.07, ambient: 0.06, master: 1 },
+  calm: { tempo: 88, drone: 0.12, cluster: 0.04, pulse: 0, heartbeat: 0, perc: 0.012, ostinato: 0, sting: 0.02, ambient: 0.14, master: 1 },
+  tension: { tempo: 100, drone: 0.2, cluster: 0.09, pulse: 0.05, heartbeat: 0, perc: 0.05, ostinato: 0.07, sting: 0.035, ambient: 0.16, master: 1 },
+  danger: { tempo: 120, drone: 0.34, cluster: 0.18, pulse: 0.22, heartbeat: 0.24, perc: 0.15, ostinato: 0.22, sting: 0.05, ambient: 0.11, master: 1 },
+  chase: { tempo: 168, drone: 0.34, cluster: 0.16, pulse: 0.42, heartbeat: 0.4, perc: 0.36, ostinato: 0.34, sting: 0.06, ambient: 0.05, master: 1 },
+  final: { tempo: 176, drone: 0.48, cluster: 0.3, pulse: 0.46, heartbeat: 0.44, perc: 0.4, ostinato: 0.36, sting: 0.07, ambient: 0.04, master: 1 },
   // "The Killer is in the room and doesn't know you're here" — duck almost
   // everything so a lone heartbeat carries the moment instead of a wall of
   // synth, per the brief's "silence can also be scary".
-  hush: { tempo: 100, drone: 0.05, cluster: 0, pulse: 0, heartbeat: 0.5, perc: 0, ostinato: 0, sting: 0, ambient: 0.14, master: 0.4 },
+  hush: { tempo: 100, drone: 0.05, cluster: 0, pulse: 0, heartbeat: 0.5, perc: 0, ostinato: 0, sting: 0, ambient: 0.08, master: 0.4 },
 };
 
 let built = false;
@@ -186,28 +204,36 @@ function buildGraph() {
   stingGain.gain.value = 1;
   stingGain.connect(stateMasterGain);
 
-  // --- Ambient: a continuous, slowly-shifting filtered-noise bed — wind
-  // through the trees, a low room tone — carrying most of the gameplay
-  // mix's "creepiness" while everything else stays near-silent. This is
-  // what keeps Calm from being dead air. ---
+  // --- Ambient: a continuous, slowly-shifting low rumble — wind through
+  // the trees, a low room tone — carrying most of the gameplay mix's
+  // "creepiness" while everything else stays near-silent. This is what
+  // keeps Calm from being dead air. Built from brown noise (a heavily
+  // low-end-weighted noise color, unlike raw white noise) run through two
+  // cascaded low-pass stages so nothing above a soft, muffled rumble gets
+  // through — a single mild filter on white noise reads as harsh radio/TV
+  // static, which is the opposite of what this layer is for. ---
   ambientGain = ctx.createGain();
   ambientGain.gain.value = 0;
   ambientGain.connect(stateMasterGain);
   const wind = ctx.createBufferSource();
-  wind.buffer = noiseBuffer(ctx, 4);
+  wind.buffer = brownNoiseBuffer(ctx, 6);
   wind.loop = true;
   windFilter = ctx.createBiquadFilter();
-  windFilter.type = "bandpass";
-  windFilter.frequency.value = 480;
-  windFilter.Q.value = 0.5;
+  windFilter.type = "lowpass";
+  windFilter.frequency.value = 260;
+  windFilter.Q.value = 0.3;
+  const windFilter2 = ctx.createBiquadFilter();
+  windFilter2.type = "lowpass";
+  windFilter2.frequency.value = 340;
+  windFilter2.Q.value = 0.3;
   windLfoOsc = ctx.createOscillator();
   windLfoOsc.type = "sine";
-  windLfoOsc.frequency.value = 0.06;
+  windLfoOsc.frequency.value = 0.05;
   windLfoGain = ctx.createGain();
-  windLfoGain.gain.value = 220;
+  windLfoGain.gain.value = 110;
   windLfoOsc.connect(windLfoGain).connect(windFilter.frequency);
   windLfoOsc.start();
-  wind.connect(windFilter).connect(ambientGain);
+  wind.connect(windFilter).connect(windFilter2).connect(ambientGain);
   wind.start();
 }
 
