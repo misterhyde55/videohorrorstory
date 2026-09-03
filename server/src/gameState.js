@@ -83,6 +83,30 @@ const REGROUP_GAIN = 8; // Regroup (ritual site) — per teen present, once per 
 const REGROUP_SANITY_LIMIT = 24; // per player, per game — its own pool, separate from Comfort/Item/Objective
 const INVESTIGATE_RISK_CHANCE = 30; // percent — high/very-high danger wonderland spots only
 
+// ---- Killer Framework (Phase 3) ----
+// Every killer gets a genuinely different vulnerability, uncovered through
+// play rather than told upfront: once the team has turned up enough real
+// evidence on it (Access Evidence / Investigate, both from Phase 2 — see
+// maybeExposeKillerWeakness), that killer's signature edge gets blunted for
+// the rest of the match. Both effects are read through killerStalkBonus()/
+// killerStrikeDamage() rather than baked into the fixed KILLERS table, so
+// the exposure is a real, permanent world change instead of a numeric buff.
+const KILLER_WEAKNESS_THRESHOLD = 3; // evidence entries found, room-wide
+const KILLER_WEAKNESS = {
+  stalker: {
+    revealText: "Every kill has a rhythm, and now you know it — the Stalker doesn't hit as hard for hunting you down anymore.",
+    apply(room) {
+      room.stalkBonusOverride = 6; // down from KILLERS.stalker.stalkBonus (18)
+    },
+  },
+  thing: {
+    revealText: "You finally understand what it really is — its ambush doesn't land with the same devastating weight anymore.",
+    apply(room) {
+      room.thingHeavyDamageDisabled = true; // its attacks stop dealing bonus damage
+    },
+  },
+};
+
 const KILLER_SECRET_OBJECTIVES = [
   {
     id: "bloodbath",
@@ -240,6 +264,9 @@ export function createRoom(code, hostId) {
     horrorEventsFired: [], // {id, name, round} — history for this match
     lastHorrorEventRound: 0,
     recentHorrorEvent: null, // {id, name, summary, round} — most recent, for the shared banner
+    killerCluesFound: 0, // evidence entries found (Access Evidence / Investigate) — see KILLER_WEAKNESS
+    killerWeaknessExposed: false,
+    recentWeaknessReveal: null, // {text, round} — most recent, for the shared banner
   };
 }
 
@@ -473,6 +500,11 @@ export function startGame(room, { durationMs } = {}) {
   room.sightings = [];
   room.sightingCounter = 0;
   room.arcadeUsesRemaining = ARCADE_USES_PER_ROOM;
+  room.killerCluesFound = 0;
+  room.killerWeaknessExposed = false;
+  room.recentWeaknessReveal = null;
+  room.stalkBonusOverride = null;
+  room.thingHeavyDamageDisabled = false;
   room.killerSecretObjective = KILLER_SECRET_OBJECTIVES[Math.floor(Math.random() * KILLER_SECRET_OBJECTIVES.length)];
   room.killCount = 0;
   room.carEverRepaired = false;
@@ -499,6 +531,36 @@ function slasherOf(room) {
 
 function killerInfo(room) {
   return KILLERS[room.killerId] ?? KILLERS.stalker;
+}
+
+// Reads the killer's stalking bonus / bonus-damage through the Phase 3
+// weakness system — see KILLER_WEAKNESS — instead of the fixed KILLERS
+// table directly, so exposing a killer's weakness is a real, permanent
+// change rather than a one-off penalty applied at the call site.
+function killerStalkBonus(room, killer) {
+  return room.stalkBonusOverride ?? killer.stalkBonus;
+}
+
+function killerStrikeDamage(room, killer) {
+  if (killer.id === "thing" && !room.thingHeavyDamageDisabled) return 2;
+  return 1;
+}
+
+// Access Evidence / Investigate (Phase 2) are the team's way of actually
+// learning something real about the Killer — once enough of that evidence
+// has piled up, its signature edge gets permanently blunted. A one-way,
+// room-wide trigger: it fires once, the moment the threshold is crossed,
+// no matter which teen found the evidence that tipped it over.
+function maybeExposeKillerWeakness(room) {
+  room.killerCluesFound = (room.killerCluesFound || 0) + 1;
+  if (room.killerWeaknessExposed) return;
+  if (room.killerCluesFound < KILLER_WEAKNESS_THRESHOLD) return;
+  const weakness = KILLER_WEAKNESS[room.killerId];
+  if (!weakness) return;
+  room.killerWeaknessExposed = true;
+  weakness.apply(room);
+  log(room, weakness.revealText, "all");
+  room.recentWeaknessReveal = { text: weakness.revealText, round: room.round };
 }
 
 function neighborsOf(room, locationId) {
@@ -1030,6 +1092,7 @@ const LOCATION_INTERACTIONS = {
       loc.discoveredInformation = loc.discoveredInformation || [];
       loc.discoveredInformation.push({ type: "evidence", text });
       log(room, `${player.characterName} breaks into the evidence locker: "${text}"`, "teens");
+      maybeExposeKillerWeakness(room);
       return { ok: true, interactionResult: { type: "evidence", text } };
     },
   },
@@ -1157,6 +1220,7 @@ function makeInvestigateInteraction(type) {
       loc.discoveredInformation = loc.discoveredInformation || [];
       loc.discoveredInformation.push({ type: "evidence", text });
       log(room, `${player.characterName} investigates ${loc.name}: "${text}"`, "teens");
+      maybeExposeKillerWeakness(room);
       let spooked = false;
       if ((loc.dangerLevel === "high" || loc.dangerLevel === "very-high") && roll(INVESTIGATE_RISK_CHANCE)) {
         loseSanity(room, player, SANITY_LOSS_CURSED_LOCATION);
@@ -1696,7 +1760,7 @@ export function resolveSearch(room, teenId, heldBreath) {
     log(room, `${player.characterName} is found — but shrugs off the scare and holds their ground.`);
   } else {
     log(room, `${player.characterName} is found and caught!`);
-    applyWound(room, player, killer.id === "thing" ? 2 : 1);
+    applyWound(room, player, killerStrikeDamage(room, killer));
     checkWin(room);
   }
   return { found: true };
@@ -1750,9 +1814,9 @@ function slasherAction(room, player, action) {
         return { ok: true, searchStarted: { teenId: target.id, endsAt: target.searchEndsAt } };
       }
 
-      const chance = killer.attackBase + player.stalkStreak * killer.stalkBonus + killerDifficultyModifier(room);
+      const chance = killer.attackBase + player.stalkStreak * killerStalkBonus(room, killer) + killerDifficultyModifier(room);
       if (roll(chance)) {
-        const dmg = killer.id === "thing" ? 2 : 1;
+        const dmg = killerStrikeDamage(room, killer);
         log(room, killer.id === "thing"
           ? `Something wrong unfolds where ${target.characterName} was standing!`
           : `The Slasher strikes ${target.characterName}!`);
@@ -1962,6 +2026,11 @@ export function publicState(room, forPlayerId) {
     activeHorrorEventLocations: [...room.horrorEvents.keys()],
     recentHorrorEvent:
       room.recentHorrorEvent && room.round - room.recentHorrorEvent.round <= 1 ? room.recentHorrorEvent : null,
+    killerCluesFound: !isSlasher ? room.killerCluesFound || 0 : null,
+    killerCluesNeeded: !isSlasher ? KILLER_WEAKNESS_THRESHOLD : null,
+    killerWeaknessExposed: room.killerWeaknessExposed,
+    recentWeaknessReveal:
+      room.recentWeaknessReveal && room.round - room.recentWeaknessReveal.round <= 1 ? room.recentWeaknessReveal : null,
     killerSecretObjective: isSlasher
       ? room.killerSecretObjective
       : secretObjectiveRevealed

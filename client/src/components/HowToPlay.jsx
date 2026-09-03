@@ -229,6 +229,19 @@ export default function HowToPlay({ onClose }) {
           </section>
 
           <section>
+            <h3>Learning Its Weakness</h3>
+            <p>
+              Every Killer has a real, permanent vulnerability the team can
+              uncover through play — not a stat line handed out at the
+              start. Access Evidence at the Police Station and Investigate
+              at the wonderland map's riskier landmarks both turn up real
+              evidence on it; once the team has found enough, its signature
+              edge is blunted for the rest of the match. Different Killers
+              lose different things when exposed.
+            </p>
+          </section>
+
+          <section>
             <h3>Choose Your Killer</h3>
             <div className="help-grid">
               {Object.values(KILLERS).map((k) => (

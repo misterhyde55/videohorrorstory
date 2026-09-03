@@ -193,6 +193,14 @@ export default function GameScreen({ state, playerId, onLeave }) {
           <div className="stat-chip">Room {state.code}</div>
           {state.clockPhase === "final" && <div className="stat-chip final-act-chip">⚠ FINAL ACT</div>}
           {state.monsterStunned && <div className="stat-chip stunned-chip">Monster Stunned!</div>}
+          {me?.role === "teen" && !state.killerWeaknessExposed && state.killerCluesFound > 0 && (
+            <div className="stat-chip" title="Evidence gathered on the Killer (Access Evidence / Investigate)">
+              🔎 {state.killerCluesFound}/{state.killerCluesNeeded}
+            </div>
+          )}
+          {state.killerWeaknessExposed && (
+            <div className="stat-chip stunned-chip" title="The team learned enough to blunt its edge for good.">Weakness Exposed</div>
+          )}
           <button className="btn btn-ghost" onClick={onLeave} type="button">Leave</button>
         </div>
 
@@ -204,6 +212,10 @@ export default function GameScreen({ state, playerId, onLeave }) {
 
         {state.recentHorrorEvent && (
           <div className="banner banner-horror-event">👻 {state.recentHorrorEvent.summary}</div>
+        )}
+
+        {state.recentWeaknessReveal && (
+          <div className="banner banner-horror-event">🔎 {state.recentWeaknessReveal.text}</div>
         )}
 
         {error && <div className="banner banner-error" onAnimationEnd={() => setError("")}>{error}</div>}
