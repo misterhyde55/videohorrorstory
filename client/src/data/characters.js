@@ -41,7 +41,7 @@ export const TEEN_CHARACTERS = {
       id: "tinker",
       name: "Tinker",
       apCost: 1,
-      description: "Once per turn: spend 1 Action to make your very next Search this turn cost 0 Actions.",
+      description: "Once per turn: spend 1 Action to make your very next Interact this turn cost 0 Actions.",
     },
   },
   rebel: {

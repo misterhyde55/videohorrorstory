@@ -44,9 +44,18 @@ export default function HowToPlay({ onClose }) {
             <ul>
               <li><strong>The Leader — Let's Go</strong>: give a teammate at your location 1 bonus Action on their next turn.</li>
               <li><strong>The Athlete — Sprint</strong>: move up to 2 spaces at once. Loud — the Killer will hear it.</li>
-              <li><strong>The Nerd — Tinker</strong>: your very next Search this turn costs 0 Actions.</li>
+              <li><strong>The Nerd — Tinker</strong>: your very next Interact this turn costs 0 Actions.</li>
               <li><strong>The Rebel — Bait</strong>: deliberately make LOUD Noise right where you're standing, pulling the Killer toward you.</li>
             </ul>
+            <p>
+              Some landmarks have their own Interact option beyond Search —
+              grab coffee at the Diner, dig through the evidence locker at
+              the Police Station, climb the Water Tower to Scout the
+              Killer's exact spot, scavenge a General Store or Gas Station
+              for a category of supplies, Regroup with teammates at the
+              ritual site, or hop on a cabinet at the Arcade — each with its
+              own limited uses per game or per match.
+            </p>
           </section>
 
           <section>

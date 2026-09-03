@@ -99,7 +99,11 @@ function TeenActions({ state, me, loc, onError, onSearchResult, onItemUseResult 
         <div className="sense-banner">You sense something is close, in {state.board[state.slasherNearby].name}...</div>
       )}
       {sightings.map((s) => (
-        <div key={s.id} className="sense-banner">⚡ Lightning flash — you catch a glimpse of it at {s.locationName}!</div>
+        <div key={s.id} className="sense-banner">
+          {s.source === "scout"
+            ? `You climb up for a look around — it's at ${s.locationName}.`
+            : `⚡ Lightning flash — you catch a glimpse of it at ${s.locationName}!`}
+        </div>
       ))}
       {hazardHere && (
         <div className="sense-banner panicked">Something's deeply wrong here — you can't settle down enough to comfort anyone.</div>
@@ -122,6 +126,8 @@ function TeenActions({ state, me, loc, onError, onSearchResult, onItemUseResult 
       </ActionGroup>
 
       <SpecialAbilityGroup state={state} me={me} loc={loc} character={character} teammatesHere={teammatesHere} onError={onError} />
+
+      <InteractGroup me={me} onError={onError} />
 
       {leftItemsHere.length > 0 && (
         <ActionGroup title="Left Here">
@@ -423,6 +429,65 @@ function SpecialAbilityGroup({ state, me, loc, character, teammatesHere, onError
         onClick={() => act({ type: "special" }, onError)}
       >
         {ability.name}
+      </button>
+    </ActionGroup>
+  );
+}
+
+const SCAVENGE_CATEGORIES = ["Healing", "Utility", "Weapon", "Sanity", "Objective"];
+
+// The location's own Interact option — Grab Coffee, Access Evidence,
+// Scout, Scavenge Supplies, Regroup, Power Up, or Investigate, depending
+// on where you're standing. me.locationInteraction comes straight from the
+// server (computeLocationInteraction), so this just renders whatever it's
+// told rather than re-deriving any of the availability logic itself.
+function InteractGroup({ me, onError }) {
+  const [category, setCategory] = useState("");
+  const interaction = me.locationInteraction;
+  if (!interaction) return null;
+  const disabled = !interaction.available;
+  const freeTag = interaction.apCost === 0 ? " — Free!" : "";
+
+  if (interaction.requiresCategory) {
+    return (
+      <ActionGroup title={`${interaction.label}${freeTag}${disabled ? ` (${interaction.reason})` : ""}`}>
+        <select
+          className="compact-select"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          disabled={disabled}
+        >
+          <option value="">Category…</option>
+          {SCAVENGE_CATEGORIES.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          disabled={disabled || !category}
+          title={interaction.description}
+          onClick={() => {
+            act({ type: "interact", category }, onError);
+            setCategory("");
+          }}
+        >
+          {interaction.label}
+        </button>
+      </ActionGroup>
+    );
+  }
+
+  return (
+    <ActionGroup title={`${interaction.label}${freeTag}`}>
+      <button
+        type="button"
+        className="btn btn-secondary"
+        disabled={disabled}
+        title={disabled ? interaction.reason : interaction.description}
+        onClick={() => act({ type: "interact" }, onError)}
+      >
+        {interaction.label}{interaction.usesLeft != null ? ` (${interaction.usesLeft} left)` : ""}
       </button>
     </ActionGroup>
   );

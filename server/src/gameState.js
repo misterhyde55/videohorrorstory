@@ -1,5 +1,5 @@
 import { generateBoard } from "./board.js";
-import { drawFromPool, randomEvent, randomHallucination, drawTraumaCard, pickSearchOutcome, drawClue, drawLore, ITEMS } from "./cards.js";
+import { drawFromPool, randomEvent, randomHallucination, drawTraumaCard, pickSearchOutcome, drawClue, drawLore, drawEvidence, ITEMS } from "./cards.js";
 import { TEEN_CHARACTERS, KILLERS, SPECIAL_COOLDOWN } from "./characters.js";
 
 const MAX_TEENS = 4;
@@ -71,6 +71,17 @@ const SANITY_GAIN_OBJECTIVE_PROGRESS = 5; // repairing the car
 // permanent tracker.
 const NOISE_ALERT_LIFETIME = { noisy: 2, loud: 3 }; // rounds
 const MAX_NOISE_ALERTS = 6;
+
+// ---- Location Interactions (Phase 2) ----
+// Each general-location type gets one bespoke Interact option beyond
+// generic Search — see LOCATION_INTERACTIONS below for the full table.
+const COFFEE_SANITY_GAIN = 8; // Grab Coffee (Diner) — once per player per game
+const SCOUT_USES_PER_GAME = 2; // Scout (Water Tower) — per player per game
+const ARCADE_USES_PER_ROOM = 2; // Power Up (Arcade) — shared across the whole match
+const POWER_UP_SPEED_BONUS = 1; // temporary Movement, same shape as Monster Energy's
+const REGROUP_GAIN = 8; // Regroup (ritual site) — per teen present, once per round
+const REGROUP_SANITY_LIMIT = 24; // per player, per game — its own pool, separate from Comfort/Item/Objective
+const INVESTIGATE_RISK_CHANCE = 30; // percent — high/very-high danger wonderland spots only
 
 const KILLER_SECRET_OBJECTIVES = [
   {
@@ -171,6 +182,7 @@ const HORROR_EVENTS = [
         locationName: locName,
         round: room.round,
         expiresRound: room.round,
+        source: "lightning",
       });
       log(room, `Lightning cracks overhead — for one instant, you see exactly where it is: ${locName}.`, "teens");
       return "Lightning cracks overhead.";
@@ -271,7 +283,13 @@ export function addPlayer(room, id, name, roleOverride) {
     bonusActionsNextTurn: 0, // banked by a teammate's Let's Go, spent at the start of this player's next turn
     abilityUsedTurn: false, // Sprint / Tinker / Bait — once per turn
     abilityUsedRound: null, // Let's Go — once per round (compared against room.round)
-    freeSearchAvailable: false, // Tinker: next Search this turn costs 0 Actions
+    freeInteractAvailable: false, // Tinker: next Interact this turn costs 0 Actions
+    coffeeUsed: false, // Grab Coffee (Diner) — once per game
+    evidenceUsed: false, // Access Evidence (Police Station) — once per game
+    scoutUses: 0, // Scout (Water Tower) — capped at SCOUT_USES_PER_GAME
+    scavengeCategory: null, // Scavenge Supplies (Store/Gas Station) — biases the very next Search
+    regroupGainTotal: 0, // Regroup (ritual site) — lifetime cap, its own pool
+    regroupReceivedRound: null, // Regroup — once per round
   });
 }
 
@@ -421,7 +439,13 @@ export function startGame(room, { durationMs } = {}) {
     p.bonusActionsNextTurn = 0;
     p.abilityUsedTurn = false;
     p.abilityUsedRound = null;
-    p.freeSearchAvailable = false;
+    p.freeInteractAvailable = false;
+    p.coffeeUsed = false;
+    p.evidenceUsed = false;
+    p.scoutUses = 0;
+    p.scavengeCategory = null;
+    p.regroupGainTotal = 0;
+    p.regroupReceivedRound = null;
   });
   slasher.location = generated.startLocations.slasher;
   slasher.stalkStreak = 0;
@@ -448,6 +472,7 @@ export function startGame(room, { durationMs } = {}) {
   room.noiseSuppressedUntilRound = 0;
   room.sightings = [];
   room.sightingCounter = 0;
+  room.arcadeUsesRemaining = ARCADE_USES_PER_ROOM;
   room.killerSecretObjective = KILLER_SECRET_OBJECTIVES[Math.floor(Math.random() * KILLER_SECRET_OBJECTIVES.length)];
   room.killCount = 0;
   room.carEverRepaired = false;
@@ -757,7 +782,7 @@ function advanceTurn(room) {
     next.actionsRemaining = TEEN_ACTIONS_PER_TURN + (next.bonusActionsNextTurn || 0);
     next.bonusActionsNextTurn = 0;
     next.abilityUsedTurn = false;
-    next.freeSearchAvailable = false;
+    next.freeInteractAvailable = false;
   }
 }
 
@@ -931,8 +956,8 @@ const TEEN_ABILITIES = {
     resolve(room, player) {
       if (player.abilityUsedTurn) return { error: "Already tinkered this turn." };
       player.abilityUsedTurn = true;
-      player.freeSearchAvailable = true;
-      log(room, `${player.characterName} preps their gear for a faster search.`, "teens");
+      player.freeInteractAvailable = true;
+      log(room, `${player.characterName} preps their gear for whatever's next.`, "teens");
       return { ok: true };
     },
   },
@@ -961,6 +986,219 @@ const TEEN_ABILITIES = {
     },
   },
 };
+
+// Location Interactions (Phase 2) — most general locations get one bespoke
+// option beyond generic Search, keyed by the location's own `type` so it
+// works the moment the board generator picks it, on either map theme. Both
+// themes' ritual sites (campfire / castle) share the `ritualSite` flag
+// instead of a common `type` string, so Regroup is routed by that flag in
+// locationInteractionFor() rather than by type. Every entry exposes an
+// `availability` check reused by computeLocationInteraction() below for
+// both display (publicState) and validation (the "interact" case), so the
+// two can never drift out of sync with each other.
+const LOCATION_INTERACTIONS = {
+  diner: {
+    id: "grab_coffee",
+    label: "Grab Coffee",
+    description: `A jolt of caffeine to steady your nerves. Once per game (+${COFFEE_SANITY_GAIN} Sanity).`,
+    apCost: 1,
+    availability(room, player) {
+      if (player.coffeeUsed) return { available: false, reason: "Already had your coffee tonight." };
+      return { available: true };
+    },
+    resolve(room, player) {
+      player.coffeeUsed = true;
+      const before = player.sanity;
+      gainSanity(room, player, COFFEE_SANITY_GAIN);
+      log(room, `${player.characterName} grabs the cold coffee off the counter — it still helps.`, "teens");
+      return { ok: true, sanityActionTaken: player.sanity !== before };
+    },
+  },
+  police: {
+    id: "access_evidence",
+    label: "Access Evidence",
+    description: "Dig through the evidence locker for something on the Killer. Once per game.",
+    apCost: 1,
+    availability(room, player) {
+      if (player.evidenceUsed) return { available: false, reason: "You've already been through the evidence locker." };
+      return { available: true };
+    },
+    resolve(room, player) {
+      player.evidenceUsed = true;
+      const loc = room.board[player.location];
+      const text = drawEvidence(killerInfo(room));
+      loc.discoveredInformation = loc.discoveredInformation || [];
+      loc.discoveredInformation.push({ type: "evidence", text });
+      log(room, `${player.characterName} breaks into the evidence locker: "${text}"`, "teens");
+      return { ok: true, interactionResult: { type: "evidence", text } };
+    },
+  },
+  tower: {
+    id: "scout",
+    label: "Scout",
+    description: `Climb up for a look around — reveals exactly where the Killer is right now. ${SCOUT_USES_PER_GAME} uses per game.`,
+    apCost: 1,
+    availability(room, player) {
+      const used = player.scoutUses || 0;
+      if (used >= SCOUT_USES_PER_GAME) return { available: false, reason: "You're out of vantage points for tonight.", usesLeft: 0 };
+      return { available: true, usesLeft: SCOUT_USES_PER_GAME - used };
+    },
+    resolve(room, player) {
+      player.scoutUses = (player.scoutUses || 0) + 1;
+      const slasher = slasherOf(room);
+      const locName = slasher ? room.board[slasher.location]?.name || "somewhere" : "somewhere";
+      if (slasher) {
+        room.sightings.push({
+          id: `sighting-${++room.sightingCounter}`,
+          locationId: slasher.location,
+          locationName: locName,
+          round: room.round,
+          expiresRound: room.round,
+          source: "scout",
+        });
+      }
+      log(room, `${player.characterName} climbs up for a look around — it's at ${locName}.`, "teens");
+      return { ok: true };
+    },
+  },
+  store: {
+    id: "scavenge",
+    label: "Scavenge Supplies",
+    description: "Rummage with a category in mind — your very next Search this turn leans toward it.",
+    apCost: 1,
+    requiresCategory: true,
+    availability() {
+      return { available: true };
+    },
+    resolve(room, player, action) {
+      const category = action?.category;
+      const valid = ["Healing", "Utility", "Weapon", "Sanity", "Objective"];
+      if (!valid.includes(category)) return { error: "Choose a category to scavenge for first." };
+      player.scavengeCategory = category;
+      log(room, `${player.characterName} starts scavenging with ${category} in mind.`, "teens");
+      return { ok: true };
+    },
+  },
+  campfire: {
+    id: "regroup",
+    label: "Regroup",
+    description: `Rally with your teammates here for +${REGROUP_GAIN} Sanity each, once per round.`,
+    apCost: 1,
+    availability(room, player) {
+      const teensHere = aliveTeens(room).filter((t) => t.location === player.location);
+      if (teensHere.length < 2) return { available: false, reason: "Nobody else is here to regroup with." };
+      if (player.regroupReceivedRound === room.round) return { available: false, reason: "Already regrouped this round." };
+      if (player.regroupGainTotal >= REGROUP_SANITY_LIMIT) return { available: false, reason: "Regrouping doesn't help you anymore." };
+      return { available: true };
+    },
+    resolve(room, player) {
+      const teensHere = aliveTeens(room).filter((t) => t.location === player.location);
+      let anyGain = false;
+      teensHere.forEach((t) => {
+        if (t.regroupReceivedRound === room.round) return;
+        const remaining = REGROUP_SANITY_LIMIT - t.regroupGainTotal;
+        if (remaining <= 0) return;
+        const grant = Math.min(REGROUP_GAIN, remaining);
+        t.regroupGainTotal += grant;
+        t.regroupReceivedRound = room.round;
+        if (gainSanity(room, t, grant) > 0) anyGain = true;
+      });
+      log(room, `${player.characterName} pulls the group together for a moment.`, "teens");
+      return { ok: true, sanityActionTaken: anyGain };
+    },
+  },
+  arcade: {
+    id: "power_up",
+    label: "Power Up",
+    description: `Hop on a cabinet for a burst of adrenaline (+${POWER_UP_SPEED_BONUS} Movement this turn). Shared — ${ARCADE_USES_PER_ROOM} uses per match.`,
+    apCost: 1,
+    availability(room) {
+      const left = room.arcadeUsesRemaining ?? 0;
+      if (left <= 0) return { available: false, reason: "The cabinets are all dead now.", usesLeft: 0 };
+      return { available: true, usesLeft: left };
+    },
+    resolve(room, player) {
+      room.arcadeUsesRemaining = Math.max(0, (room.arcadeUsesRemaining ?? 0) - 1);
+      player.tempSpeedBonus = (player.tempSpeedBonus || 0) + POWER_UP_SPEED_BONUS;
+      log(room, `${player.characterName} lights up an old cabinet — one last burst of adrenaline.`, "teens");
+      return { ok: true };
+    },
+  },
+};
+
+// The wonderland map's higher-risk landmarks share one Investigate resolver
+// — same mechanic, per-type flavor text — instead of several hand-written
+// near-duplicates. High/very-high danger spots have a real (not
+// guaranteed) chance of costing a little Sanity: not every dig into the
+// park's history comes back clean.
+const INVESTIGATE_LABELS = {
+  carnival: "Investigate the Midway",
+  coaster: "Investigate the Coaster",
+  mountain: "Investigate the Mountain",
+  pirate: "Investigate the Cove",
+  boats: "Investigate the Boats",
+  swamp: "Investigate the Swamp",
+  funhouse: "Investigate the Funhouse",
+};
+
+function makeInvestigateInteraction(type) {
+  return {
+    id: "investigate",
+    label: INVESTIGATE_LABELS[type] || "Investigate",
+    description: "Dig into this spot's history for something on the Killer — might turn up nothing good.",
+    apCost: 1,
+    availability() {
+      return { available: true };
+    },
+    resolve(room, player) {
+      const loc = room.board[player.location];
+      loc.investigateCount = (loc.investigateCount || 0) + 1;
+      const text = drawEvidence(killerInfo(room));
+      loc.discoveredInformation = loc.discoveredInformation || [];
+      loc.discoveredInformation.push({ type: "evidence", text });
+      log(room, `${player.characterName} investigates ${loc.name}: "${text}"`, "teens");
+      let spooked = false;
+      if ((loc.dangerLevel === "high" || loc.dangerLevel === "very-high") && roll(INVESTIGATE_RISK_CHANCE)) {
+        loseSanity(room, player, SANITY_LOSS_CURSED_LOCATION);
+        spooked = true;
+      }
+      return { ok: true, interactionResult: { type: "evidence", text, spooked } };
+    },
+  };
+}
+Object.keys(INVESTIGATE_LABELS).forEach((type) => {
+  LOCATION_INTERACTIONS[type] = makeInvestigateInteraction(type);
+});
+// The Gas Station shares the General Store's Scavenge Supplies option.
+LOCATION_INTERACTIONS.lot = LOCATION_INTERACTIONS.store;
+
+// Both themes' ritual sites (campfire / castle) share the ritualSite flag
+// rather than a common `type` string, so that flag routes to Regroup
+// before falling back to a type lookup for everything else.
+function locationInteractionFor(room, loc) {
+  if (!loc) return null;
+  if (loc.ritualSite) return LOCATION_INTERACTIONS.campfire;
+  return LOCATION_INTERACTIONS[loc.type] || null;
+}
+
+// Shared by publicState() (what a teen is shown) and the "interact" action
+// handler (what the server actually allows), so the two can never drift.
+function computeLocationInteraction(room, player) {
+  const loc = room.board[player.location];
+  const interaction = locationInteractionFor(room, loc);
+  if (!interaction) return null;
+  const avail = interaction.availability(room, player);
+  return {
+    id: interaction.id,
+    label: interaction.label,
+    description: interaction.description,
+    apCost: player.freeInteractAvailable ? 0 : interaction.apCost,
+    requiresCategory: !!interaction.requiresCategory,
+    available: !!avail.available,
+    reason: avail.reason || null,
+    usesLeft: avail.usesLeft ?? null,
+  };
+}
 
 // Teens spend Action Points (see TEEN_ACTIONS_PER_TURN / applyAction) across
 // however many of these calls they like before their turn actually ends —
@@ -1038,11 +1276,21 @@ function teenAction(room, player, action) {
       log(room, `${player.characterName} ends their turn.`, "teens");
       return { ok: true, apCost: spent };
     }
+    case "interact": {
+      const interaction = locationInteractionFor(room, loc);
+      if (!interaction) return { error: "There's nothing special to do here." };
+      const avail = interaction.availability(room, player);
+      if (!avail.available) return { error: avail.reason || "Not available right now." };
+      // Tinker: the Special used earlier this turn makes exactly one
+      // Interact free — consumed here the moment it's actually spent.
+      const apCost = player.freeInteractAvailable ? 0 : interaction.apCost;
+      const result = interaction.resolve(room, player, action);
+      if (result?.error) return result;
+      if (player.freeInteractAvailable) player.freeInteractAvailable = false;
+      return { apCost, ...result };
+    }
     case "search": {
-      // Tinker: the Special that was used earlier this turn makes exactly
-      // one Search free — consumed here the moment it's actually spent.
-      const apCost = player.freeSearchAvailable ? 0 : 1;
-      if (player.freeSearchAvailable) player.freeSearchAvailable = false;
+      const apCost = 1; // Tinker now discounts Interact instead — see the "interact" case above.
       const searchCount = loc.searchCount || 0;
       let outcome = pickSearchOutcome(searchCount);
       // Quick Study / Flashlight: one reroll of the whole outcome on a
@@ -1055,11 +1303,23 @@ function teenAction(room, player, action) {
       const madeNoise = roll(SEARCH_NOISE_CHANCE);
       if (madeNoise) emitNoise(room, player.location, "noisy");
 
+      // Scavenge Supplies (Store/Gas Station): the next Search after
+      // choosing a category leans toward it — consumed here the moment
+      // it's actually spent, win or lose, so it can't be banked or stacked.
+      const scavengeCategory = player.scavengeCategory;
+      if (scavengeCategory) player.scavengeCategory = null;
+
       if (outcome === "item") {
         // Rally: the Leader gets one bonus draw whenever the result isn't
         // an escape/banish kit item, and takes it only if it upgrades to
         // one ("finds objective items more easily").
         let item = null;
+        if (scavengeCategory) {
+          for (let tries = 0; tries < 20 && !item; tries++) {
+            const candidate = drawFromPool(loc.searchPool);
+            if (candidate && candidate.category === scavengeCategory) item = candidate;
+          }
+        }
         for (let tries = 0; tries < 20 && !item; tries++) item = drawFromPool(loc.searchPool);
         if (!item) item = { ...ITEMS.energy_drink };
         if (character.id === "leader" && !item?.kit) {
@@ -1653,6 +1913,7 @@ export function publicState(room, forPlayerId) {
         // Whether this teen's Special is available right now — the Leader's
         // Let's Go is once per round, the other three are once per turn.
         base.abilityReady = p.pickId === "leader" ? p.abilityUsedRound !== room.round : !p.abilityUsedTurn;
+        base.locationInteraction = room.phase === "playing" ? computeLocationInteraction(room, p) : null;
       }
     }
     return base;

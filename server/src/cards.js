@@ -97,6 +97,24 @@ export function drawClue(loc, rng = Math.random) {
   return make(loc);
 }
 
+// Evidence clues — Access Evidence at the Police Station, and Investigate
+// at the wonderland map's higher-risk landmarks, both draw from this deck.
+// Distinct from ordinary Search clues: these gesture specifically at the
+// Killer itself, not just the location's own history.
+const EVIDENCE_TEMPLATES = [
+  (killer) => `An open case file describes a suspect matching ${killer.name} — never caught.`,
+  (killer) => `An evidence bag holds something that shouldn't still be here. The tag on it is blank.`,
+  (killer) => `A dispatcher's log records a call about ${killer.name}, cut off mid-sentence.`,
+  (killer) => `A corkboard of red string connects half a dozen missing-persons reports to this town.`,
+  (killer) => `A confiscated weapon sits in a locked drawer. Someone wanted it kept, not destroyed.`,
+  (killer) => `A handwritten note, tucked out of sight: "It doesn't stay down the way you'd think."`,
+];
+
+export function drawEvidence(killer, rng = Math.random) {
+  const make = EVIDENCE_TEMPLATES[Math.floor(rng() * EVIDENCE_TEMPLATES.length)];
+  return make(killer);
+}
+
 // Lore VHS tapes — a distinct discovery from the physical Favorite VHS
 // item (which is a carried Sanity item). These are found footage: pure
 // worldbuilding, recorded into the location's discoveredInformation and
