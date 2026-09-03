@@ -7,6 +7,13 @@ import HoldYourBreath from "../components/HoldYourBreath";
 import PracticeTip from "../components/PracticeTip";
 import PostGameRecap from "../components/PostGameRecap";
 import TurnOrderStrip from "../components/TurnOrderStrip";
+import { reachableFrom } from "../utils/reachable";
+
+function sanityTier(sanity) {
+  if (sanity <= 2) return "panicked";
+  if (sanity <= 5) return "shaken";
+  return "steady";
+}
 
 export default function GameScreen({ state, playerId, onLeave }) {
   const [error, setError] = useState("");
@@ -50,6 +57,22 @@ export default function GameScreen({ state, playerId, onLeave }) {
 
   const slasherPlayer = state.players.find((p) => p.role === "slasher");
   const killerName = state.killers?.[slasherPlayer?.pickId]?.name || "The Slasher";
+
+  // Legal move destinations for the board to highlight directly, so a
+  // player never has to guess what's reachable from the sidebar list alone.
+  const myTurn = state.turnPlayerId === playerId;
+  const myLoc = state.board?.[me.location];
+  let reachableLocations = [];
+  if (myTurn && state.phase === "playing" && myLoc) {
+    if (me.role === "slasher") {
+      reachableLocations = state.slasherFrozen ? [] : myLoc.connections;
+    } else {
+      const character = state.characters?.[me.pickId];
+      const tier = sanityTier(me.sanity);
+      const speed = tier === "panicked" ? 1 : character?.stats?.speed ?? 1;
+      reachableLocations = speed > 1 ? reachableFrom(state.board, me.location, speed) : myLoc.connections;
+    }
+  }
 
   return (
     <div className="game-layout">
@@ -127,6 +150,7 @@ export default function GameScreen({ state, playerId, onLeave }) {
           monsterHp={state.monsterHp}
           monsterMaxHp={state.monsterMaxHp}
           hazardLocations={state.activeHorrorEventLocations}
+          reachableLocations={reachableLocations}
         />
       )}
 

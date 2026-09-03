@@ -1,31 +1,13 @@
 import { useState } from "react";
 import { socket } from "../socket";
 import { KILLERS, TEEN_CHARACTERS } from "../data/characters";
+import { reachableFrom } from "../utils/reachable";
 
 function act(action, onError, onResult) {
   socket.emit("action", action, (res) => {
     if (!res?.ok) onError?.(res?.error || "Action failed.");
     else onResult?.(res);
   });
-}
-
-function reachableFrom(board, locationId, hops) {
-  let frontier = new Set([locationId]);
-  const seen = new Set([locationId]);
-  for (let i = 0; i < hops; i++) {
-    const next = new Set();
-    for (const loc of frontier) {
-      for (const n of board[loc].connections) {
-        if (!seen.has(n)) {
-          seen.add(n);
-          next.add(n);
-        }
-      }
-    }
-    frontier = next;
-  }
-  seen.delete(locationId);
-  return [...seen];
 }
 
 function sanityTier(sanity) {

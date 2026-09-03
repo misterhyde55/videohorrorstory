@@ -803,6 +803,16 @@
   box-shadow: 0 0 14px rgba(255, 179, 71, 0.5);
 }
 
+.map-node.reachable {
+  border-color: var(--neon-green);
+  animation: reachablePulse 1.8s ease-in-out infinite;
+}
+
+@keyframes reachablePulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(57, 255, 138, 0.35); }
+  50% { box-shadow: 0 0 16px rgba(57, 255, 138, 0.75); }
+}
+
 .haunted-icon {
   animation: hauntedPulse 1.4s ease-in-out infinite;
 }

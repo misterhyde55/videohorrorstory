@@ -42,6 +42,7 @@ export default function Board({
   monsterHp,
   monsterMaxHp,
   hazardLocations,
+  reachableLocations,
 }) {
   const prevLocationsRef = useRef({});
   const [flashLocations, setFlashLocations] = useState(new Set());
@@ -149,10 +150,11 @@ export default function Board({
         const isSensed = slasherNearby === loc.id;
         const isFlashing = flashLocations.has(loc.id);
         const isHaunted = hazardLocations?.includes(loc.id);
+        const isReachable = reachableLocations?.includes(loc.id);
         return (
           <div
             key={loc.id}
-            className={`map-node${isMine ? " here" : ""}${loc.ritualSite ? " ritual" : ""}${loc.exit ? " exit" : ""}${loc.carSite ? " carsite" : ""}${isSensed ? " sensed" : ""}${isFlashing ? " flash" : ""}${isHaunted ? " haunted" : ""}`}
+            className={`map-node${isMine ? " here" : ""}${loc.ritualSite ? " ritual" : ""}${loc.exit ? " exit" : ""}${loc.carSite ? " carsite" : ""}${isSensed ? " sensed" : ""}${isFlashing ? " flash" : ""}${isHaunted ? " haunted" : ""}${isReachable ? " reachable" : ""}`}
             style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
             title={isHaunted ? `${loc.description} Something's wrong here right now.` : loc.description}
           >
