@@ -283,6 +283,16 @@
   font-style: italic;
 }
 
+.final-act-banner {
+  background: rgba(255, 46, 136, 0.16);
+  border: 1px solid var(--neon-pink);
+  color: #ffd4e6;
+  font-weight: bold;
+  font-style: normal;
+  letter-spacing: 0.03em;
+  animation: shake 0.4s;
+}
+
 /* Sanity threshold banner — a brief, unmissable "you just crossed a line"
    flash, distinct per tier so PANICKED reads as more urgent than UNEASY. */
 .banner-tier-change {

@@ -164,6 +164,19 @@ export default function HowToPlay({ onClose }) {
           </section>
 
           <section>
+            <h3>The Final Act</h3>
+            <p>
+              The moment the clock enters its last stretch, the night
+              breaks for good — once, not gradually. The Nightmare Level
+              jumps straight to its ceiling, any NPC still out there gets
+              caught in it, and the Killer gets a real burst of aggression
+              for a few rounds. There's no walking it back — whatever you
+              haven't finished by then, you're finishing under real
+              pressure.
+            </p>
+          </section>
+
+          <section>
             <h3>The Post-Game Recap</h3>
             <p>
               Once the match ends, the secrecy drops — the end screen recaps

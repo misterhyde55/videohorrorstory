@@ -226,6 +226,10 @@ export default function GameScreen({ state, playerId, onLeave }) {
           <div className="banner banner-horror-event">🔎 {state.recentWeaknessReveal.text}</div>
         )}
 
+        {state.recentFinalActBeat && (
+          <div className="banner banner-horror-event final-act-banner">⚠ {state.recentFinalActBeat.text}</div>
+        )}
+
         {error && <div className="banner banner-error" onAnimationEnd={() => setError("")}>{error}</div>}
 
         {tierBanner && (

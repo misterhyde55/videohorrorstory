@@ -297,17 +297,21 @@ function claimNightmareZone(room) {
   log(room, `${loc.name} has gone wrong for good — something's taken root there, and it isn't leaving.`, "all");
 }
 
+function claimDueNightmareZones(room) {
+  const dueZones = NIGHTMARE_ZONE_TIERS.filter((t) => room.nightmareLevel >= t).length;
+  while ((room.nightmareZoneClaims || 0) < dueZones) {
+    claimNightmareZone(room);
+    room.nightmareZoneClaims = (room.nightmareZoneClaims || 0) + 1;
+  }
+}
+
 function updateNightmareLevel(room) {
   const next = computeNightmareLevel(room);
   if (next > room.nightmareLevel) {
     room.nightmareLevel = next;
     log(room, `Nightmare Level rises: ${NIGHTMARE_LEVEL_NAMES[next]}.`, "all");
   }
-  const dueZones = NIGHTMARE_ZONE_TIERS.filter((t) => room.nightmareLevel >= t).length;
-  while ((room.nightmareZoneClaims || 0) < dueZones) {
-    claimNightmareZone(room);
-    room.nightmareZoneClaims = (room.nightmareZoneClaims || 0) + 1;
-  }
+  claimDueNightmareZones(room);
 }
 
 // ---- NPC Survivors (Phase 5) ----
@@ -429,7 +433,9 @@ export function createRoom(code, hostId) {
     recentWeaknessReveal: null, // {text, round} — most recent, for the shared banner
     nightmareLevel: 0, // 0-6, see updateNightmareLevel — never decreases
     nightmareZoneClaims: 0,
-    nightmareAttackBoostUntilRound: 0, // Creeping Dread — temporary Killer attack bonus
+    nightmareAttackBoostUntilRound: 0, // Creeping Dread / Final Act — temporary Killer attack bonus
+    finalActTriggered: false,
+    recentFinalActBeat: null, // {text, round} — most recent, for the shared banner
   };
 }
 
@@ -674,6 +680,8 @@ export function startGame(room, { durationMs } = {}) {
   room.nightmareLevel = 0;
   room.nightmareZoneClaims = 0;
   room.nightmareAttackBoostUntilRound = 0;
+  room.finalActTriggered = false;
+  room.recentFinalActBeat = null;
   room.killerSecretObjective = KILLER_SECRET_OBJECTIVES[Math.floor(Math.random() * KILLER_SECRET_OBJECTIVES.length)];
   room.killCount = 0;
   room.carEverRepaired = false;
@@ -1030,6 +1038,33 @@ function maybeTriggerHorrorEvent(room) {
   room.recentHorrorEvent = { id: event.id, name: event.name, summary, round: room.round };
 }
 
+// ---- Final Act (Phase 7) ----
+// A single, one-way world-breaking beat the moment the clock enters its
+// final countdown (lateGameTier 2, the same ~15%-remaining threshold the
+// UI already calls out as "FINAL ACT") — not another numeric ramp, but a
+// hard cut: the Nightmare Level jumps straight to its ceiling (claiming
+// any Nightmare Zones that were still due), any NPC still out there is
+// swept by that new tier, and the Killer gets a real, if temporary,
+// burst of aggression. It only ever fires once per match.
+const FINAL_ACT_SANITY_LOSS = 10;
+const FINAL_ACT_ATTACK_BOOST_ROUNDS = 3;
+const FINAL_ACT_TEXT = "THE FINAL ACT — everything that was holding together just gave way.";
+
+function maybeTriggerFinalAct(room) {
+  if (room.finalActTriggered) return;
+  if (lateGameTier(room) < 2) return;
+  room.finalActTriggered = true;
+  if (room.nightmareLevel < 6) {
+    room.nightmareLevel = 6;
+    claimDueNightmareZones(room);
+  }
+  sweepNpcs(room);
+  room.nightmareAttackBoostUntilRound = room.round + FINAL_ACT_ATTACK_BOOST_ROUNDS;
+  aliveTeens(room).forEach((t) => loseSanity(room, t, FINAL_ACT_SANITY_LOSS));
+  log(room, FINAL_ACT_TEXT, "all");
+  room.recentFinalActBeat = { text: FINAL_ACT_TEXT, round: room.round };
+}
+
 function advanceTurn(room) {
   if (room.winner) return;
   const n = room.turnOrder.length;
@@ -1043,6 +1078,7 @@ function advanceTurn(room) {
       pruneHorrorEvents(room);
       updateNightmareLevel(room);
       sweepNpcs(room);
+      maybeTriggerFinalAct(room);
       maybeTriggerHorrorEvent(room);
     }
     const pid = currentPlayerId(room);
@@ -2283,6 +2319,9 @@ export function publicState(room, forPlayerId) {
       room.recentWeaknessReveal && room.round - room.recentWeaknessReveal.round <= 1 ? room.recentWeaknessReveal : null,
     nightmareLevel: room.nightmareLevel || 0,
     nightmareLevelName: NIGHTMARE_LEVEL_NAMES[room.nightmareLevel || 0],
+    finalActTriggered: room.finalActTriggered,
+    recentFinalActBeat:
+      room.recentFinalActBeat && room.round - room.recentFinalActBeat.round <= 1 ? room.recentFinalActBeat : null,
     killerSecretObjective: isSlasher
       ? room.killerSecretObjective
       : secretObjectiveRevealed
