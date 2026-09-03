@@ -26,6 +26,11 @@ const CLUTTER = [
   { x: 36, y: 46, kind: "lamp" }, { x: 62, y: 50, kind: "lamp" },
   { x: 18, y: 64, kind: "lamp" }, { x: 82, y: 66, kind: "lamp" },
   { x: 48, y: 58, kind: "crate" }, { x: 14, y: 76, kind: "fence" },
+  // A little environmental storytelling — a place that's already been
+  // through something, not just a set of buildings.
+  { x: 63, y: 92, kind: "car" },
+  { x: 52, y: 62, kind: "sign" },
+  { x: 30, y: 40, kind: "sign" },
 ];
 
 function Clutter({ x, y, kind }) {
@@ -49,6 +54,30 @@ function Clutter({ x, y, kind }) {
     return (
       <g transform={`translate(${x} ${y})`} opacity="0.75">
         <rect x="-1.6" y="-1.6" width="3.2" height="3.2" fill="#5b4128" stroke="#8a6a45" strokeWidth="0.25" />
+      </g>
+    );
+  }
+  if (kind === "car") {
+    // A crashed, abandoned car — off the road, one headlight still lit.
+    return (
+      <g transform={`translate(${x} ${y}) rotate(-12)`} opacity="0.85">
+        <ellipse cx="0" cy="2.4" rx="6.5" ry="1" fill="#000" opacity="0.4" />
+        <path d="M-6 1.6 L-5 -0.6 L-2.4 -2 L2.6 -2 L4.6 -0.4 L6 1.6 Z" fill="#2a2a30" stroke="#4a4a54" strokeWidth="0.3" />
+        <path d="M-2 -1.8 L-0.6 -3.2 L2 -3.2 L3 -1.8 Z" fill="#1a1a20" opacity="0.85" />
+        <circle cx="-3.6" cy="1.8" r="1" fill="#0c0a0c" stroke="#5b5b64" strokeWidth="0.2" />
+        <circle cx="3.6" cy="1.8" r="1" fill="#0c0a0c" stroke="#5b5b64" strokeWidth="0.2" />
+        <circle cx="5.6" cy="0.6" r="0.5" fill="#ffd35c" opacity="0.7" />
+      </g>
+    );
+  }
+  if (kind === "sign") {
+    // A hand-lettered warning / missing-person board nailed to a post.
+    return (
+      <g transform={`translate(${x} ${y})`} opacity="0.8">
+        <line x1="0" y1="-3.5" x2="0" y2="1.5" stroke="#4a3620" strokeWidth="0.4" />
+        <rect x="-2.6" y="-5.5" width="5.2" height="3.6" fill="#c9b98a" stroke="#4a3620" strokeWidth="0.3" transform="rotate(-4)" />
+        <line x1="-1.6" y1="-4.3" x2="1.6" y2="-3.7" stroke="#3a2a18" strokeWidth="0.22" opacity="0.7" transform="rotate(-4)" />
+        <line x1="-1.6" y1="-3.5" x2="0.8" y2="-3.1" stroke="#3a2a18" strokeWidth="0.22" opacity="0.6" transform="rotate(-4)" />
       </g>
     );
   }
