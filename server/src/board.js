@@ -1,13 +1,13 @@
-// Procedural maps for VHS: Video Horror Story. Every match randomly picks
-// one of a fixed set of themed boards (currently the Abandoned Wonderland
-// amusement park and the Pinehaven Campground) and reshuffles its layout
-// and connections, but each theme's location set itself stays fixed so the
-// board is always recognizable. Every theme has the same shape: a ritual
-// site at the hub (also the Slasher's start), a marquee location pinned to
-// the top of the ring, an exit that doubles as the car site at the south
-// entrance, and the rest of its locations ringed around the hub. Teen
-// starting spots are chosen by BFS distance to be as far from the Slasher's
-// start as possible.
+// Maps for VHS: Video Horror Story. Every match randomly picks one of a
+// fixed set of themed boards (currently the Abandoned Wonderland amusement
+// park and the Pinehaven Campground); each theme's location set stays
+// fixed so the board is always recognizable, and the Slasher always starts
+// at the ritual site with teens placed as far away as possible by road
+// distance (BFS). Pinehaven uses a hand-authored, fixed geography — see
+// generatePinehavenBoard — so it reads as one real, physical place instead
+// of a randomized graph; Wonderland still uses the procedural ring
+// generator below (reshuffled layout/connections every match) until it
+// gets the same treatment.
 
 // dangerLevel is presentational + flavor only (drives the board's visual
 // language and the location info panel) — it doesn't change search odds or
@@ -83,6 +83,129 @@ const MAX_DEGREE = 4;
 const EXTRA_EDGE_CHANCE = 0.3;
 const HUB_SPOKES = 3; // ring nodes wired directly to the central ritual site
 
+// ---- Pinehaven Campground: a fixed, hand-authored geography ----
+// Unlike the procedural ring generator below (still used for Abandoned
+// Wonderland — a hand-authored layout for it can follow the same pattern
+// later), Pinehaven's landmark positions and roads never change between
+// matches. That's a deliberate trade-off: this map loses the "reshuffled
+// every game" variety in exchange for actually reading as one real,
+// physical place — a fixed hub (the Campgrounds) with real chokepoints, a
+// true dead end (the Boat Dock, out past the Forest Trail), and roads
+// that make geographic sense between compass-placed neighbors, instead of
+// a randomized ring that could wire anything to anything.
+const PINEHAVEN_POSITIONS = {
+  "Pinehaven Campgrounds": { x: 50, y: 42 }, // the hub — also the Slasher's start
+  "Old Water Tower": { x: 50, y: 14 }, // due north, elevated and isolated
+  "Pinehaven Diner": { x: 76, y: 22 }, // northeast, roadside
+  "Abandoned Police Station": { x: 86, y: 46 }, // east, same small-town road as the Diner
+  "Cabin 1": { x: 76, y: 64 }, // southeast cabin cluster
+  "Cabin 2": { x: 62, y: 78 },
+  "Camp Counselor Cabin": { x: 82, y: 80 },
+  "General Store": { x: 44, y: 68 }, // south — the commercial/entrance stretch
+  "Gas Station": { x: 34, y: 80 },
+  "Camp Entrance": { x: 50, y: 88 }, // the one way out
+  "Forest Trail": { x: 20, y: 50 }, // west, a shortcut through the woods
+  "Boat Dock": { x: 12, y: 26 }, // northwest, out on the lake — a dead end
+};
+
+// Each pair is a real road/trail — if two landmarks aren't listed here,
+// there is no route between them, full stop. Geography over convenience:
+// the Diner connects to the Police Station because they share a road, not
+// because the graph needed another edge.
+const PINEHAVEN_ROADS = [
+  ["Pinehaven Campgrounds", "Old Water Tower"],
+  ["Pinehaven Campgrounds", "Pinehaven Diner"],
+  ["Pinehaven Campgrounds", "Cabin 1"],
+  ["Pinehaven Campgrounds", "General Store"],
+  ["Pinehaven Campgrounds", "Forest Trail"],
+  ["Pinehaven Campgrounds", "Camp Entrance"],
+  ["Old Water Tower", "Pinehaven Diner"],
+  ["Pinehaven Diner", "Abandoned Police Station"],
+  ["Abandoned Police Station", "Cabin 1"],
+  ["Cabin 1", "Cabin 2"],
+  ["Cabin 2", "Camp Counselor Cabin"],
+  ["Camp Counselor Cabin", "Abandoned Police Station"],
+  ["General Store", "Gas Station"],
+  ["Gas Station", "Camp Entrance"],
+  ["Forest Trail", "Boat Dock"],
+  ["Forest Trail", "General Store"],
+];
+
+function generatePinehavenBoard(theme) {
+  const usedIds = new Set();
+  const exitId = slugify(theme.exit.name, usedIds);
+  const ritualId = slugify(theme.ritual.name, usedIds);
+  const nodeDefs = [
+    { ...theme.exit, id: exitId, exit: true, carSite: true },
+    { ...theme.ritual, id: ritualId, ritualSite: true },
+    ...theme.general.map((n) => ({ ...n, id: slugify(n.name, usedIds) })),
+  ];
+  const nameToId = new Map(nodeDefs.map((n) => [n.name, n.id]));
+
+  const layout = {};
+  Object.entries(PINEHAVEN_POSITIONS).forEach(([name, pos]) => {
+    const id = nameToId.get(name);
+    if (id) layout[id] = { x: pos.x, y: pos.y };
+  });
+
+  const adjacency = new Map(nodeDefs.map((n) => [n.id, new Set()]));
+  function connect(a, b) {
+    adjacency.get(a).add(b);
+    adjacency.get(b).add(a);
+  }
+  PINEHAVEN_ROADS.forEach(([a, b]) => {
+    const idA = nameToId.get(a);
+    const idB = nameToId.get(b);
+    if (idA && idB) connect(idA, idB);
+  });
+
+  const locations = {};
+  nodeDefs.forEach((n) => {
+    locations[n.id] = {
+      id: n.id,
+      name: n.name,
+      description: n.description,
+      type: n.type,
+      searchPool: n.searchPool,
+      dangerLevel: n.dangerLevel || "low",
+      connections: [...adjacency.get(n.id)],
+      ...(n.exit ? { exit: true } : {}),
+      ...(n.ritualSite ? { ritualSite: true } : {}),
+      ...(n.carSite ? { carSite: true } : {}),
+    };
+  });
+
+  // Starting spots: Slasher at the ritual site (the Campgrounds, the
+  // hub); teens as far away as possible by road distance — same rule the
+  // procedural boards use.
+  const slasherStart = ritualId;
+  const bfsDist = new Map([[slasherStart, 0]]);
+  const queue = [slasherStart];
+  while (queue.length) {
+    const cur = queue.shift();
+    for (const n of locations[cur].connections) {
+      if (!bfsDist.has(n)) {
+        bfsDist.set(n, bfsDist.get(cur) + 1);
+        queue.push(n);
+      }
+    }
+  }
+  const ids = nodeDefs.map((n) => n.id);
+  const byDistanceDesc = ids
+    .filter((id) => id !== slasherStart)
+    .sort((a, b) => (bfsDist.get(b) ?? 0) - (bfsDist.get(a) ?? 0));
+  const teenStarts = byDistanceDesc.slice(0, 4);
+  while (teenStarts.length < 4) teenStarts.push(byDistanceDesc[0] ?? slasherStart);
+
+  return {
+    mapId: theme.id,
+    mapName: theme.name,
+    locations,
+    layout,
+    startLocations: { teens: teenStarts, slasher: slasherStart },
+  };
+}
+
 function shuffle(arr, rng) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -126,6 +249,7 @@ function connectedComponents(ids, adjacency) {
 
 export function generateBoard(rng = Math.random) {
   const theme = THEMES[Math.floor(rng() * THEMES.length)];
+  if (theme.id === "campground") return generatePinehavenBoard(theme);
   const usedIds = new Set();
   const chosenGeneral = shuffle(theme.general, rng).slice(0, theme.general.length);
 

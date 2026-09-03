@@ -105,6 +105,12 @@ export default function Board({
   (npcs || []).forEach((n) => {
     if (n.status === "waiting" || n.status === "endangered") npcLocations.set(n.locationId, n);
   });
+
+  // The lake is a real geographic feature, not a decorative corner blob —
+  // it sits wherever the map's water-adjacent landmark (the Boat Dock)
+  // actually is, sized to visibly shape that corner of the board.
+  const waterLoc = Object.values(board).find((l) => l.type === "water");
+  const lakePos = waterLoc ? layout[waterLoc.id] : null;
   const prevLocationsRef = useRef({});
   const [flashLocations, setFlashLocations] = useState(new Set());
   const [selectedLocationId, setSelectedLocationId] = useState(null);
@@ -220,8 +226,12 @@ export default function Board({
           <Clutter key={"clutter" + i} {...c} />
         ))}
 
-        <ellipse cx="12" cy="88" rx="12" ry="8" fill="url(#lakeGlow)" opacity="0.9" />
-        <ellipse cx="12" cy="88" rx="12" ry="8" fill="none" stroke="#8fd6e0" strokeOpacity="0.35" strokeWidth="0.4" />
+        {lakePos && (
+          <>
+            <ellipse cx={lakePos.x - 6} cy={lakePos.y - 4} rx="20" ry="15" fill="url(#lakeGlow)" opacity="0.9" />
+            <ellipse cx={lakePos.x - 6} cy={lakePos.y - 4} rx="20" ry="15" fill="none" stroke="#8fd6e0" strokeOpacity="0.35" strokeWidth="0.4" />
+          </>
+        )}
 
         <rect x="0" y="0" width="100" height="100" fill="url(#fogGradient)" opacity="0.5" />
       </svg>
