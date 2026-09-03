@@ -6,6 +6,7 @@ const MAX_TEENS = 4;
 const MAX_ITEMS = 6;
 const MONSTER_MAX_HP = 3;
 const GAME_DURATION_MS = 10 * 60 * 1000;
+const TEEN_ACTIONS_PER_TURN = 3;
 
 const FIGHT_BASE = 25;
 const FIGHT_STRENGTH_MULT = 10;
@@ -266,6 +267,11 @@ export function addPlayer(room, id, name, roleOverride) {
     distractUsed: false,
     deathRound: null,
     deathLocation: null,
+    actionsRemaining: 0, // set to TEEN_ACTIONS_PER_TURN (+ any banked bonus) whenever it becomes this teen's turn
+    bonusActionsNextTurn: 0, // banked by a teammate's Let's Go, spent at the start of this player's next turn
+    abilityUsedTurn: false, // Sprint / Tinker / Bait — once per turn
+    abilityUsedRound: null, // Let's Go — once per round (compared against room.round)
+    freeSearchAvailable: false, // Tinker: next Search this turn costs 0 Actions
   });
 }
 
@@ -411,6 +417,11 @@ export function startGame(room, { durationMs } = {}) {
     p.deathLocation = null;
     p.knownDeaths = new Set();
     p.tempSpeedBonus = 0;
+    p.actionsRemaining = TEEN_ACTIONS_PER_TURN;
+    p.bonusActionsNextTurn = 0;
+    p.abilityUsedTurn = false;
+    p.abilityUsedRound = null;
+    p.freeSearchAvailable = false;
   });
   slasher.location = generated.startLocations.slasher;
   slasher.stalkStreak = 0;
@@ -738,6 +749,16 @@ function advanceTurn(room) {
     const player = room.players.get(pid);
     if (player && player.status !== "dead" && player.status !== "escaped") break;
   }
+  // Fresh Action Points for whoever's turn it now is — plus any bonus a
+  // teammate's Let's Go banked for them — and every once-per-turn ability
+  // gate resets clean.
+  const next = room.players.get(currentPlayerId(room));
+  if (next && next.role === "teen") {
+    next.actionsRemaining = TEEN_ACTIONS_PER_TURN + (next.bonusActionsNextTurn || 0);
+    next.bonusActionsNextTurn = 0;
+    next.abilityUsedTurn = false;
+    next.freeSearchAvailable = false;
+  }
 }
 
 export function checkClockExpired(room) {
@@ -805,6 +826,12 @@ function reachable(room, locationId, hops) {
   return seen;
 }
 
+// Teens get TEEN_ACTIONS_PER_TURN Action Points per turn and choose how to
+// spend them (Move, Search, Hide, Use Item, a Special ability, ...) in any
+// order/combination, ending their turn only once every point is spent or
+// they explicitly End Turn — see the design note at the top of teenAction()
+// for the full rationale. The Slasher's turn is unchanged: one action, then
+// the turn passes, exactly as before this system existed.
 export function applyAction(room, playerId, action) {
   if (checkClockExpired(room)) return { error: "Time is up." };
   if (room.phase !== "playing") return { error: "Game is not in progress." };
@@ -815,39 +842,132 @@ export function applyAction(room, playerId, action) {
   const result = player.role === "slasher" ? slasherAction(room, player, action) : teenAction(room, player, action);
   if (result?.error) return result;
 
+  if (player.role === "teen") {
+    const cost = result?.apCost ?? 1;
+    player.actionsRemaining = Math.max(0, (player.actionsRemaining ?? TEEN_ACTIONS_PER_TURN) - cost);
+  }
+  // A turn-ending item find (an unresolved Take/Leave decision) always holds
+  // the turn open regardless of Action Points — see teenAction's search
+  // case and the pendingDiscoveryUid guard at its top. Dying (or escaping)
+  // mid-turn always ends it immediately no matter how many Action Points
+  // were left — a dead/escaped player can never spend them, and teenAction
+  // itself refuses to act for one, so leaving the turn "open" would strand
+  // the game waiting on a player who can't act again.
+  const teenTurnEnding =
+    player.role === "teen" && (player.status !== "alive" || (player.actionsRemaining <= 0 && !player.pendingDiscoveryUid));
+
   // Skip the ambient isolation tick on a turn where the action already
   // attempted a Sanity recovery (Rest, a Sanity item, an objective reward)
   // — even one fully capped to zero effect — otherwise a lone teen's own
   // recovery action could get canceled out (or double-punished) by the
-  // same-turn passive drain.
-  if (
-    player.role === "teen" &&
-    player.status === "alive" &&
-    result?.consumeTurn !== false &&
-    !result?.sanityActionTaken
-  ) {
+  // same-turn passive drain. Fires once, when the turn actually ends, not
+  // once per Action Point spent.
+  if (player.role === "teen" && player.status === "alive" && teenTurnEnding && !result?.sanityActionTaken) {
     applySanityTick(room, player);
   }
   if (player.role === "slasher" && action.type !== "shortcut" && player.specialCooldown > 0) {
     player.specialCooldown -= 1;
   }
   // A Monster Energy's "+1 Movement this turn" only ever applies to the
-  // turn it was drunk on — once that turn actually ends (used or not),
-  // the bonus is gone.
-  if (player.role === "teen" && result?.consumeTurn !== false && player.tempSpeedBonus) {
+  // turn it was drunk on — once that turn actually ends, the bonus is gone.
+  if (player.role === "teen" && teenTurnEnding && player.tempSpeedBonus) {
     player.tempSpeedBonus = 0;
   }
 
   checkWin(room);
-  if (!room.winner && result?.consumeTurn !== false) advanceTurn(room);
+  if (!room.winner && (player.role === "slasher" || teenTurnEnding)) advanceTurn(room);
   return {
     ok: true,
+    ...(player.role === "teen" ? { actionsRemaining: player.actionsRemaining } : {}),
     ...(result?.searchStarted ? { searchStarted: result.searchStarted } : {}),
     ...(result?.searchResult ? { searchResult: result.searchResult } : {}),
     ...(result?.itemUseResult ? { itemUseResult: result.itemUseResult } : {}),
   };
 }
 
+// Shared by the baseline Move action and the Athlete's Sprint ability:
+// discovering a teammate's body, and walking into an active Horror Event,
+// both apply the same way regardless of how many spaces were covered to
+// get there.
+function applyArrivalEffects(room, player, destination) {
+  [...room.players.values()]
+    .filter((t) => t.role === "teen" && t.status === "dead" && t.deathLocation === destination && !player.knownDeaths?.has(t.id))
+    .forEach((t) => {
+      player.knownDeaths?.add(t.id);
+      log(room, `${player.characterName} finds ${t.characterName}'s body at ${room.board[destination].name}.`, "teens");
+      loseSanity(room, player, SANITY_LOSS_DISCOVER_DEAD);
+    });
+  if (hasActiveHorrorEvent(room, destination)) {
+    loseSanity(room, player, SANITY_LOSS_CURSED_LOCATION);
+  }
+}
+
+// Active character abilities — each teen's Special action. Resolvers get
+// the same room/player/action access as any other teenAction case; the
+// per-teen cooldown gates (abilityUsedTurn for the once-per-turn three,
+// abilityUsedRound for the Leader's once-per-round) live on the player
+// object and are reset in advanceTurn(). Mirrors the HORROR_EVENTS/
+// KILLER_SECRET_OBJECTIVES pattern already used elsewhere in this file:
+// player-facing name/description lives in characters.js, the mechanics
+// live here.
+const TEEN_ABILITIES = {
+  athlete: {
+    apCost: 1,
+    resolve(room, player, action) {
+      if (player.abilityUsedTurn) return { error: "Already sprinted this turn." };
+      const reachableSet = reachable(room, player.location, 2);
+      if (!action.to || !reachableSet.has(action.to)) return { error: "That's too far for a Sprint." };
+      player.abilityUsedTurn = true;
+      const destination = action.to;
+      player.location = destination;
+      log(room, `${player.characterName} sprints to ${room.board[destination].name}!`, "teens");
+      emitNoise(room, destination, "loud");
+      applyArrivalEffects(room, player, destination);
+      return { ok: true };
+    },
+  },
+  nerd: {
+    apCost: 1,
+    resolve(room, player) {
+      if (player.abilityUsedTurn) return { error: "Already tinkered this turn." };
+      player.abilityUsedTurn = true;
+      player.freeSearchAvailable = true;
+      log(room, `${player.characterName} preps their gear for a faster search.`, "teens");
+      return { ok: true };
+    },
+  },
+  rebel: {
+    apCost: 1,
+    resolve(room, player) {
+      if (player.abilityUsedTurn) return { error: "Already done that this turn." };
+      player.abilityUsedTurn = true;
+      log(room, `${player.characterName} makes themselves impossible to ignore.`, "teens");
+      emitNoise(room, player.location, "loud");
+      return { ok: true };
+    },
+  },
+  leader: {
+    apCost: 1,
+    resolve(room, player, action) {
+      if (player.abilityUsedRound === room.round) return { error: "Already rallied the team this round." };
+      const target = room.players.get(action.targetId);
+      if (!target || target.role !== "teen" || target.location !== player.location || target.status !== "alive" || target.id === player.id) {
+        return { error: "That teammate isn't here." };
+      }
+      player.abilityUsedRound = room.round;
+      target.bonusActionsNextTurn = (target.bonusActionsNextTurn || 0) + 1;
+      log(room, `${player.characterName} rallies ${target.characterName} — extra hustle on their next turn.`, "teens");
+      return { ok: true };
+    },
+  },
+};
+
+// Teens spend Action Points (see TEEN_ACTIONS_PER_TURN / applyAction) across
+// however many of these calls they like before their turn actually ends —
+// most cost 1 AP (the default when a case doesn't return its own apCost);
+// a handful of quick, non-strategic actions (Give, Discard, picking up an
+// already-left item) stay free at apCost: 0, exactly as they were free
+// actions under the old one-action-per-turn model.
 function teenAction(room, player, action) {
   if (player.status === "dead" || player.status === "escaped") return { error: "You cannot act." };
   if (player.pendingDiscoveryUid && action.type !== "take_item" && action.type !== "leave_item") {
@@ -881,9 +1001,13 @@ function teenAction(room, player, action) {
       return { ok: true };
     }
     case "move": {
-      const baseSpeed = panickedOrWorse ? 1 : character.stats.speed;
-      const speed = baseSpeed + (player.tempSpeedBonus || 0);
-      const reachableSet = reachable(room, player.location, speed);
+      // Baseline Move is exactly one hop per Action Point — the Athlete's
+      // Sprint ability (not this stat) is what covers extra ground, per
+      // the action-economy redesign. Monster Energy's temporary +1
+      // Movement still extends a single Move this turn past one hop;
+      // Panicked/Broken overrides that back down to one hop regardless.
+      const maxHops = panickedOrWorse ? 1 : 1 + (player.tempSpeedBonus || 0);
+      const reachableSet = maxHops > 1 ? reachable(room, player.location, maxHops) : new Set(neighborsOf(room, player.location));
       if (!reachableSet.has(action.to)) return { error: "That location isn't reachable from here." };
       let destination = action.to;
       let stumbled = false;
@@ -899,24 +1023,26 @@ function teenAction(room, player, action) {
         ? `${player.characterName} panics and stumbles into ${room.board[destination].name} instead!`
         : `${player.characterName} moves to ${room.board[destination].name}.`, "teens");
       if (stumbled) emitNoise(room, destination, "noisy");
-
-      // Discovering a teammate's body (that this player didn't already
-      // witness happen) is its own gut-punch, separate from the ambient
-      // "someone died" news everyone already sees in the log.
-      [...room.players.values()]
-        .filter((t) => t.role === "teen" && t.status === "dead" && t.deathLocation === destination && !player.knownDeaths?.has(t.id))
-        .forEach((t) => {
-          player.knownDeaths?.add(t.id);
-          log(room, `${player.characterName} finds ${t.characterName}'s body at ${room.board[destination].name}.`, "teens");
-          loseSanity(room, player, SANITY_LOSS_DISCOVER_DEAD);
-        });
-
-      if (hasActiveHorrorEvent(room, destination)) {
-        loseSanity(room, player, SANITY_LOSS_CURSED_LOCATION);
-      }
+      applyArrivalEffects(room, player, destination);
       return { ok: true };
     }
+    case "special": {
+      const ability = TEEN_ABILITIES[character.id];
+      if (!ability) return { error: "No special ability available." };
+      const result = ability.resolve(room, player, action);
+      if (result?.error) return result;
+      return { apCost: ability.apCost, ...result };
+    }
+    case "end_turn": {
+      const spent = player.actionsRemaining ?? 0;
+      log(room, `${player.characterName} ends their turn.`, "teens");
+      return { ok: true, apCost: spent };
+    }
     case "search": {
+      // Tinker: the Special that was used earlier this turn makes exactly
+      // one Search free — consumed here the moment it's actually spent.
+      const apCost = player.freeSearchAvailable ? 0 : 1;
+      if (player.freeSearchAvailable) player.freeSearchAvailable = false;
       const searchCount = loc.searchCount || 0;
       let outcome = pickSearchOutcome(searchCount);
       // Quick Study / Flashlight: one reroll of the whole outcome on a
@@ -950,7 +1076,7 @@ function teenAction(room, player, action) {
         log(room, `${player.characterName} searches ${loc.name} and finds ${item.name}.`, "teens");
         return {
           ok: true,
-          consumeTurn: false,
+          apCost,
           searchResult: {
             type: "item",
             uid: item.uid,
@@ -973,36 +1099,32 @@ function teenAction(room, player, action) {
         loc.discoveredInformation = loc.discoveredInformation || [];
         loc.discoveredInformation.push({ type: "clue", text });
         log(room, `${player.characterName} searches ${loc.name} and turns up a clue: "${text}"`, "teens");
-        return { ok: true, searchResult: { type: "clue", text, noisy: madeNoise, searchCount: loc.searchCount } };
+        return { ok: true, apCost, searchResult: { type: "clue", text, noisy: madeNoise, searchCount: loc.searchCount } };
       }
       if (outcome === "vhs") {
         const text = drawLore();
         loc.discoveredInformation = loc.discoveredInformation || [];
         loc.discoveredInformation.push({ type: "vhs", text });
         log(room, `${player.characterName} searches ${loc.name} and finds an old home movie.`, "teens");
-        return { ok: true, searchResult: { type: "vhs", text, noisy: madeNoise, searchCount: loc.searchCount } };
+        return { ok: true, apCost, searchResult: { type: "vhs", text, noisy: madeNoise, searchCount: loc.searchCount } };
       }
       const ev = randomEvent();
       log(room, `${player.characterName} searches ${loc.name} and finds nothing. ${ev.text}`, "teens");
-      return { ok: true, searchResult: { type: "nothing", note: ev.text, noisy: madeNoise, searchCount: loc.searchCount } };
+      return { ok: true, apCost, searchResult: { type: "nothing", note: ev.text, noisy: madeNoise, searchCount: loc.searchCount } };
     }
     case "take_item": {
       const items = loc.leftItems || [];
       const idx = items.findIndex((it) => it.uid === action.uid);
       if (idx < 0) return { error: "That item isn't here anymore." };
       const item = items[idx];
-      // Resolving the item you just found ends the turn you spent
-      // searching for it; picking up something noticed earlier (yours or
-      // a teammate's leftovers) is a free bonus action that doesn't cost
-      // one, same as Give or Discard.
-      const resolvingPending = player.pendingDiscoveryUid === item.uid;
-      if (resolvingPending) player.pendingDiscoveryUid = null;
-      const consumeTurn = resolvingPending;
+      // Taking an item is always free — the Search that found it (or a
+      // teammate's) already spent the Action Point, same as Give/Discard.
+      if (player.pendingDiscoveryUid === item.uid) player.pendingDiscoveryUid = null;
       if (item.utility === "capacity") {
         items.splice(idx, 1);
         player.itemCapacity += item.capacityBonus;
         log(room, `${player.characterName} picks up the ${item.name}. More room to carry gear now.`, "teens");
-        return { ok: true, consumeTurn };
+        return { ok: true, apCost: 0 };
       }
       if (player.items.length >= player.itemCapacity) {
         if (!action.dropItemId) return { error: "Your bag is full — choose something to leave behind first." };
@@ -1015,25 +1137,25 @@ function teenAction(room, player, action) {
         items.splice(items.findIndex((it) => it.uid === action.uid), 1);
         player.items.push(item);
         log(room, `${player.characterName} leaves the ${dropped.name} behind and takes the ${item.name}.`, "teens");
-        return { ok: true, consumeTurn };
+        return { ok: true, apCost: 0 };
       }
       items.splice(idx, 1);
       player.items.push(item);
       log(room, `${player.characterName} picks up the ${item.name}.`, "teens");
-      return { ok: true, consumeTurn };
+      return { ok: true, apCost: 0 };
     }
     case "leave_item": {
       if (!player.pendingDiscoveryUid) return { error: "There's nothing pending to leave." };
       player.pendingDiscoveryUid = null;
       log(room, `${player.characterName} leaves it where it is.`, "teens");
-      return { ok: true };
+      return { ok: true, apCost: 0 };
     }
     case "discard": {
       const idx = player.items.findIndex((it) => it.id === action.itemId);
       if (idx < 0) return { error: "You don't have that item." };
       const [item] = player.items.splice(idx, 1);
       log(room, `${player.characterName} drops the ${item.name}.`, "teens");
-      return { ok: true, consumeTurn: false };
+      return { ok: true, apCost: 0 };
     }
     case "use_item": {
       const idx = player.items.findIndex((it) => it.id === action.itemId);
@@ -1062,10 +1184,10 @@ function teenAction(room, player, action) {
         return {
           ok: true,
           sanityActionTaken: true,
-          // A can of Monster Energy is a quick swig, not your whole turn —
-          // drinking it doesn't cost the action its +1 Movement is meant to
-          // apply to. Every other Sanity item still uses the full turn.
-          ...(item.moveBonus ? { consumeTurn: false } : {}),
+          // A can of Monster Energy is a quick swig, not a whole Action
+          // Point — drinking it doesn't cost the action its +1 Movement is
+          // meant to apply to. Every other Sanity item still costs 1 AP.
+          apCost: item.moveBonus ? 0 : 1,
           itemUseResult: {
             itemId: item.id,
             itemName: item.name,
@@ -1104,7 +1226,7 @@ function teenAction(room, player, action) {
       const [item] = player.items.splice(idx, 1);
       target.items.push(item);
       log(room, `${player.characterName} hands the ${item.name} to ${target.characterName}.`, "teens");
-      return { ok: true, consumeTurn: false };
+      return { ok: true, apCost: 0 };
     }
     case "repair": {
       if (!loc.carSite) return { error: "The car is somewhere else." };
@@ -1526,6 +1648,12 @@ export function publicState(room, forPlayerId) {
       base.distractUsed = p.distractUsed;
       base.pendingDiscoveryUid = p.pendingDiscoveryUid || null;
       base.tempSpeedBonus = p.tempSpeedBonus || 0;
+      if (p.role === "teen") {
+        base.actionsRemaining = p.actionsRemaining ?? TEEN_ACTIONS_PER_TURN;
+        // Whether this teen's Special is available right now — the Leader's
+        // Let's Go is once per round, the other three are once per turn.
+        base.abilityReady = p.pickId === "leader" ? p.abilityUsedRound !== room.round : !p.abilityUsedTurn;
+      }
     }
     return base;
   });

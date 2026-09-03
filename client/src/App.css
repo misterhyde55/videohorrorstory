@@ -1426,6 +1426,58 @@
   font-style: italic;
 }
 
+.action-panel-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+
+.action-panel-header h4 {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.end-turn-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  padding: 0.35rem 0.7rem;
+}
+
+/* Actions Remaining — a custom SVG pip track, deliberately not an emoji or
+   bare number, so it reads as part of the game's own UI language. */
+.action-pips {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.action-pips-label {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8a7aa0;
+}
+
+.action-pips-row {
+  display: flex;
+  gap: 0.2rem;
+}
+
+.action-pip polygon {
+  fill: rgba(0, 0, 0, 0.3);
+  stroke: var(--panel-border);
+  stroke-width: 1.5;
+}
+
+.action-pip.filled polygon {
+  fill: var(--neon-cyan);
+  stroke: var(--neon-cyan);
+  filter: drop-shadow(0 0 3px rgba(46, 230, 255, 0.8));
+}
+
 .danger-banner {
   background: rgba(194, 59, 59, 0.15);
   border: 1px solid var(--neon-pink);

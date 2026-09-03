@@ -173,11 +173,13 @@ export default function GameScreen({ state, playerId, onLeave }) {
     if (me.role === "slasher") {
       reachableLocations = state.slasherFrozen ? [] : myLoc.connections;
     } else {
-      const character = state.characters?.[me.pickId];
+      // Baseline Move is one hop per Action Point (see ActionPanel) —
+      // extended only by a temporary movement bonus, never while
+      // Panicked/Broken.
       const tier = sanityTier(me.sanity);
-      const baseSpeed = (tier === "panicked" || tier === "broken") ? 1 : character?.stats?.speed ?? 1;
-      const speed = baseSpeed + (me.tempSpeedBonus || 0);
-      reachableLocations = speed > 1 ? reachableFrom(state.board, me.location, speed) : myLoc.connections;
+      const panickedOrWorse = tier === "panicked" || tier === "broken";
+      const moveHops = panickedOrWorse ? 1 : 1 + (me.tempSpeedBonus || 0);
+      reachableLocations = moveHops > 1 ? reachableFrom(state.board, me.location, moveHops) : myLoc.connections;
     }
   }
 

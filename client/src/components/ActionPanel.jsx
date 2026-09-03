@@ -3,6 +3,9 @@ import { socket } from "../socket";
 import { KILLERS, TEEN_CHARACTERS } from "../data/characters";
 import { reachableFrom } from "../utils/reachable";
 import { sanityTier } from "../utils/sanity";
+import ActionPips from "./ActionPips";
+
+const TEEN_ACTIONS_PER_TURN = 3;
 
 function act(action, onError, onResult) {
   socket.emit("action", action, (res) => {
@@ -53,7 +56,7 @@ function TeenActions({ state, me, loc, onError, onSearchResult, onItemUseResult 
   const hasKit = (ids, min) => ids.filter((id) => items.some((it) => it.id === id)).length >= min;
   const character = TEEN_CHARACTERS[me.pickId];
   const tier = sanityTier(me.sanity);
-  const speed = ((tier === "panicked" || tier === "broken") ? 1 : character.stats.speed) + (me.tempSpeedBonus || 0);
+  const panickedOrWorse = tier === "panicked" || tier === "broken";
   const teammatesHere = state.players.filter(
     (p) => p.id !== me.id && p.role === "teen" && p.location === me.location && p.status !== "dead" && p.status !== "escaped"
   );
@@ -61,16 +64,27 @@ function TeenActions({ state, me, loc, onError, onSearchResult, onItemUseResult 
     (p) => p.id !== me.id && p.role === "teen" && p.location === me.location && p.status === "dead"
   );
   const isNerd = me.pickId === "nerd";
-  const moveTargets = speed > 1 ? reachableFrom(state.board, me.location, speed) : loc.connections;
+  // Baseline Move is one hop per Action Point — the same rule the server
+  // enforces — extended only by a temporary movement bonus (Monster
+  // Energy), and never while Panicked/Broken.
+  const moveHops = panickedOrWorse ? 1 : 1 + (me.tempSpeedBonus || 0);
+  const moveTargets = moveHops > 1 ? reachableFrom(state.board, me.location, moveHops) : loc.connections;
   const senseHere = state.slasherNearby && loc.connections.includes(state.slasherNearby);
   const carRepaired = state.objectives?.carRepaired;
   const sightings = state.sightings || [];
   const hazardHere = (state.activeHorrorEventLocations || []).includes(me.location);
   const leftItemsHere = loc.leftItems || [];
+  const actionsRemaining = me.actionsRemaining ?? TEEN_ACTIONS_PER_TURN;
 
   return (
     <div className="action-panel">
-      <h4>Your Turn — {loc.name}</h4>
+      <div className="action-panel-header">
+        <h4>Your Turn — {loc.name}</h4>
+        <ActionPips remaining={actionsRemaining} total={TEEN_ACTIONS_PER_TURN} />
+        <button type="button" className="btn btn-ghost end-turn-btn" onClick={() => act({ type: "end_turn" }, onError)}>
+          End Turn
+        </button>
+      </div>
 
       {state.slasherPresent && (
         <div className="danger-banner">The Slasher is here with you!</div>
@@ -99,13 +113,15 @@ function TeenActions({ state, me, loc, onError, onSearchResult, onItemUseResult 
         </div>
       )}
 
-      <ActionGroup title={speed > 1 ? `Move to (up to ${speed} away)` : "Move to"}>
+      <ActionGroup title={moveHops > 1 ? `Move to (up to ${moveHops} away)` : "Move to"}>
         {moveTargets.map((toId) => (
           <button key={toId} className="btn btn-move" onClick={() => act({ type: "move", to: toId }, onError)}>
             {state.board[toId].name}
           </button>
         ))}
       </ActionGroup>
+
+      <SpecialAbilityGroup state={state} me={me} loc={loc} character={character} teammatesHere={teammatesHere} onError={onError} />
 
       {leftItemsHere.length > 0 && (
         <ActionGroup title="Left Here">
@@ -320,6 +336,95 @@ function TeenActions({ state, me, loc, onError, onSearchResult, onItemUseResult 
         </>
       )}
     </div>
+  );
+}
+
+// Each teen's active Special — a once-per-turn (Sprint/Tinker/Bait) or
+// once-per-round (Leader's Let's Go) action that spends an Action Point
+// for a decision-changing effect, distinct from the passive traits shown
+// on the player card. me.abilityReady comes straight from the server so
+// the button greys out the moment it's actually used, not just optimistically.
+function SpecialAbilityGroup({ state, me, loc, character, teammatesHere, onError }) {
+  const [leaderTarget, setLeaderTarget] = useState("");
+  const [sprintTarget, setSprintTarget] = useState("");
+  const ability = character.activeAbility;
+  if (!ability) return null;
+  const ready = me.abilityReady !== false;
+
+  if (character.id === "athlete") {
+    const sprintTargets = reachableFrom(state.board, me.location, 2);
+    return (
+      <ActionGroup title={`Special — ${ability.name}${ready ? "" : " (used this turn)"}`}>
+        <select
+          className="compact-select"
+          value={sprintTarget}
+          onChange={(e) => setSprintTarget(e.target.value)}
+          disabled={!ready}
+        >
+          <option value="">Sprint to…</option>
+          {sprintTargets.map((toId) => (
+            <option key={toId} value={toId}>{state.board[toId].name}</option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          disabled={!ready || !sprintTarget}
+          title={ability.description}
+          onClick={() => {
+            act({ type: "special", to: sprintTarget }, onError);
+            setSprintTarget("");
+          }}
+        >
+          {ability.name}
+        </button>
+      </ActionGroup>
+    );
+  }
+
+  if (character.id === "leader") {
+    return (
+      <ActionGroup title={`Special — ${ability.name}${ready ? "" : " (used this round)"}`}>
+        <select
+          className="compact-select"
+          value={leaderTarget}
+          onChange={(e) => setLeaderTarget(e.target.value)}
+          disabled={!ready || teammatesHere.length === 0}
+        >
+          <option value="">Teammate…</option>
+          {teammatesHere.map((mate) => (
+            <option key={mate.id} value={mate.id}>{mate.characterName}</option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          disabled={!ready || !leaderTarget}
+          title={ability.description}
+          onClick={() => {
+            act({ type: "special", targetId: leaderTarget }, onError);
+            setLeaderTarget("");
+          }}
+        >
+          {ability.name}
+        </button>
+      </ActionGroup>
+    );
+  }
+
+  // Nerd's Tinker and Rebel's Bait need no target — a single button.
+  return (
+    <ActionGroup title={`Special — ${ability.name}${ready ? "" : " (used this turn)"}`}>
+      <button
+        type="button"
+        className="btn btn-secondary"
+        disabled={!ready}
+        title={ability.description}
+        onClick={() => act({ type: "special" }, onError)}
+      >
+        {ability.name}
+      </button>
+    </ActionGroup>
   );
 }
 

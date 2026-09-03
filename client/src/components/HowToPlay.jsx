@@ -31,6 +31,25 @@ export default function HowToPlay({ onClose }) {
           </section>
 
           <section>
+            <h3>Actions</h3>
+            <p>
+              Each Teen gets 3 Action Points on their turn, spent in any order
+              on Move, Search, Hide, Use Item, and everything else below —
+              your turn only ends once all 3 are spent, or you choose to End
+              Turn early. A few quick actions (Give, Discard, picking up an
+              already-left item) don't cost an Action at all. Every teen also
+              has a Special — a once-per-turn (or, for the Leader,
+              once-per-round) ability worth an Action Point of its own:
+            </p>
+            <ul>
+              <li><strong>The Leader — Let's Go</strong>: give a teammate at your location 1 bonus Action on their next turn.</li>
+              <li><strong>The Athlete — Sprint</strong>: move up to 2 spaces at once. Loud — the Killer will hear it.</li>
+              <li><strong>The Nerd — Tinker</strong>: your very next Search this turn costs 0 Actions.</li>
+              <li><strong>The Rebel — Bait</strong>: deliberately make LOUD Noise right where you're standing, pulling the Killer toward you.</li>
+            </ul>
+          </section>
+
+          <section>
             <h3>Playing as a Teen</h3>
             <p>Win the game for your team by doing any <em>one</em> of these:</p>
             <ul>
