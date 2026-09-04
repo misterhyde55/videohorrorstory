@@ -16,6 +16,27 @@ const TREE_CLUSTERS = [
   [72, 82, 4.8], [12, 30, 4], [8, 40, 4.6], [90, 60, 5], [94, 72, 4.4],
 ];
 
+// Distant rooftops sitting in the open ground between landmarks — never
+// on a route or a tile — so the board reads as one continuous town seen
+// from above instead of a handful of buildings floating on empty gradient.
+// Small, low-detail, low-opacity: background texture, not new locations.
+const ROOFTOP_CLUSTERS = [
+  [58, 30, 0], [64, 34, 18], [36, 58, -10], [42, 62, 8],
+  [70, 58, -14], [76, 62, 12], [24, 34, 6], [18, 38, -8],
+  [56, 74, -6], [50, 78, 14], [84, 26, -10], [8, 58, 10],
+];
+
+function Rooftop({ x, y, rot }) {
+  return (
+    <g transform={`translate(${x} ${y}) rotate(${rot})`} opacity="0.5">
+      <rect x="-2.6" y="-1.4" width="5.2" height="3.2" fill="#241d30" stroke="#3a2f4a" strokeWidth="0.2" />
+      <path d="M-3 -1.4 L0 -3.4 L3 -1.4 Z" fill="#1a1524" stroke="#3a2f4a" strokeWidth="0.2" />
+      <rect x="4" y="-0.6" width="3" height="2.4" fill="#20192a" stroke="#3a2f4a" strokeWidth="0.18" />
+      <path d="M3.7 -0.6 L5.5 -1.9 L7.3 -0.6 Z" fill="#171220" stroke="#3a2f4a" strokeWidth="0.18" />
+    </g>
+  );
+}
+
 // Small fixed set pieces scattered across the open ground (never on a
 // route or a location) so the board reads as an actual place between its
 // landmarks, not empty space with icons floating on it. Purely decorative.
@@ -91,6 +112,52 @@ function Clutter({ x, y, kind }) {
   );
 }
 
+// A physical corner dial — original VHS iconography, not a copy of any
+// reference board's skull/lightning motif — tracking the Nightmare Level
+// (0-6) as a real piece of board furniture instead of only a HUD chip.
+// The end cell is a small warning-triangle/static glyph that lights up
+// once the level maxes out, echoing the game's own "REC" static language.
+const NIGHTMARE_DIAL_NUMBERS = [0, 1, 2, 3, 4, 5, 6];
+
+function NightmareDial({ level = 0 }) {
+  const cellW = 3.5;
+  const gap = 0.55;
+  const startX = 7.6;
+  const rowY = 8.6;
+  return (
+    <g className="nightmare-dial">
+      <rect x="2" y="2.4" width="33.4" height="10.6" rx="1.6" fill="url(#dialPlate)" stroke="#120c07" strokeWidth="0.6" />
+      <rect x="2.6" y="3" width="32.2" height="2.3" rx="0.8" fill="#e8dcc0" opacity="0.1" />
+      <text x="4.2" y="6.1" fontSize="1.9" fill="#e8dcc0" fontFamily="monospace" fontWeight="700" opacity="0.82" letterSpacing="0.06">
+        NIGHTMARE LEVEL
+      </text>
+      {NIGHTMARE_DIAL_NUMBERS.map((n, i) => {
+        const cx = startX + i * (cellW + gap);
+        const lit = n <= level;
+        return (
+          <g key={n} transform={`translate(${cx} ${rowY})`}>
+            <rect x="-1.7" y="-1.85" width="3.4" height="3.7" rx="0.5" fill={lit ? "#7a2323" : "#221a12"} stroke={lit ? "#ff9d4d" : "#4a3620"} strokeWidth="0.32" />
+            <text x="0" y="0.7" fontSize="2.1" fontFamily="monospace" fontWeight="700" textAnchor="middle" fill={lit ? "#ffe2b8" : "#7a6a52"}>
+              {n}
+            </text>
+          </g>
+        );
+      })}
+      <g transform={`translate(${startX + 7 * (cellW + gap) + 1.1} ${rowY})`}>
+        <circle r="2.2" fill={level >= 6 ? "#c23b3b" : "#221a12"} stroke={level >= 6 ? "#ff5c5c" : "#4a3620"} strokeWidth="0.4" />
+        <path
+          d="M0 -1.25 L1.05 0.9 L-1.05 0.9 Z"
+          fill="none"
+          stroke={level >= 6 ? "#ffe2b8" : "#7a6a52"}
+          strokeWidth="0.32"
+        />
+        <line x1="-0.5" y1="0.15" x2="0.5" y2="0.15" stroke={level >= 6 ? "#ffe2b8" : "#7a6a52"} strokeWidth="0.28" />
+        <circle cx="0" cy="-0.5" r="0.14" fill={level >= 6 ? "#ffe2b8" : "#7a6a52"} />
+      </g>
+    </g>
+  );
+}
+
 // A location's coordinate along a connection line, used both to draw the
 // route itself and to seed small "trail marker" dots along it — and to
 // interpolate a token's mid-move position for the step animation below.
@@ -126,6 +193,7 @@ export default function Board({
   monsterMaxHp,
   hazardLocations,
   npcs,
+  nightmareLevel,
   reachableLocations,
   onMove,
   onSearchResult,
@@ -214,17 +282,21 @@ export default function Board({
             <stop offset="100%" stopColor="#173f6e" stopOpacity="0.8" />
           </radialGradient>
           <linearGradient id="groundWash" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#1e2440" />
-            <stop offset="100%" stopColor="#131722" />
+            <stop offset="0%" stopColor="#2b2436" />
+            <stop offset="100%" stopColor="#181320" />
           </linearGradient>
           <linearGradient id="fogGradient" x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0%" stopColor="#e8dcc0" stopOpacity="0.08" />
-            <stop offset="35%" stopColor="#8fd6e0" stopOpacity="0" />
+            <stop offset="0%" stopColor="#e8dcc0" stopOpacity="0.09" />
+            <stop offset="35%" stopColor="#c9a888" stopOpacity="0" />
           </linearGradient>
           <radialGradient id="vignette" cx="50%" cy="50%" r="75%">
-            <stop offset="55%" stopColor="#12141f" stopOpacity="0" />
-            <stop offset="100%" stopColor="#080910" stopOpacity="0.6" />
+            <stop offset="55%" stopColor="#171420" stopOpacity="0" />
+            <stop offset="100%" stopColor="#0a0810" stopOpacity="0.6" />
           </radialGradient>
+          <linearGradient id="dialPlate" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#3d3020" />
+            <stop offset="100%" stopColor="#241c13" />
+          </linearGradient>
         </defs>
 
         <rect x="0" y="0" width="100" height="100" fill="url(#groundWash)" />
@@ -235,6 +307,13 @@ export default function Board({
         ))}
         <circle cx="90" cy="10" r="14" fill="url(#moonGlow)" />
         <circle cx="90" cy="10" r="4.2" fill="#fdf6dd" />
+
+        {/* Distant rooftops as a base "town" layer, under everything else —
+            the roads read as carved through an actual place, not laid over
+            empty ground. */}
+        {ROOFTOP_CLUSTERS.map(([x, y, rot], i) => (
+          <Rooftop key={"roof" + i} x={x} y={y} rot={rot} />
+        ))}
 
         {/* Roads are drawn before the tree/clutter dressing so the park's
             greenery reads as sitting alongside the path, not paved over. */}
@@ -263,6 +342,8 @@ export default function Board({
         )}
 
         <rect x="0" y="0" width="100" height="100" fill="url(#fogGradient)" opacity="0.5" />
+
+        <NightmareDial level={nightmareLevel || 0} />
       </svg>
 
       <div className="board-fog" />

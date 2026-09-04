@@ -314,6 +314,7 @@ export default function GameScreen({ state, playerId, onLeave }) {
           monsterMaxHp={state.monsterMaxHp}
           hazardLocations={state.activeHorrorEventLocations}
           npcs={state.npcs}
+          nightmareLevel={state.nightmareLevel}
           reachableLocations={reachableLocations}
           onMove={handleBoardMove}
           onSearchResult={handleSearchResult}

@@ -1015,6 +1015,11 @@
    piece placed on the map, instead of just floating illustration over the
    background — a die-cut cardboard chit with a printed border, not
    another glowing UI card. */
+/* A die-cut chamfered chit instead of a plain rounded card. `border`
+   doesn't follow a clip-path's cut corners, so the border is faked as a
+   second, slightly-inset chamfered layer (::before) showing through a
+   dark base — the outer elevation shadow lives on .landmark-node's own
+   drop-shadow filter, which does respect this shape. */
 .landmark-tile {
   position: relative;
   width: 84px;
@@ -1022,11 +1027,25 @@
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  border-radius: 9px;
+  background: #17110a;
+  clip-path: polygon(
+    11px 0, calc(100% - 11px) 0, 100% 11px,
+    100% calc(100% - 11px), calc(100% - 11px) 100%, 11px 100%,
+    0 calc(100% - 11px), 0 11px
+  );
+}
+
+.landmark-tile::before {
+  content: "";
+  position: absolute;
+  inset: 2.5px;
   background: linear-gradient(155deg, #4a3d2c 0%, #362c1f 55%, #241c13 100%);
-  border: 2.5px solid #17110a;
+  clip-path: polygon(
+    9px 0, calc(100% - 9px) 0, 100% 9px,
+    100% calc(100% - 9px), calc(100% - 9px) 100%, 9px 100%,
+    0 calc(100% - 9px), 0 9px
+  );
   box-shadow:
-    0 5px 8px rgba(0, 0, 0, 0.55),
     inset 0 0 0 1px rgba(232, 220, 192, 0.14),
     inset 0 -8px 12px rgba(0, 0, 0, 0.3);
 }
